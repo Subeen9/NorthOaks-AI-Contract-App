@@ -3,23 +3,20 @@ using CMPS4110_NorthOaksProj.Models.Users;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Data;
 
-namespace CMPS4110_NorthOaksProj.Controller
+namespace CMPS4110_NorthOaksProj.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     public class UsersController : ControllerBase
     {
         private readonly DataContext _context;
-        private readonly RoleManager<Role> roleManager;
         private readonly UserManager<User> _userManager;
 
         public UsersController(DataContext context, UserManager<User> userManager)
         {
             _context = context;
             _userManager = userManager;
-
         }
 
         [HttpGet]
@@ -33,19 +30,19 @@ namespace CMPS4110_NorthOaksProj.Controller
                     FirstName = x.FirstName,
                     LastName = x.LastName,
                     Email = x.Email,
-                }).ToListAsync;
+                })
+                .ToListAsync();
+
             return Ok(users);
         }
 
-        [HttpGet("{id}")]
+        [HttpGet("{id:int}")]
         public async Task<ActionResult<UserDto>> GetById(int id)
         {
             var user = await _context.Users.FindAsync(id);
 
             if (user == null)
-            {
                 return NotFound();
-            }
 
             var userDto = new UserDto
             {
@@ -63,9 +60,7 @@ namespace CMPS4110_NorthOaksProj.Controller
         public async Task<ActionResult<UserDto>> Create([FromBody] UserDto newUserDto)
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
             var newUser = new User
             {
@@ -77,39 +72,31 @@ namespace CMPS4110_NorthOaksProj.Controller
 
             var result = await _userManager.CreateAsync(newUser, newUserDto.Password);
 
-            if (result.Succeeded)
-            {
-                var userDto = new UserDto
-                {
-                    Id = newUser.Id,
-                    UserName = newUser.UserName,
-                    FirstName = newUser.FirstName,
-                    LastName = newUser.LastName,
-                    Email = newUser.Email,
-                };
-
-                return CreatedAtAction(nameof(GetById), new { id = newUser.Id }, userDto);
-            }
-            else
-            {
+            if (!result.Succeeded)
                 return BadRequest(result.Errors);
-            }
+
+            var userDto = new UserDto
+            {
+                Id = newUser.Id,
+                UserName = newUser.UserName,
+                FirstName = newUser.FirstName,
+                LastName = newUser.LastName,
+                Email = newUser.Email,
+            };
+
+            return CreatedAtAction(nameof(GetById), new { id = newUser.Id }, userDto);
         }
 
-        [HttpPut("{id}")]
+        [HttpPut("{id:int}")]
         public async Task<ActionResult<UserDto>> Edit(int id, [FromBody] UserDto updatedUserDto)
         {
             if (!ModelState.IsValid)
-            {
                 return BadRequest(ModelState);
-            }
 
-            var existingUser = await _context.Users.FindAsync(id);
+            var existingUser = await _userManager.FindByIdAsync(id.ToString());
 
             if (existingUser == null)
-            {
                 return NotFound();
-            }
 
             existingUser.UserName = updatedUserDto.UserName;
             existingUser.FirstName = updatedUserDto.FirstName;
@@ -118,45 +105,35 @@ namespace CMPS4110_NorthOaksProj.Controller
 
             var result = await _userManager.UpdateAsync(existingUser);
 
-            if (result.Succeeded)
-            {
-                var userDto = new UserDto
-                {
-                    Id = existingUser.Id,
-                    UserName = existingUser.UserName,
-                    FirstName = existingUser.FirstName,
-                    LastName = existingUser.LastName,
-                    Email = existingUser.Email,
-                };
-
-                return Ok(userDto);
-            }
-            else
-            {
+            if (!result.Succeeded)
                 return BadRequest(result.Errors);
-            }
+
+            var userDto = new UserDto
+            {
+                Id = existingUser.Id,
+                UserName = existingUser.UserName,
+                FirstName = existingUser.FirstName,
+                LastName = existingUser.LastName,
+                Email = existingUser.Email,
+            };
+
+            return Ok(userDto);
         }
 
-        [HttpDelete("{id}")]
+        [HttpDelete("{id:int}")]
         public async Task<ActionResult> Delete(int id)
         {
-            var user = await _context.Users.FindAsync(id);
+            var user = await _userManager.FindByIdAsync(id.ToString());
 
             if (user == null)
-            {
                 return NotFound();
-            }
 
             var result = await _userManager.DeleteAsync(user);
 
-            if (result.Succeeded)
-            {
-                return NoContent();
-            }
-            else
-            {
+            if (!result.Succeeded)
                 return BadRequest(result.Errors);
-            }
+
+            return NoContent();
         }
     }
 }
