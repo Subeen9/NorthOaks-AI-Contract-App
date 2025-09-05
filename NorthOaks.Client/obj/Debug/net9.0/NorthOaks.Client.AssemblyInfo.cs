@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("NorthOaks.Client")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+9b5d1c4af7b1d76f7c1d3f82460c8767384aa307")]
 [assembly: System.Reflection.AssemblyProductAttribute("NorthOaks.Client")]
 [assembly: System.Reflection.AssemblyTitleAttribute("NorthOaks.Client")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
