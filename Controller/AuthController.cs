@@ -19,24 +19,6 @@ namespace CMPS4110_NorthOaksProj.Controller
             userManager = _userManager;
         }
 
-        [HttpPost("register")]
-        public async Task<ActionResult> Register([FromBody] UserDto registerDto)
-        {
-            var user = new User
-            {
-                UserName = registerDto.UserName,
-                FirstName = registerDto.FirstName,
-                LastName = registerDto.LastName,
-                Email = registerDto.Email,
-            };
-            var result = await userManager.CreateAsync(user, registerDto.Password);
-            if (!result.Succeeded)
-            {
-                return BadRequest(result.Errors);
-            }
-            return Ok("User registered successfully.");
-        }
-
         [HttpPost("login")]
         public async Task<ActionResult<string>> Login([FromBody] LoginDto loginDto)
         {
@@ -48,6 +30,13 @@ namespace CMPS4110_NorthOaksProj.Controller
                 return Unauthorized("Invalid username or password.");
             var token = tokenService.GenerateToken(user);
             return Ok(token);
+        }
+
+        [HttpPost("logout")]
+        public async Task<ActionResult> Logout()
+        {
+            await signInManager.SignOutAsync();
+            return Ok("User logged out successfully.");
         }
     }
 }

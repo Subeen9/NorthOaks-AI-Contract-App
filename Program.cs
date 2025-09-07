@@ -1,4 +1,5 @@
 using CMPS4110_NorthOaksProj.Data;
+using CMPS4110_NorthOaksProj.Data.Services;
 using CMPS4110_NorthOaksProj.Models.Users;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
@@ -45,6 +46,7 @@ builder.Services.AddRazorPages()
 // Controllers for API endpoints
 builder.Services.AddControllers();
 
+// JWT Authentication
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -63,6 +65,9 @@ builder.Services.AddAuthentication(options =>
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
     };
 });
+
+// Token service
+builder.Services.AddScoped<TokenService>();
 
 builder.Services.AddAuthorization();
 builder.Services.AddConnections();

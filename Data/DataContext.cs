@@ -9,6 +9,7 @@ namespace CMPS4110_NorthOaksProj.Data
     public sealed class DataContext : IdentityDbContext<User, IdentityRole<int>, int>
     {
         public DataContext(DbContextOptions<DataContext> options) : base(options) { }
+        public DbSet<User> Users { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
