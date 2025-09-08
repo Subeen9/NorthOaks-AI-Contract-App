@@ -1,6 +1,8 @@
 using CMPS4110_NorthOaksProj.Data;
+using CMPS4110_NorthOaksProj.Data.Base;
 using CMPS4110_NorthOaksProj.Data.Services;
 using CMPS4110_NorthOaksProj.Models.Users;
+using CMPS4110_NorthOaksProj.Models.Contracts;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -38,6 +40,8 @@ builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
 })
 .AddEntityFrameworkStores<DataContext>()
 .AddDefaultTokenProviders();
+
+builder.Services.AddScoped<IEntityBaseRepository<Contract>, EntityBaseRepository<Contract>>();
 
 // Razor Pages
 builder.Services.AddRazorPages()
