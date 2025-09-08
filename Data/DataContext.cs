@@ -41,8 +41,8 @@ namespace CMPS4110_NorthOaksProj.Data
 
           
             modelBuilder.Entity<ChatSessionContract>()
-                .HasOne<Contract>()                // principal type only
-                .WithMany()                        // no collection needed
+                .HasOne<Contract>()                
+                .WithMany()                        
                 .HasForeignKey(sc => sc.ContractId)
                 .OnDelete(DeleteBehavior.Restrict);
 
@@ -53,3 +53,4 @@ namespace CMPS4110_NorthOaksProj.Data
         }
     }
 }
+// ask aakash one to many 
