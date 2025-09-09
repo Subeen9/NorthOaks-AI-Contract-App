@@ -1,0 +1,44 @@
+﻿@page "/"
+
+<div class="container d-flex justify-content-center align-items-center" style="min-height:100vh;">
+    <div class="card shadow p-4" style="max-width:400px; width:100%;">
+        <div class="text-center mb-3">
+            <img src="images/NorthOaks.jpg" alt="North Oaks Logo" width="100" height="100" class="rounded-circle mb-2" />
+            <h4>Sign In</h4>
+        </div>
+
+        <EditForm Model="@this" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="mb-3">
+                <label for="username" class="form-label">User Name</label>
+                <InputText id="username" @bind-Value="_username" class="form-control" />
+                <ValidationMessage For="@(() => _username)" />
+            </div>
+
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <InputText id="password" @bind-Value="_password" Type="password" class="form-control" />
+                <ValidationMessage For="@(() => _password)" />
+            </div>
+
+            <button type="submit" class="btn btn-primary w-100">Sign In</button>
+        </EditForm>
+
+        <div class="d-flex justify-content-between mt-3">
+            <a href="/register">Register</a>
+            <a href="/forgot-password">Forgot password?</a>
+        </div>
+    </div>
+</div>
+
+@code {
+    private string _username { get; set; }
+    private string _password { get; set; }
+
+    private void HandleValidSubmit()
+    {
+        Console.WriteLine($"User: {_username}, Password: {_password}");
+    }
+}
