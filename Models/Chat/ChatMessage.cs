@@ -1,8 +1,9 @@
-﻿using System;
+﻿using CMPS4110_NorthOaksProj.Data.Base;
+using System;
 
 namespace CMPS4110_NorthOaksProj.Models.Chat
 {
-    public class ChatMessage
+    public class ChatMessage : IEntityBase
     {
         public int Id { get; set; }
         public int SessionId { get; set; }

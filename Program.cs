@@ -10,6 +10,7 @@ using Microsoft.Identity.Web.UI;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using CMPS4110_NorthOaksProj.Data.Services.Contracts;
+using CMPS4110_NorthOaksProj.Data.Services.Chat.Messages;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -44,6 +45,7 @@ builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
 
 // Dependency Injection for services
 builder.Services.AddScoped<IContractsService, ContractsService>();
+builder.Services.AddScoped<IChatMessagesService, ChatMessagesService>();
 
 // Razor Pages
 builder.Services.AddRazorPages()
