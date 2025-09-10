@@ -20,10 +20,7 @@ builder.Services.AddSwaggerGen();
 
 // Database connection
 builder.Services.AddDbContext<DataContext>(options =>
-    options.UseMySql(
-        builder.Configuration.GetConnectionString("DefaultConnection"),
-        new MySqlServerVersion(new Version(8, 0, 0))
-    )
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
 );
 
 // Add Identity
