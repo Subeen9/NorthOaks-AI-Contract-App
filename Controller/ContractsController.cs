@@ -1,4 +1,4 @@
-﻿using CMPS4110_NorthOaksProj.Data.Base;
+﻿using CMPS4110_NorthOaksProj.Data.Services.Contracts;
 using CMPS4110_NorthOaksProj.Models.Contracts;
 using Microsoft.AspNetCore.Mvc;
 
@@ -8,14 +8,14 @@ namespace CMPS4110_NorthOaksProj.Controllers
     [Route("api/[controller]")]
     public class ContractsController : ControllerBase
     {
-        private readonly IEntityBaseRepository<Contract> _contractRepository;
+        private readonly IContractsService _contractsService;
         private readonly IWebHostEnvironment _env;
 
         public ContractsController(
-            IEntityBaseRepository<Contract> contractRepository,
+            IContractsService contractsService,
             IWebHostEnvironment env)
         {
-            _contractRepository = contractRepository;
+            _contractsService = contractsService;
             _env = env;
         }
 
@@ -23,7 +23,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ContractReadDto>>> GetAll()
         {
-            var contracts = await _contractRepository.GetAll();
+            var contracts = await _contractsService.GetAll();
 
             var dtos = contracts.Select(c => new ContractReadDto
             {
@@ -41,7 +41,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
         [HttpGet("{id:int}")]
         public async Task<ActionResult<ContractReadDto>> GetById(int id)
         {
-            var contract = await _contractRepository.GetByIdAsync(id);
+            var contract = await _contractsService.GetByIdAsync(id);
 
             if (contract == null)
                 return NotFound();
@@ -68,25 +68,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
             if (dto.File == null || dto.File.Length == 0)
                 return BadRequest("No file uploaded.");
 
-            var uploadsFolder = Path.Combine(_env.ContentRootPath, "UploadedContracts");
-            if (!Directory.Exists(uploadsFolder))
-                Directory.CreateDirectory(uploadsFolder);
-
-            var filePath = Path.Combine(uploadsFolder, dto.File.FileName);
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await dto.File.CopyToAsync(stream);
-            }
-
-            var contract = new Contract
-            {
-                FileName = dto.File.FileName,
-                UploadDate = DateTime.Now,
-                UserId = dto.UserId,
-                OCRText = null
-            };
-
-            await _contractRepository.AddAsync(contract);
+            var contract = await _contractsService.UploadContract(dto, _env.ContentRootPath);
 
             var readDto = new ContractReadDto
             {
@@ -104,19 +86,8 @@ namespace CMPS4110_NorthOaksProj.Controllers
         [HttpDelete("{id:int}")]
         public async Task<ActionResult> Delete(int id)
         {
-            var contract = await _contractRepository.GetByIdAsync(id);
-            if (contract == null)
-                return NotFound();
-
-            var uploadsFolder = Path.Combine(_env.ContentRootPath, "UploadedContracts");
-            var filePath = Path.Combine(uploadsFolder, contract.FileName);
-            if (System.IO.File.Exists(filePath))
-            {
-                System.IO.File.Delete(filePath);
-            }
-
-            await _contractRepository.DeleteAsync(id);
-
+            var action = await _contractsService.DeleteContract(id, _env.ContentRootPath);
+            if (!action) return NotFound();
             return NoContent();
         }
     }

@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web.UI;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using CMPS4110_NorthOaksProj.Data.Services.Contracts;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -41,7 +42,8 @@ builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
 .AddEntityFrameworkStores<DataContext>()
 .AddDefaultTokenProviders();
 
-builder.Services.AddScoped<IEntityBaseRepository<Contract>, EntityBaseRepository<Contract>>();
+// Dependency Injection for services
+builder.Services.AddScoped<IContractsService, ContractsService>();
 
 // Razor Pages
 builder.Services.AddRazorPages()
