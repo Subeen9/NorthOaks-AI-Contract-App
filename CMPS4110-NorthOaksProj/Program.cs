@@ -1,18 +1,24 @@
 using CMPS4110_NorthOaksProj.Data;
+using CMPS4110_NorthOaksProj.Data.Base;
 using CMPS4110_NorthOaksProj.Data.Services;
 using CMPS4110_NorthOaksProj.Models.Users;
+using CMPS4110_NorthOaksProj.Models.Contracts;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web.UI;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using CMPS4110_NorthOaksProj.Data.Services.Contracts;
+using CMPS4110_NorthOaksProj.Data.Services.Chat.Messages;
+using Microsoft.AspNetCore.Components.WebAssembly.Server;
+
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-//builder.Services.AddRazorPages()
-//    .AddMicrosoftIdentityUI();
+builder.Services.AddRazorPages()
+   .AddMicrosoftIdentityUI();
 
 // Add Swagger services
 builder.Services.AddEndpointsApiExplorer();
@@ -35,6 +41,10 @@ builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
 })
 .AddEntityFrameworkStores<DataContext>()
 .AddDefaultTokenProviders();
+
+// Dependency Injection for services
+builder.Services.AddScoped<IContractsService, ContractsService>();
+builder.Services.AddScoped<IChatMessagesService, ChatMessagesService>();
 
 // Razor Pages
 builder.Services.AddRazorPages()
@@ -74,6 +84,7 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
+    
     app.UseSwagger();
     app.UseSwaggerUI();
 }
@@ -85,15 +96,18 @@ else
 
 
 app.UseHttpsRedirection();
-
+app.UseBlazorFrameworkFiles();
+app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthentication();
 app.UseAuthorization();
 
+
 app.MapStaticAssets();
 app.MapRazorPages()
    .WithStaticAssets();
 app.MapControllers();
+app.MapFallbackToFile("index.html");
 
 app.Run();
