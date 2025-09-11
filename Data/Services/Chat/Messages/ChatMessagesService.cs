@@ -8,9 +8,9 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
     public class ChatMessagesService : EntityBaseRepository<ChatMessage>, IChatMessagesService
     {
         private readonly DataContext _context;
-        public ChatMessagesService(DataContext context) : base(context)
+        public ChatMessagesService(DataContext _context) : base(_context) 
         {
-            _context = context;
+            _context = _context;
         }
         public async Task<IEnumerable<ChatMessageDto>> GetBySession(int sessionId)
         {
@@ -30,7 +30,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                 })
                 .ToListAsync();
         }
-
+        
         public async Task<ChatMessageDto?> Create(CreateChatMessageDto dto)
         {
             var exists = await _context.ChatSessions.AnyAsync(s => s.Id == dto.SessionId);

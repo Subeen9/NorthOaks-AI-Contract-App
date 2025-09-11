@@ -14,7 +14,7 @@ namespace CMPS4110_NorthOaksProj.Controller
         private readonly IChatMessagesService _chatMessagesService;
         public ChatMessagesController(IChatMessagesService chatMessagesService) => _chatMessagesService = chatMessagesService;
 
-
+        
         [HttpGet("session/{sessionId:int}")]
         public async Task<ActionResult<IEnumerable<ChatMessageDto>>> GetBySession(int sessionId)
         {
@@ -26,9 +26,9 @@ namespace CMPS4110_NorthOaksProj.Controller
         [HttpPost]
         public async Task<ActionResult<ChatMessageDto>> Create(CreateChatMessageDto dto)
         {
-            var result = await _chatMessagesService.Create(dto);
-            if (result == null) return BadRequest("Invalid session ID.");
-            return CreatedAtAction(nameof(GetBySession), new { sessionId = result.SessionId }, result);
+           var result = await _chatMessagesService.Create(dto);
+           if (result == null) return BadRequest("Invalid session ID.");
+           return CreatedAtAction(nameof(GetBySession), new { sessionId = result.SessionId }, result);
         }
 
         [HttpDelete("{id:int}")]

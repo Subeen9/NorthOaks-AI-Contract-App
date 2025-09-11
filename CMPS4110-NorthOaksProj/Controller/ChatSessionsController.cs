@@ -13,7 +13,7 @@ namespace CMPS4110_NorthOaksProj.Controller
         private readonly DataContext _db;
         public ChatSessionsController(DataContext db) => _db = db;
 
-
+        
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ChatSessionDto>>> GetAll()
         {
@@ -33,7 +33,7 @@ namespace CMPS4110_NorthOaksProj.Controller
             return Ok(sessions);
         }
 
-
+       
         [HttpGet("{id:int}")]
         public async Task<ActionResult<ChatSessionDto>> Get(int id)
         {
@@ -54,7 +54,7 @@ namespace CMPS4110_NorthOaksProj.Controller
             };
         }
 
-
+      
         [HttpPost]
         public async Task<ActionResult<ChatSessionDto>> Create(CreateChatSessionDto dto)
         {
@@ -87,7 +87,7 @@ namespace CMPS4110_NorthOaksProj.Controller
             return CreatedAtAction(nameof(Get), new { id = entity.Id }, result);
         }
 
-
+       
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
