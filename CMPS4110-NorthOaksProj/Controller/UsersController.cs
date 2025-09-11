@@ -1,5 +1,6 @@
 ﻿using CMPS4110_NorthOaksProj.Data;
 using CMPS4110_NorthOaksProj.Models.Users;
+using NorthOaks.Shared.Model.Users;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
