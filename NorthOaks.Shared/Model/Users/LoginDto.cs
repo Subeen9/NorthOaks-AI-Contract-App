@@ -1,4 +1,4 @@
-﻿namespace CMPS4110_NorthOaksProj.Models.Users
+﻿namespace NorthOaks.Shared.Model.Users
 {
     public class LoginDto
     {

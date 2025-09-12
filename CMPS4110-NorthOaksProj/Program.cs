@@ -17,8 +17,8 @@ using Microsoft.AspNetCore.Components.WebAssembly.Server;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddRazorPages()
-   .AddMicrosoftIdentityUI();
+//builder.Services.AddRazorPages()
+//   .AddMicrosoftIdentityUI();
 
 // Add Swagger services
 builder.Services.AddEndpointsApiExplorer();
@@ -105,8 +105,6 @@ app.UseAuthorization();
 
 
 app.MapStaticAssets();
-app.MapRazorPages()
-   .WithStaticAssets();
 app.MapControllers();
 app.MapFallbackToFile("index.html");
 

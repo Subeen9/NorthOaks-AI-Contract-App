@@ -1,4 +1,7 @@
 ﻿@page "/"
+@using NorthOaks.Shared.Model.Users;
+@inject HttpClient Http
+@inject NavigationManager Navigation
 
 <div class="container d-flex justify-content-center align-items-center" style="min-height:100vh;">
     <div class="card shadow p-4" style="max-width:400px; width:100%;">
@@ -7,20 +10,20 @@
             <h4>Sign In</h4>
         </div>
 
-        <EditForm Model="@this" OnValidSubmit="HandleValidSubmit">
+        <EditForm Model="@loginModel" OnValidSubmit="HandleValidSubmit">
             <DataAnnotationsValidator />
             <ValidationSummary />
 
             <div class="mb-3">
                 <label for="username" class="form-label">User Name</label>
-                <InputText id="username" @bind-Value="_username" class="form-control" />
-                <ValidationMessage For="@(() => _username)" />
+                <InputText id="username" @bind-Value="loginModel.UserName" class="form-control" />
+                <ValidationMessage For="@(() => loginModel.UserName)" />
             </div>
 
             <div class="mb-3">
                 <label for="password" class="form-label">Password</label>
-                <InputText id="password" @bind-Value="_password" Type="password" class="form-control" />
-                <ValidationMessage For="@(() => _password)" />
+                <InputText id="password" @bind-Value="loginModel.Password" Type="password" class="form-control" />
+                <ValidationMessage For="@(() => loginModel.Password)" />
             </div>
 
             <button type="submit" class="btn btn-primary w-100">Sign In</button>
@@ -30,15 +33,44 @@
             <a href="/register">Register</a>
             <a href="/forgot-password">Forgot password?</a>
         </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-2">@errorMessage</div>
+        }
     </div>
 </div>
 
 @code {
-    private string _username { get; set; }
-    private string _password { get; set; }
+    private LoginDto loginModel = new LoginDto();
+    private string errorMessage;
 
-    private void HandleValidSubmit()
+    private async Task HandleValidSubmit()
     {
-        Console.WriteLine($"User: {_username}, Password: {_password}");
+        errorMessage = string.Empty;
+
+        try
+        {
+            // Call the API endpoint
+            var response = await Http.PostAsJsonAsync("api/Auth/login", loginModel);
+
+            if (response.IsSuccessStatusCode)
+            {
+                
+                Navigation.NavigateTo("/home");
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                errorMessage = "Invalid username or password.";
+            }
+            else
+            {
+                errorMessage = "Login failed. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error during login: {ex.Message}";
+        }
     }
 }
