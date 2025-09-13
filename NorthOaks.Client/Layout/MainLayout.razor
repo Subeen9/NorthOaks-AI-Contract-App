@@ -1,8 +1,14 @@
-﻿@inherits LayoutComponentBase
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@inherits LayoutComponentBase
+@inject AuthenticationStateProvider AuthProvider
+@inject IJSRuntime JS
 
 <div class="page">
 
     <main>
+        <AuthorizeView>
+            <Authorized>
+     
         <header class="border-bottom bg-white px-4 py-3">
             <div class="d-flex align-items-center justify-content-between">
 
@@ -69,6 +75,13 @@
                 </div>
             </div>
         </header>
+            </Authorized>
+            <!--Not showing Navbar if user is not signed in-->
+            <NotAuthorized>
+              
+            </NotAuthorized>
+
+        </AuthorizeView>
 
 
         <article class="content px-4">
@@ -82,10 +95,16 @@
 
     private async Task Logout()
     {
-     
+        // Call server logout
         await Http.PostAsync("/api/Auth/logout", null);
 
+        // Remove JWT
+        await JS.InvokeVoidAsync("localStorage.removeItem", "authToken");
 
+        // Notify provider
+        ((CustomAuthStateProvider)AuthProvider).NotifyUserLogout();
+
+        // Redirect
         Navigation.NavigateTo("/", true);
     }
 }

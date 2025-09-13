@@ -1,3 +1,60 @@
 ﻿@page "/home";
 
-<h1>Welcome</h1>
+@using NorthOaks.Client.Shared
+
+<div class="container mt-4">
+    <h3 class="mb-4">Contract Library</h3>
+    <p>@contractList.Count contracts found</p>
+
+    <div class="row g-4">
+        @foreach (var contract in contractList)
+        {
+            <div class="col-md-4">
+                <ContractCard Title="@contract.Title"
+                              UploadedBy="@contract.UploadedBy"
+                              Description="@contract.Description"
+                              Status="@contract.Status"
+                              ExpiryDate="@contract.ExpiryDate" />
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<Contract> contractList = new()
+    {
+        new Contract
+        {
+            Title = "Software Development Agreement",
+            UploadedBy = "John Smith",
+            Description = "This agreement outlines the terms and conditions for software development services...",
+            Status = "active",
+            ExpiryDate = new DateTime(2024, 12, 14)
+        },
+        new Contract
+        {
+            Title = "Service Level Agreement",
+            UploadedBy = "Michael Brown",
+            Description = "This SLA defines the performance standards and service levels to be maintained...",
+            Status = "pending",
+            ExpiryDate = new DateTime(2024, 12, 4)
+        },
+        new Contract
+        {
+            Title = "Employment Contract",
+            UploadedBy = "Emily Davis",
+            Description = "This employment agreement sets forth the terms of employment including compensation...",
+            Status = "expired",
+            ExpiryDate = new DateTime(2024, 11, 30)
+        }
+    };
+
+    public class Contract
+    {
+        public string Title { get; set; }
+        public string UploadedBy { get; set; }
+        public string Description { get; set; }
+        public string Status { get; set; }
+        public DateTime ExpiryDate { get; set; }
+    }
+}
