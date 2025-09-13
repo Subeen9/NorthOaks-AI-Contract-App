@@ -59,7 +59,7 @@
                         <button class="btn  rounded-circle text-white "
                                 type="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false"
                                         style="width: 40px; height: 40px; background: #003768">
-                            SB
+                            @initials
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
                             <li>
@@ -95,7 +95,38 @@
     [Inject] private HttpClient Http { get; set; }
     [Inject] private NavigationManager Navigation { get; set; }
     private bool isGridView = true;
+    private string initials = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            // Get first and last name from claims
+            var firstName = user.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? "";
+            var lastName = user.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value ?? "";
+
+            // Generate initials
+            initials = GetInitials(firstName, lastName);
+        }
+        else
+        {
+            initials = "NA";
+        }
+    }
+
+    private string GetInitials(string firstName, string lastName)
+    {
+        string f = !string.IsNullOrEmpty(firstName) ? firstName[0].ToString().ToUpper() : "";
+        string l = !string.IsNullOrEmpty(lastName) ? lastName[0].ToString().ToUpper() : "";
+        return f + l;
+    }
+
+
     private void toggleView(bool grid)
+   
     {
         grid = isGridView;
     }
