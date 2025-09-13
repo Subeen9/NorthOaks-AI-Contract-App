@@ -33,6 +33,7 @@
   <ItemGroup>
     <ProjectReference Include="..\NorthOaks.Client\NorthOaks.Client.csproj" />
   </ItemGroup>
-	
 
 </Project>
+
+
