@@ -18,6 +18,10 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+
 // Add services to the container.
 //builder.Services.AddRazorPages()
 //   .AddMicrosoftIdentityUI();
@@ -47,6 +51,8 @@ builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
 // Dependency Injection for services
 builder.Services.AddScoped<IContractsService, ContractsService>();
 builder.Services.AddScoped<IChatMessagesService, ChatMessagesService>();
+builder.Services.AddScoped<IQdrantService, QdrantService>();
+builder.Services.AddScoped<IDocumentProcessingService, DocumentProcessingService>();
 
 // Razor Pages
 builder.Services.AddRazorPages()
@@ -80,11 +86,6 @@ builder.Services.AddScoped<TokenService>();
 
 builder.Services.AddAuthorization();
 builder.Services.AddConnections();
-
-// Document processing services(gRPC version)
-builder.Services.AddScoped<IQdrantService, QdrantService>();
-builder.Services.AddScoped<IDocumentProcessingService, DocumentProcessingService>();
-
 
 var app = builder.Build();
 

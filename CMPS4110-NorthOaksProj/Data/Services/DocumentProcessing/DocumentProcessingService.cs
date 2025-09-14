@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System.Linq.Expressions;
+using System.Text.RegularExpressions;
 using CMPS4110_NorthOaksProj.Data.Services.QDrant;
 using CMPS4110_NorthOaksProj.Models.Contracts;
 using UglyToad.PdfPig;
@@ -21,33 +22,62 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                 _logger = logger;
             }
 
-            public async Task ProcessDocumentAsync(int contractId, string filePath)
+        public async Task ProcessDocumentAsync(int contractId, string filePath)
+        {
+            try
             {
                 var text = ExtractText(filePath);
                 var chunks = ChunkText(text);
 
+                var embeddings = new List<ContractEmbedding>();
+
                 foreach (var (chunkText, index) in chunks.Select((text, i) => (text, i)))
                 {
-                    var embedding = GenerateEmbedding(chunkText);
-                    var pointId = await _qdrantService.InsertVectorAsync(embedding, contractId, index);
-
-                    _context.ContractEmbeddings.Add(new ContractEmbedding
+                    try
                     {
-                        ContractId = contractId,
-                        ChunkText = chunkText,
-                        ChunkIndex = index,
-                        QdrantPointId = pointId
-                    });
-                }
+                        var embedding = GenerateEmbedding(chunkText);
+                        var pointId = await _qdrantService.InsertVectorAsync(embedding, contractId, index);
 
-                await _context.SaveChangesAsync();
+                        _context.ContractEmbeddings.Add(new ContractEmbedding
+                        {
+                            ContractId = contractId,
+                            ChunkText = chunkText,
+                            ChunkIndex = index,
+                            QdrantPointId = pointId
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error processing chunk {Index} for contract {ContractId}", index, contractId);
+                    }
+
+                    _context.ContractEmbeddings.AddRange(embeddings);
+                    await _context.SaveChangesAsync();
+
+                    _logger.LogInformation("Successfully processed document for contract {ContractId} with {ChunkCount} chunks",
+                        contractId, embeddings.Count);
+                }
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to process document for contract {ContractId}", contractId);
+                throw;
+            }
+        }
 
             private string ExtractText(string filePath)
+            {
+            try
             {
                 using var doc = PdfDocument.Open(filePath);
                 return string.Join("\n", doc.GetPages().Select(p => p.Text));
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to extract text from PDF: {FilePath}", filePath);
+                throw;
+            }
+        }
 
             private List<string> ChunkText(string text, int maxSize = 800)
             {

@@ -10,49 +10,72 @@ namespace CMPS4110_NorthOaksProj.Data.Services
     public class ContractsService : EntityBaseRepository<Contract>, IContractsService
     {
         private readonly IDocumentProcessingService _documentProcessing;
+        private readonly ILogger<ContractsService> _logger;
 
-        public ContractsService(DataContext context, IDocumentProcessingService documentProcessing) : base(context) { 
+        public ContractsService(DataContext context, IDocumentProcessingService documentProcessing, ILogger<ContractsService> logger) : base(context)
+        {
             _documentProcessing = documentProcessing;
+            _logger = logger;
         }
 
         public async Task<Contract> UploadContract(ContractUploadDto dto, string rootPath)
         {
-            var uploadsFolder = Path.Combine(rootPath, "UploadedContracts");
-            if (!Directory.Exists(uploadsFolder))
-                Directory.CreateDirectory(uploadsFolder);
-
-            var filePath = Path.Combine(uploadsFolder, dto.File.FileName);
-            using (var stream = new FileStream(filePath, FileMode.Create))
+            try
             {
-                await dto.File.CopyToAsync(stream);
+                if (dto.File == null || dto.File.Length == 0)
+                    throw new ArgumentException("File is required");
+
+                var uploadsFolder = Path.Combine(rootPath, "UploadedContracts");
+                if (!Directory.Exists(uploadsFolder))
+                    Directory.CreateDirectory(uploadsFolder);
+
+                var fileName = $"{Guid.NewGuid()}_{dto.File.FileName}";
+                var filePath = Path.Combine(uploadsFolder, fileName);
+
+                using (var stream = new FileStream(filePath, FileMode.Create))
+                {
+                    await dto.File.CopyToAsync(stream);
+                }
+
+                var contract = new Contract
+                {
+                    FileName = dto.File.FileName,
+                    UploadDate = DateTime.Now,
+                    UserId = dto.UserId,
+                    //OCRText = null
+                };
+
+                await AddAsync(contract);
+                await _documentProcessing.ProcessDocumentAsync(contract.Id, filePath);
+                return contract;
             }
-
-            var contract = new Contract
+            catch (Exception ex)
             {
-                FileName = dto.File.FileName,
-                UploadDate = DateTime.Now,
-                UserId = dto.UserId,
-               //OCRText = null
-            };
-
-            await AddAsync(contract);
-            await _documentProcessing.ProcessDocumentAsync(contract.Id, filePath);
-            return contract;
+                _logger.LogError(ex, "Error uploading contract", dto.UserId);
+                throw;
+            }
         }
-
         public async Task<bool> DeleteContract(int id, string rootPath)
         {
-            var contract = await GetByIdAsync(id);
-            if (contract == null) return false;
-
-            var filePath = Path.Combine(rootPath, "UploadedContracts", contract.FileName);
-            if (File.Exists(filePath))
+            try
             {
-                File.Delete(filePath);
-            }
+                var contract = await GetByIdAsync(id);
+                if (contract == null) return false;
 
-            await DeleteAsync(id);
-            return true;
+                var filePath = Path.Combine(rootPath, "UploadedContracts", contract.FileName);
+                if (File.Exists(filePath))
+                {
+                    File.Delete(filePath);
+                }
+
+                await DeleteAsync(id);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting contract", id);
+                return false;
+            }
         }
     }
 }
