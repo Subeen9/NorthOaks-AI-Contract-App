@@ -1,17 +1,18 @@
+using System.Text;
 using CMPS4110_NorthOaksProj.Data;
 using CMPS4110_NorthOaksProj.Data.Base;
 using CMPS4110_NorthOaksProj.Data.Services;
-using CMPS4110_NorthOaksProj.Models.Users;
+using CMPS4110_NorthOaksProj.Data.Services.Chat.Messages;
+using CMPS4110_NorthOaksProj.Data.Services.Contracts;
+using CMPS4110_NorthOaksProj.Data.Services.QDrant;
 using CMPS4110_NorthOaksProj.Models.Contracts;
+using CMPS4110_NorthOaksProj.Models.Users;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Components.WebAssembly.Server;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Identity.Web.UI;
 using Microsoft.IdentityModel.Tokens;
-using System.Text;
-using CMPS4110_NorthOaksProj.Data.Services.Contracts;
-using CMPS4110_NorthOaksProj.Data.Services.Chat.Messages;
-using Microsoft.AspNetCore.Components.WebAssembly.Server;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -78,6 +79,10 @@ builder.Services.AddScoped<TokenService>();
 
 builder.Services.AddAuthorization();
 builder.Services.AddConnections();
+
+// Document processing services(gRPC version)
+builder.Services.AddScoped<IQdrantService, QdrantService>();
+//builder.Services.AddScoped<IDocumentProcessingService, DocumentProcessingService>();
 
 var app = builder.Build();
 

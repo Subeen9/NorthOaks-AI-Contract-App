@@ -13,7 +13,7 @@ namespace CMPS4110_NorthOaksProj.Data
         public DataContext(DbContextOptions<DataContext> options) : base(options) { }
         public DbSet<User> Users { get; set; }
         public DbSet<Contract> Contracts { get; set; }
-
+        public DbSet<ContractEmbedding> ContractEmbeddings { get; set; } 
         public DbSet<ChatSession> ChatSessions { get; set; } = null!;
         public DbSet<ChatMessage> ChatMessages { get; set; } = null!;
         public DbSet<ChatSessionContract> ChatSessionContracts { get; set; } = null!;
