@@ -20,6 +20,18 @@ namespace CMPS4110_NorthOaksProj.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            //Contract Embeddings Relation mapping
+            modelBuilder.Entity<ContractEmbedding>()
+                .HasOne(ce=> ce.Contract)
+                .WithMany()
+                .HasForeignKey(ce=>ce.ContractId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            //Contract Embeddings Indexed on ContractId
+            modelBuilder.Entity<ContractEmbedding>()
+                .HasIndex(ce => ce.ContractId);
+
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(DataContext).GetTypeInfo().Assembly);
         }
     }

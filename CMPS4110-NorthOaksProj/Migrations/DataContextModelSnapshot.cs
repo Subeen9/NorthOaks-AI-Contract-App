@@ -47,7 +47,7 @@ namespace CMPS4110_NorthOaksProj.Migrations
 
                     b.HasIndex("SessionId");
 
-                    b.ToTable("ChatMessages");
+                    b.ToTable("ChatMessages", (string)null);
                 });
 
             modelBuilder.Entity("CMPS4110_NorthOaksProj.Models.Chat.ChatSession", b =>
@@ -66,7 +66,7 @@ namespace CMPS4110_NorthOaksProj.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("ChatSessions");
+                    b.ToTable("ChatSessions", (string)null);
                 });
 
             modelBuilder.Entity("CMPS4110_NorthOaksProj.Models.Chat.ChatSessionContract", b =>
@@ -87,7 +87,7 @@ namespace CMPS4110_NorthOaksProj.Migrations
 
                     b.HasIndex("ChatSessionId");
 
-                    b.ToTable("ChatSessionContracts");
+                    b.ToTable("ChatSessionContracts", (string)null);
                 });
 
             modelBuilder.Entity("CMPS4110_NorthOaksProj.Models.Contracts.Contract", b =>
@@ -115,7 +115,7 @@ namespace CMPS4110_NorthOaksProj.Migrations
 
                     b.HasIndex("UserId");
 
-                    b.ToTable("Contracts");
+                    b.ToTable("Contracts", (string)null);
                 });
 
             modelBuilder.Entity("CMPS4110_NorthOaksProj.Models.Users.User", b =>
