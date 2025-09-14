@@ -1,15 +1,18 @@
-﻿
-using CMPS4110_NorthOaksProj.Data.Base;
+﻿using CMPS4110_NorthOaksProj.Data.Base;
 using CMPS4110_NorthOaksProj.Data.Services.Contracts;
 using CMPS4110_NorthOaksProj.Models.Contracts;
-
+using Microsoft.EntityFrameworkCore;
 
 namespace CMPS4110_NorthOaksProj.Data.Services
 {
     public class ContractsService : EntityBaseRepository<Contract>, IContractsService
     {
+        private readonly DataContext _context;
 
-        public ContractsService(DataContext context) : base(context) { }
+        public ContractsService(DataContext context) : base(context)
+        {
+            _context = context;
+        }
 
         public async Task<Contract> UploadContract(ContractUploadDto dto, string rootPath)
         {
@@ -28,7 +31,8 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                 FileName = dto.File.FileName,
                 UploadDate = DateTime.Now,
                 UserId = dto.UserId,
-                OCRText = null
+                OCRText = null,
+                IsDeleted = false
             };
 
             await AddAsync(contract);
@@ -40,15 +44,30 @@ namespace CMPS4110_NorthOaksProj.Data.Services
             var contract = await GetByIdAsync(id);
             if (contract == null) return false;
 
-            var uploadsFolder = Path.Combine(rootPath, "UploadedContracts");
-            var filePath = Path.Combine(uploadsFolder, contract.FileName);
-            if (File.Exists(filePath))
-            {
-                File.Delete(filePath);
-            }
+            // Soft delete instead of physical removal
+            contract.IsDeleted = true;
+            contract.DeletedAt = DateTime.Now;
 
-            await DeleteAsync(id);
+            await UpdateAsync(id, contract);
             return true;
+        }
+
+        //  Get all contracts that are not soft-deleted, with user info
+        public async Task<IEnumerable<Contract>> GetAllWithUser()
+        {
+            return await _context.Contracts
+                .Where(c => !c.IsDeleted)
+                .Include(c => c.User)
+                .ToListAsync();
+        }
+
+        //  Get single contract if not soft-deleted, with user info
+        public async Task<Contract?> GetByIdWithUser(int id)
+        {
+            return await _context.Contracts
+                .Where(c => !c.IsDeleted && c.Id == id)
+                .Include(c => c.User)
+                .FirstOrDefaultAsync();
         }
     }
 }
