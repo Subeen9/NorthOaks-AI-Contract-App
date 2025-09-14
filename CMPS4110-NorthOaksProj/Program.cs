@@ -4,6 +4,7 @@ using CMPS4110_NorthOaksProj.Data.Base;
 using CMPS4110_NorthOaksProj.Data.Services;
 using CMPS4110_NorthOaksProj.Data.Services.Chat.Messages;
 using CMPS4110_NorthOaksProj.Data.Services.Contracts;
+using CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing;
 using CMPS4110_NorthOaksProj.Data.Services.QDrant;
 using CMPS4110_NorthOaksProj.Models.Contracts;
 using CMPS4110_NorthOaksProj.Models.Users;
@@ -82,7 +83,8 @@ builder.Services.AddConnections();
 
 // Document processing services(gRPC version)
 builder.Services.AddScoped<IQdrantService, QdrantService>();
-//builder.Services.AddScoped<IDocumentProcessingService, DocumentProcessingService>();
+builder.Services.AddScoped<IDocumentProcessingService, DocumentProcessingService>();
+
 
 var app = builder.Build();
 

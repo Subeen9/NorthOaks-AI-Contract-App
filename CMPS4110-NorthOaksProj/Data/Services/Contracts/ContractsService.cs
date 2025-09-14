@@ -1,6 +1,7 @@
 ﻿
 using CMPS4110_NorthOaksProj.Data.Base;
 using CMPS4110_NorthOaksProj.Data.Services.Contracts;
+using CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing;
 using CMPS4110_NorthOaksProj.Models.Contracts;
 
 
@@ -8,8 +9,11 @@ namespace CMPS4110_NorthOaksProj.Data.Services
 {
     public class ContractsService : EntityBaseRepository<Contract>, IContractsService
     {
+        private readonly IDocumentProcessingService _documentProcessing;
 
-        public ContractsService(DataContext context) : base(context) { }
+        public ContractsService(DataContext context, IDocumentProcessingService documentProcessing) : base(context) { 
+            _documentProcessing = documentProcessing;
+        }
 
         public async Task<Contract> UploadContract(ContractUploadDto dto, string rootPath)
         {
@@ -28,10 +32,11 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                 FileName = dto.File.FileName,
                 UploadDate = DateTime.Now,
                 UserId = dto.UserId,
-                OCRText = null
+               //OCRText = null
             };
 
             await AddAsync(contract);
+            await _documentProcessing.ProcessDocumentAsync(contract.Id, filePath);
             return contract;
         }
 
@@ -40,8 +45,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services
             var contract = await GetByIdAsync(id);
             if (contract == null) return false;
 
-            var uploadsFolder = Path.Combine(rootPath, "UploadedContracts");
-            var filePath = Path.Combine(uploadsFolder, contract.FileName);
+            var filePath = Path.Combine(rootPath, "UploadedContracts", contract.FileName);
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);
