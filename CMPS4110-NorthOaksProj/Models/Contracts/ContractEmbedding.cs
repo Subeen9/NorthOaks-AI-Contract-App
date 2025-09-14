@@ -11,7 +11,7 @@ namespace CMPS4110_NorthOaksProj.Models.Contracts
         [ForeignKey("ContractId")]public Contract Contract { get; set; } = null!;
         [Required, Column(TypeName = "nvarchar(max)")] public string ChunkText { get; set; } = "";
         [Required] public int ChunkIndex { get; set; }
-        [Required, Column(TypeName = "vector(384)")] public float[] EmbeddingVector { get; set; } = [];
+        [Required] public Guid QdrantPointId { get; set; }
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
 
