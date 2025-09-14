@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CMPS4110_NorthOaksProj.Migrations
 {
     /// <inheritdoc />
-    public partial class CreatedContractEmbeddingsTable : Migration
+    public partial class AddedContractEmbeddingsTableWithQdrant : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -20,7 +20,7 @@ namespace CMPS4110_NorthOaksProj.Migrations
                     ContractId = table.Column<int>(type: "int", nullable: false),
                     ChunkText = table.Column<string>(type: "nvarchar(max)", nullable: false),
                     ChunkIndex = table.Column<int>(type: "int", nullable: false),
-                    EmbeddingVector = table.Column<string>(type: "vector(384)", nullable: false),
+                    QdrantPointId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
                     CreatedAt = table.Column<DateTime>(type: "datetime2", nullable: false)
                 },
                 constraints: table =>

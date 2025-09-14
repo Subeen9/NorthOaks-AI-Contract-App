@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CMPS4110_NorthOaksProj.Migrations
 {
     [DbContext(typeof(DataContext))]
-    [Migration("20250914071917_CreatedContractEmbeddingsTable")]
-    partial class CreatedContractEmbeddingsTable
+    [Migration("20250914102345_AddedContractEmbeddingsTableWithQdrant")]
+    partial class AddedContractEmbeddingsTableWithQdrant
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -142,9 +142,8 @@ namespace CMPS4110_NorthOaksProj.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
 
-                    b.PrimitiveCollection<string>("EmbeddingVector")
-                        .IsRequired()
-                        .HasColumnType("vector(384)");
+                    b.Property<Guid>("QdrantPointId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.HasKey("Id");
 
