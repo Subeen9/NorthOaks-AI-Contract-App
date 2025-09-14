@@ -1,11 +1,13 @@
 ﻿using CMPS4110_NorthOaksProj.Data.Services.Contracts;
 using CMPS4110_NorthOaksProj.Models.Contracts;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CMPS4110_NorthOaksProj.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize] //  require authentication for all endpoints by default
     public class ContractsController : ControllerBase
     {
         private readonly IContractsService _contractsService;
@@ -21,6 +23,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
 
         // GET: api/contracts
         [HttpGet]
+        [Authorize] //  any logged-in user can view
         public async Task<ActionResult<IEnumerable<ContractReadDto>>> GetAll()
         {
             var contracts = await _contractsService.GetAllWithUser();
@@ -29,6 +32,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
 
         // GET: api/contracts/{id}
         [HttpGet("{id:int}")]
+        [Authorize] //  any logged-in user can view
         public async Task<ActionResult<ContractReadDto>> GetById(int id)
         {
             var contract = await _contractsService.GetByIdWithUser(id);
@@ -39,6 +43,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
 
         // POST: api/contracts/upload
         [HttpPost("upload")]
+        [Authorize] //  any logged-in user can upload
         public async Task<ActionResult<ContractReadDto>> Upload([FromForm] ContractUploadDto dto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -55,6 +60,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
 
         // DELETE: api/contracts/{id}
         [HttpDelete("{id:int}")]
+        [Authorize] 
         public async Task<ActionResult> Delete(int id)
         {
             var action = await _contractsService.DeleteContract(id, _env.ContentRootPath);
