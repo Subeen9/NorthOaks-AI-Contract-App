@@ -1,3 +1,59 @@
-﻿@page "/home";
+﻿@page "/home"
+@using NorthOaks.Client.Shared
 
-<h1>Welcome</h1>
+<div class="container mt-4">
+    <h3 class="mb-4">Contract Library</h3>
+    <p>@contractList.Count contracts found</p>
+
+    <div class="row g-4">
+        @foreach (var contract in contractList)
+        {
+            <div class="col-md-4">
+                <ContractCard Id="@contract.Id"
+                              Title="@contract.Title"
+                              UploadedBy="@contract.UploadedBy"
+                              Description="@contract.Description"
+                              ExpiryDate="@contract.ExpiryDate" />
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    private List<Contract> contractList = new()
+    {
+        new Contract
+        {
+            Id = 1,
+            Title = "Software Development Agreement",
+            UploadedBy = "John Smith",
+            Description = "This agreement outlines the terms and conditions for software development services...",
+            ExpiryDate = new DateTime(2024, 12, 14)
+        },
+        new Contract
+        {
+            Id = 2,
+            Title = "Service Level Agreement",
+            UploadedBy = "Michael Brown",
+            Description = "This SLA defines the performance standards and service levels to be maintained...",
+            ExpiryDate = new DateTime(2024, 12, 4)
+        },
+        new Contract
+        {
+            Id = 3,
+            Title = "Employment Contract",
+            UploadedBy = "Emily Davis",
+            Description = "This employment agreement sets forth the terms of employment including compensation...",
+            ExpiryDate = new DateTime(2024, 11, 30)
+        }
+    };
+
+    public class Contract
+    {
+        public int Id { get; set; }
+        public string Title { get; set; }
+        public string UploadedBy { get; set; }
+        public string Description { get; set; }
+        public DateTime ExpiryDate { get; set; }
+    }
+}
