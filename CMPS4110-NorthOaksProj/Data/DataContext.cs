@@ -13,13 +13,25 @@ namespace CMPS4110_NorthOaksProj.Data
         public DataContext(DbContextOptions<DataContext> options) : base(options) { }
         public DbSet<User> Users { get; set; }
         public DbSet<Contract> Contracts { get; set; }
-
+        public DbSet<ContractEmbedding> ContractEmbeddings { get; set; }
         public DbSet<ChatSession> ChatSessions { get; set; } = null!;
         public DbSet<ChatMessage> ChatMessages { get; set; } = null!;
         public DbSet<ChatSessionContract> ChatSessionContracts { get; set; } = null!;
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            //Contract Embeddings Relation mapping
+            modelBuilder.Entity<ContractEmbedding>()
+                .HasOne(ce=> ce.Contract)
+                .WithMany()
+                .HasForeignKey(ce=>ce.ContractId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            //Contract Embeddings Indexed on ContractId
+            modelBuilder.Entity<ContractEmbedding>()
+                .HasIndex(ce => ce.ContractId);
+
             modelBuilder.ApplyConfigurationsFromAssembly(typeof(DataContext).GetTypeInfo().Assembly);
         }
     }
