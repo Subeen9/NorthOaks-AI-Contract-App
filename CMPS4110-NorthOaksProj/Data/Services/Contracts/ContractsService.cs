@@ -1,19 +1,20 @@
-﻿
-using CMPS4110_NorthOaksProj.Data.Base;
+﻿using CMPS4110_NorthOaksProj.Data.Base;
 using CMPS4110_NorthOaksProj.Data.Services.Contracts;
 using CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing;
 using CMPS4110_NorthOaksProj.Models.Contracts;
-
+using Microsoft.EntityFrameworkCore;
 
 namespace CMPS4110_NorthOaksProj.Data.Services
 {
     public class ContractsService : EntityBaseRepository<Contract>, IContractsService
     {
+        private readonly DataContext _context;
         private readonly IDocumentProcessingService _documentProcessing;
         private readonly ILogger<ContractsService> _logger;
 
         public ContractsService(DataContext context, IDocumentProcessingService documentProcessing, ILogger<ContractsService> logger) : base(context)
         {
+            _context = context;
             _documentProcessing = documentProcessing;
             _logger = logger;
         }
@@ -42,19 +43,22 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                     FileName = dto.File.FileName,
                     UploadDate = DateTime.Now,
                     UserId = dto.UserId,
-                    //OCRText = null
+                    IsDeleted = false
+                    //OCRText = null // This will be set by document processing
                 };
 
                 await AddAsync(contract);
                 await _documentProcessing.ProcessDocumentAsync(contract.Id, filePath);
+
                 return contract;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error uploading contract", dto.UserId);
+                _logger.LogError(ex, "Error uploading contract for user {UserId}", dto.UserId);
                 throw;
             }
         }
+
         public async Task<bool> DeleteContract(int id, string rootPath)
         {
             try
@@ -62,13 +66,11 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                 var contract = await GetByIdAsync(id);
                 if (contract == null) return false;
 
-                var filePath = Path.Combine(rootPath, "UploadedContracts", contract.FileName);
-                if (File.Exists(filePath))
-                {
-                    File.Delete(filePath);
-                }
+                // Soft delete instead of physical removal
+                contract.IsDeleted = true;
+                contract.DeletedAt = DateTime.Now;
+                await UpdateAsync(id, contract);
 
-                await DeleteAsync(id);
                 return true;
             }
             catch (Exception ex)
@@ -76,6 +78,24 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                 _logger.LogError(ex, "Error deleting contract", id);
                 return false;
             }
+        }
+
+        //  Get all contracts that are not soft-deleted, with user info
+        public async Task<IEnumerable<Contract>> GetAllWithUser()
+        {
+            return await _context.Contracts
+                .Where(c => !c.IsDeleted)
+                .Include(c => c.User)
+                .ToListAsync();
+        }
+
+        //  Get single contract if not soft-deleted, with user info
+        public async Task<Contract?> GetByIdWithUser(int id)
+        {
+            return await _context.Contracts
+                .Where(c => !c.IsDeleted && c.Id == id)
+                .Include(c => c.User)
+                .FirstOrDefaultAsync();
         }
     }
 }
