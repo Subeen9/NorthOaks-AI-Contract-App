@@ -69,7 +69,7 @@
                 var fileContent = new StreamContent(stream);
                 fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
 
-                content.Add(fileContent, "document", selectedFile.Name);
+                content.Add(fileContent, "File", selectedFile.Name);
                 content.Add(new StringContent(userId), "userId");
 
                 var response = await Http.PostAsync("api/Contracts/upload", content);
