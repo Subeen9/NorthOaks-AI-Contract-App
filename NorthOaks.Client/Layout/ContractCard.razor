@@ -10,7 +10,8 @@
         <h5 class="card-title fw-bold">@Title</h5>
         <p class="text-muted mb-1">Uploaded by @UploadedBy</p>
         <p class="card-text text-truncate flex-grow-1">@Description</p>
-        <small class="text-muted">Expiry: @ExpiryDate.ToShortDateString()</small>
+        
+        <small class="text-muted">Uploaded: @UploadDate.ToShortDateString()</small>
     </div>
 </div>
 
@@ -19,5 +20,7 @@
     [Parameter] public string Title { get; set; }
     [Parameter] public string UploadedBy { get; set; }
     [Parameter] public string Description { get; set; }
-    [Parameter] public DateTime ExpiryDate { get; set; }
+    
+    // This parameter is changed
+    [Parameter] public DateTime UploadDate { get; set; } 
 }
