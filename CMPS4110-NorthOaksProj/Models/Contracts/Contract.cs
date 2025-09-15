@@ -24,6 +24,9 @@ namespace CMPS4110_NorthOaksProj.Models.Contracts
 
         public string? OCRText { get; set; }
 
+        public bool IsDeleted { get; set; } = false;
+        public DateTime? DeletedAt { get; set; }
+
         [NotMapped]
         public string? UploadedBy => $"{User?.FirstName} {User?.LastName}";
     }

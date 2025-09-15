@@ -25,8 +25,8 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                 var host = uri.Host;
                 var port = uri.Port;
 
-                // Default ports: 6333 for REST API, 6334 for gRPC
-                // QdrantClient uses gRPC by default, so we need port 6334
+                // Default ports: 6333:6334
+                // QdrantClient uses gRPC by default
                 var grpcPort = port == 6333 ? 6334 : port;
 
                 _logger.LogInformation("Connecting to Qdrant at {Host}:{Port}", host, grpcPort);
@@ -184,13 +184,5 @@ namespace CMPS4110_NorthOaksProj.Data.Services
         {
             _client?.Dispose();
         }
-    }
-
-    public class VectorSearchResult
-    {
-        public Guid PointId { get; set; }
-        public float Score { get; set; }
-        public int ContractId { get; set; }
-        public int ChunkIndex { get; set; }
     }
 }
