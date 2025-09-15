@@ -1,7 +1,10 @@
 ﻿@page "/"
+@using Microsoft.AspNetCore.Components.Authorization
 @using NorthOaks.Shared.Model.Users;
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthProvider
+@inject IJSRuntime JS
 
 <div class="container d-flex justify-content-center align-items-center" style="min-height:100vh;">
     <div class="card shadow p-4" style="max-width:400px; width:100%;">
@@ -51,13 +54,20 @@
 
         try
         {
-            // Call the API endpoint
             var response = await Http.PostAsJsonAsync("api/Auth/login", loginModel);
 
             if (response.IsSuccessStatusCode)
             {
-                
-                Navigation.NavigateTo("/home");
+                var token = await response.Content.ReadAsStringAsync();
+
+                // Save token in localStorage
+                await JS.InvokeVoidAsync("localStorage.setItem", "authToken", token);
+
+                // Notify provider
+                ((CustomAuthStateProvider)AuthProvider).NotifyUserAuthentication(token);
+
+                // Go to home page
+                Navigation.NavigateTo("/home", true);
             }
             else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
@@ -73,4 +83,5 @@
             errorMessage = $"Error during login: {ex.Message}";
         }
     }
+
 }

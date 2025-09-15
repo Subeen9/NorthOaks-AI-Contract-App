@@ -1,3 +1,57 @@
-﻿@page "/home";
+﻿@page "/home"
+@using NorthOaks.Shared.Model.Contracts
+@inject HttpClient Http
 
-<h1>Welcome</h1>
+<div class="container mt-4">
+    <h3 class="mb-2">Contract Library</h3>
+
+    @if (isLoading)
+    {
+        <p>Loading contracts…</p>
+    }
+    else if (!string.IsNullOrEmpty(error))
+    {
+        <div class="alert alert-danger">@error</div>
+    }
+    else
+    {
+        <p>@contracts.Count contracts found</p>
+
+        <div class="row g-4">
+            @foreach (var c in contracts)
+            {
+                <div class="col-md-4">
+                    <ContractCard Id="@c.Id"
+                                  FileName="@c.FileName"
+                                  UploadedBy="@(c.UploadedBy ?? "Unknown")"
+                                  UploadDate="@c.UploadDate"
+                                  UserId="@c.UserId" />
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<ContractReadDto> contracts = new();
+    private bool isLoading = true;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // GET /api/contracts → List<ContractReadDto>
+            contracts = await Http.GetFromJsonAsync<List<ContractReadDto>>("/api/contracts")
+                        ?? new List<ContractReadDto>();
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load contracts: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

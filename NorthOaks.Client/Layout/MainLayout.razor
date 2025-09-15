@@ -1,15 +1,21 @@
-﻿@inherits LayoutComponentBase
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@inherits LayoutComponentBase
+@inject AuthenticationStateProvider AuthProvider
+@inject IJSRuntime JS
 
 <div class="page">
 
     <main>
+        <AuthorizeView>
+            <Authorized>
+     
         <header class="border-bottom bg-white px-4 py-3">
             <div class="d-flex align-items-center justify-content-between">
 
                 <!-- Logo and BrandName-->
                 <div class="d-flex align-items-center">
-                    <div class="bg-primary d-flex align-items-center justify-content-center rounded me-2"
-                         style="width:32px; height:32px;">
+                            <div class="d-flex align-items-center justify-content-center rounded me-2"
+                                 style="width:32px; height:32px; background:#003768 ">
                         <i class="bi bi-file-earmark-text text-white"></i>
                     </div>
                     <span class="fw-semibold fs-5">ContractHub</span>
@@ -26,17 +32,19 @@
 
                     <!-- View Mode Toggling -->
                     <div class="btn-group">
-                        <button type="button" class="btn btn-outline-secondary active">
+                                <button type="button" class="btn" style="@GetButtonStyle(true)"
+                                    @onclick= "()=>toggleView(false)">
                             <i class="bi bi-grid"></i>
                         </button>
-                        <button type="button" class="btn btn-outline-secondary">
+                                <button type="button" class="btn" style="@GetButtonStyle(false)"
+                                    @onclick= "()=>toggleView(true)">
                             <i class="bi bi-list"></i>
                         </button>
                     </div>
 
                     <!-- Upload Button -->
                     <button class="btn text-white"
-                            style="background: linear-gradient(to right, #2563eb, #7c3aed);">
+                                    style="background: #003768">
                         <i class="bi bi-upload me-2"></i> Upload Contract
                     </button>
 
@@ -48,10 +56,10 @@
 
                     <!-- User Profile Dropdown -->
                     <div class="dropdown">
-                        <button class="btn btn-light rounded-circle dropdown-toggle"
+                        <button class="btn  rounded-circle text-white "
                                 type="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false"
-                                style="width: 40px; height: 40px;">
-                            SB
+                                        style="width: 40px; height: 40px; background: #003768">
+                            @initials
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
                             <li>
@@ -69,6 +77,13 @@
                 </div>
             </div>
         </header>
+            </Authorized>
+            <!--Not showing Navbar if user is not signed in-->
+            <NotAuthorized>
+              
+            </NotAuthorized>
+
+        </AuthorizeView>
 
 
         <article class="content px-4">
@@ -79,13 +94,67 @@
 @code {
     [Inject] private HttpClient Http { get; set; }
     [Inject] private NavigationManager Navigation { get; set; }
+    private bool isGridView = true;
+    private string initials = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            // Get first and last name from claims
+            var firstName = user.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? "";
+            var lastName = user.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value ?? "";
+
+            // Generate initials
+            initials = GetInitials(firstName, lastName);
+        }
+        else
+        {
+            initials = "NA";
+        }
+    }
+
+    private string GetInitials(string firstName, string lastName)
+    {
+        string f = !string.IsNullOrEmpty(firstName) ? firstName[0].ToString().ToUpper() : "";
+        string l = !string.IsNullOrEmpty(lastName) ? lastName[0].ToString().ToUpper() : "";
+        return f + l;
+    }
+
+
+    private void toggleView(bool grid)
+   
+    {
+        grid = isGridView;
+    }
+
+    private string GetButtonStyle(bool isGrid)
+    {
+        if (isGrid == isGridView)
+        {
+            return "background-color:#003768; color:white; border:1px solid #003768;";
+        }
+        else
+        {
+            return "background-color:white; color:black; border:1px solid #6c757d;";
+        }
+    }
 
     private async Task Logout()
     {
-     
+        // Call server logout
         await Http.PostAsync("/api/Auth/logout", null);
 
+        // Remove JWT
+        await JS.InvokeVoidAsync("localStorage.removeItem", "authToken");
 
+        // Notify provider
+        ((CustomAuthStateProvider)AuthProvider).NotifyUserLogout();
+
+        // Redirect
         Navigation.NavigateTo("/", true);
     }
 }
