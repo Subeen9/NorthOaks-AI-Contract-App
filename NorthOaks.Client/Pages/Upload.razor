@@ -3,12 +3,20 @@
 @inject HttpClient Http
 @inject AuthenticationStateProvider AuthStateProvider
 
+
 <h3 class="text-center mb-4">📄 Upload PDF Documents</h3>
 
 <div class="d-flex justify-content-center">
     <div class="card shadow p-4" style="max-width: 700px; width: 100%;">
+
         <div class="card-body">
-            <InputFile OnChange="HandleFileSelected" accept="application/pdf" class="form-control mb-3" />
+
+            <!-- Drag & Drop Area -->
+            <div id="dropArea" class="border border-dashed rounded p-4 mb-3 text-center">
+                <p class="mb-2">Drag & drop a PDF here</p>
+                <p>or click below to select a file</p>
+                <InputFile OnChange="HandleFileSelected" accept="application/pdf" class="form-control" />
+            </div>
 
             <button class="btn btn-primary w-100 mb-3" @onclick="UploadFile" disabled="@(!isFileSelected)">
                 <i class="bi bi-upload"></i> Upload PDF
@@ -19,16 +27,19 @@
                 <div class="alert alert-info">@statusMessage</div>
             }
 
-            <h5 class="mt-4">Uploaded Documents</h5>
-            <ul class="list-group">
-                @foreach (var doc in uploadedDocuments.Where(d => d.EndsWith(".pdf")))
-                {
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <span><i class="bi bi-file-earmark-pdf text-danger"></i> @doc</span>
-                        <a href="@doc" target="_blank" class="btn btn-sm btn-outline-primary">View</a>
-                    </li>
-                }
-            </ul>
+            @if (uploadedDocuments.Any())
+            {
+                <h5 class="mt-4">Uploaded Documents</h5>
+                <ul class="list-group">
+                    @foreach (var doc in uploadedDocuments)
+                    {
+                        <li class="list-group-item">
+                            <i class="bi bi-file-earmark-pdf text-danger"></i> @doc
+                        </li>
+                    }
+                </ul>
+            }
+
         </div>
     </div>
 </div>
@@ -47,15 +58,17 @@
         if (user.Identity?.IsAuthenticated ?? false)
         {
             userId = user.FindFirst("uid").Value;
-            Console.WriteLine(userId);
         }
-    } 
+    }
+
+  
+
 
     private void HandleFileSelected(InputFileChangeEventArgs e)
     {
         selectedFile = e.File;
         isFileSelected = selectedFile != null && selectedFile.ContentType == "application/pdf";
-        statusMessage = isFileSelected ? $"Selected: {selectedFile.Name}" : "Please select a PDF file.";
+        statusMessage = isFileSelected ? $"Selected: {selectedFile.Name}" : " Please select a PDF file.";
     }
 
     private async Task UploadFile()
@@ -65,23 +78,25 @@
             try
             {
                 var content = new MultipartFormDataContent();
-                var stream = selectedFile.OpenReadStream(20 * 1024 * 1024); // 20 mb limit as of now
+                var stream = selectedFile.OpenReadStream(20 * 1024 * 1024);
                 var fileContent = new StreamContent(stream);
                 fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
 
                 content.Add(fileContent, "File", selectedFile.Name);
-                content.Add(new StringContent(userId), "userId");
+                content.Add(new StringContent(userId), "UserId");
 
                 var response = await Http.PostAsync("api/Contracts/upload", content);
 
                 if (response.IsSuccessStatusCode)
                 {
-                    statusMessage = "✅ Upload successful!";
+                    statusMessage = "Upload successful!";
                     uploadedDocuments.Add(selectedFile.Name);
+                    selectedFile = null;
+                    isFileSelected = false;
                 }
                 else
                 {
-                    statusMessage = "❌ Upload failed. Try again.";
+                    statusMessage = " Upload failed. Try again.";
                 }
             }
             catch (Exception ex)
