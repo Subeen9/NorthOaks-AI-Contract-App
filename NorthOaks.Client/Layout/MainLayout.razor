@@ -3,6 +3,7 @@
 @inject AuthenticationStateProvider AuthProvider
 @inject IJSRuntime JS
 
+
 <div class="page">
 
     <main>
@@ -13,7 +14,7 @@
             <div class="d-flex align-items-center justify-content-between">
 
                 <!-- Logo and BrandName-->
-                <div class="d-flex align-items-center">
+                <div class="d-flex align-items-center" @onclick="NavigateToHome">
                             <div class="d-flex align-items-center justify-content-center rounded me-2"
                                  style="width:32px; height:32px; background:#003768 ">
                         <i class="bi bi-file-earmark-text text-white"></i>
@@ -43,8 +44,8 @@
                     </div>
 
                     <!-- Upload Button -->
-                    <button class="btn text-white"
-                                    style="background: #003768">
+                    <button class="btn text-white" 
+                                    style="background: #003768" @onclick="NavigateToUpload">
                         <i class="bi bi-upload me-2"></i> Upload Contract
                     </button>
 
@@ -96,6 +97,15 @@
     [Inject] private NavigationManager Navigation { get; set; }
     private bool isGridView = true;
     private string initials = "";
+
+    private void NavigateToUpload()
+    {
+        Navigation.NavigateTo("/upload");
+    }
+    private void NavigateToHome()
+    {
+        Navigation.NavigateTo("/home");
+    }
 
     protected override async Task OnInitializedAsync()
     {
