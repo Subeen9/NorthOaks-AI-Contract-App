@@ -22,7 +22,7 @@
             {
                 <div class="col-md-4">
                     <ContractCard Id="@c.Id"
-                                  FileName="@c.FileName"
+                                  FileName="@CleanFileName(c.FileName)"
                                   UploadedBy="@(c.UploadedBy ?? "Unknown")"
                                   UploadDate="@c.UploadDate"
                                   UserId="@c.UserId" />
@@ -41,7 +41,6 @@
     {
         try
         {
-            // GET /api/contracts → List<ContractReadDto>
             contracts = await Http.GetFromJsonAsync<List<ContractReadDto>>("/api/contracts")
                         ?? new List<ContractReadDto>();
         }
@@ -53,5 +52,14 @@
         {
             isLoading = false;
         }
+    }
+
+    //to remove the GUID part
+    private string CleanFileName(string fileName)
+    {
+        var i = fileName.IndexOf('_');
+        return (i >= 0 && i < fileName.Length - 1)
+            ? fileName[(i + 1)..]
+            : fileName;
     }
 }
