@@ -6,9 +6,6 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>aspnet-CMPS4110_NorthOaksProj-dc66a65e-24f9-477d-b3a9-828d1495522b</UserSecretsId>
     <RootNamespace>CMPS4110_NorthOaksProj</RootNamespace>
-	
-	
-  
   </PropertyGroup>
 
   <ItemGroup>
@@ -29,7 +26,6 @@
     <PackageReference Include="MudBlazor" Version="8.12.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.4" />
   </ItemGroup>
-	
 
 </Project>
 
