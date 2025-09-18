@@ -1,0 +1,86 @@
+﻿@page "/contract/{id:int}"
+
+@inject NavigationManager Nav
+
+<div class="container-fluid mt-4">
+    <div class="row" style="height: calc(100vh - 100px);">
+
+        
+        <div class="col-8 d-flex flex-column">
+            @if (contract == null)
+            {
+                <p>Loading contract...</p>
+            }
+            else
+            {
+                <h4 class="mb-3">@contract.Title</h4>
+                
+                <iframe src="/sample.pdf"
+                        class="flex-grow-1 rounded border"
+                        style="width:100%; min-height:0; height:100%;">
+                </iframe>
+            }
+        </div>
+
+        <!-- Chat Sidebar -->
+        <div class="col-4 d-flex flex-column border-start ps-3">
+            <h5 class="mb-3">Chat about this contract</h5>
+
+            <div class="flex-grow-1 border rounded p-2 mb-2 overflow-auto" style="background:#fafafa;">
+                @foreach (var msg in messages)
+                {
+                    <div class="mb-1">
+                        <strong>@msg.User:</strong> @msg.Text
+                    </div>
+                }
+            </div>
+
+            <div>
+                <input class="form-control mb-2" @bind="newMessage" placeholder="Type a message..." />
+                <button class="btn btn-primary w-100" @onclick="SendMessage">Send</button>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+@code {
+    [Parameter] public int id { get; set; }
+    private Contract? contract;
+    private List<Message> messages = new();
+    private string newMessage = "";
+
+    protected override void OnInitialized()
+    {
+        // Get contract by ID from mock list (same list as Home.razor)
+        var allContracts = new List<Contract>
+        {
+            new Contract { Id = 1, Title = "Software Development Agreement" },
+            new Contract { Id = 2, Title = "Service Level Agreement" },
+            new Contract { Id = 3, Title = "Employment Contract" }
+        };
+
+        contract = allContracts.FirstOrDefault(c => c.Id == id);
+    }
+
+    private void SendMessage()
+    {
+        if (!string.IsNullOrWhiteSpace(newMessage))
+        {
+            messages.Add(new Message { User = "You", Text = newMessage });
+            newMessage = string.Empty;
+        }
+    }
+
+    public class Message
+    {
+        public string User { get; set; }
+        public string Text { get; set; }
+    }
+
+    public class Contract
+    {
+        public int Id { get; set; }
+        public string Title { get; set; }
+    }
+}

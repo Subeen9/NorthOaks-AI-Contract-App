@@ -1,0 +1,7 @@
+# Ignore bin and obj everywhere
+**/bin/
+**/obj/
+.vs
+# Ignore accidentally added top-level files if they’re outside the project
+!/CMPS4110-NorthOaksProj/CMPS4110-NorthOaksProj/**
+CMPS4110-NorthOaksProj/UploadedContracts
