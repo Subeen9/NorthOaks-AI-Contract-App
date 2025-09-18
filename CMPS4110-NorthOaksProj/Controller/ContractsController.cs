@@ -49,7 +49,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
             if (!ModelState.IsValid) return BadRequest(ModelState);
             if (dto.File == null || dto.File.Length == 0) return BadRequest("No file uploaded.");
 
-            var contract = await _contractsService.UploadContract(dto, _env.ContentRootPath);
+            var contract = await _contractsService.UploadContract(dto, _env.WebRootPath);
 
             // reload with User so UploadedBy isn’t null
             var savedContract = await _contractsService.GetByIdWithUser(contract.Id);
@@ -79,7 +79,10 @@ namespace CMPS4110_NorthOaksProj.Controllers
                 UserId = contract.UserId,
                 UploadedBy = contract.User != null
                     ? $"{contract.User.FirstName} {contract.User.LastName}"
-                    : null
+                    : null,
+
+                FileUrl = $"/UploadedContracts/{contract.FileName}"
+
             };
         }
     }
