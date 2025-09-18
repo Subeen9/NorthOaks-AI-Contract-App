@@ -22,22 +22,13 @@ clone the repository
 git clone https://github.com/Ajyol/CMPS4110-NorthOaksProj.git
 ```
 
-2. Run the Backend (Web API)
+2. ### 2. Run the Backend (Web API)
 
-- Open the solution in Visual Studio.
+1. Open the solution in **Visual Studio**.  
+2. Right-click `CMPS4110-NorthOaksProj` → **Set as Startup Project**.  
+3. Run with **Ctrl + F5**.  
 
-- Right-click CMPS4110-NorthOaksProj → Set as Startup Project.
+By default, the frontend also runs on the same port:  
+- API Base URL → [https://localhost:7161](https://localhost:7161)  
+- Swagger UI → [https://localhost:7161/swagger/index.html](https://localhost:7161/swagger/index.html)  
 
-- Run (Ctrl + F5).
-
-- The API will start at https://localhost:5001 (or similar).
-
-
-
-3. Run the Frontend (Blazor)
-
-- Right-click NorthOaks.Client → Set as Startup Project.
-
-- Run (Ctrl + F5).
-
-- The frontend will start at https://localhost:7223 (or similar).

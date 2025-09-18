@@ -10,5 +10,8 @@ namespace CMPS4110_NorthOaksProj.Models.Contracts
         public DateTime UploadDate { get; set; }
         public int UserId { get; set; }
         public string? UploadedBy { get; set; }
+        public string FileUrl { get; set; }
     }
+
+
 }
