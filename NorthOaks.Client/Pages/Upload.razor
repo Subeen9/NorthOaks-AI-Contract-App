@@ -69,17 +69,6 @@
         }
     }
 
-    // private async Task HandleDrop(DragEventArgs e)
-    // {
-    //     isDragOver = false;
-    //     if (e.DataTransfer?.Files?.Length > 0)
-    //     {
-    //         await JSRuntime.InvokeVoidAsync("assignDroppedFile", "hiddenInputFile", e.DataTransfer);
-    //     }
-    // }
-
-
-  
     private void HandleFileSelected(InputFileChangeEventArgs e)
     {
         selectedFile = e.File;
@@ -125,6 +114,7 @@
     {
         if (firstRender)
         {
+            await Task.Delay(30);
             await JSRuntime.InvokeVoidAsync("initDragDrop");
         }
     }
