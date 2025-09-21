@@ -46,6 +46,9 @@
 </div>
 
 @code {
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+
     private LoginDto loginModel = new LoginDto();
     private string errorMessage;
 
@@ -66,17 +69,20 @@
 
                 // Notify provider
                 ((CustomAuthStateProvider)AuthProvider).NotifyUserAuthentication(token);
+                ToastService.Notify(new(ToastType.Success, $"User Successfully Logged In"));
 
                 // Go to home page
-                Navigation.NavigateTo("/home", true);
+                Navigation.NavigateTo("/home");
             }
             else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
                 errorMessage = "Invalid username or password.";
+                ToastService.Notify(new(ToastType.Danger, $"Login Failed. Invalid Credentials"));
             }
             else
             {
                 errorMessage = "Login failed. Please try again.";
+                ToastService.Notify(new(ToastType.Danger, $"Error Occured"));
             }
         }
         catch (Exception ex)

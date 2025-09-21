@@ -3,7 +3,7 @@
 @inject AuthenticationStateProvider AuthProvider
 @inject IJSRuntime JS
 
-
+<Toasts class="p-3" AutoHide="true" Delay="3000" Placement="ToastsPlacement.TopRight" />
 <div class="page">
 
     <main>
@@ -86,10 +86,14 @@
             @Body
         </article>
     </main>
+   
 </div>
+
+
 @code {
     [Inject] private HttpClient Http { get; set; }
     [Inject] private NavigationManager Navigation { get; set; }
+    [Inject] protected ToastService ToastService { get; set; } = default!;
     private bool isGridView = true;
     private string initials = "";
 
@@ -131,7 +135,7 @@
 
 
     private void toggleView(bool grid)
-   
+
     {
         grid = isGridView;
     }
@@ -158,8 +162,10 @@
 
         // Notify provider
         ((CustomAuthStateProvider)AuthProvider).NotifyUserLogout();
+        ToastService.Notify(new(ToastType.Success, $"Logout Successfull"));
+
 
         // Redirect
-        Navigation.NavigateTo("/", true);
+        Navigation.NavigateTo("/");
     }
 }
