@@ -42,6 +42,7 @@
 
   <ItemGroup>
     <Folder Include="Data\Base\NewFolder\" />
+    <Folder Include="UploadedContracts\" />
   </ItemGroup>
 
 </Project>

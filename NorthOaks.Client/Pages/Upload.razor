@@ -43,6 +43,23 @@
                     }
                 </ul>
             }
+            @if (isUploading && uploadProgress > 0 && uploadProgress < 100)
+            {
+                <Progress Class="mt-3 mb-3">
+                    <ProgressBar Type="ProgressType.StripedAndAnimated"
+                                 Color="ProgressColor.Success"
+                                 Width="@uploadProgress">
+                        @uploadProgress%
+                    </ProgressBar>
+                </Progress>
+            }
+            @if (isProcessing)
+            {
+                <div class="text-center my-4">
+                    <Spinner Type="SpinnerType.Grow" Color="SpinnerColor.Primary" />
+                    <p class="mt-2">Processing your document... please wait</p>
+                </div>
+            }
 
         </div>
      
@@ -50,6 +67,7 @@
 </div>
 
 @code {
+    [Inject] protected ToastService ToastService { get; set; } = default!;
     private IBrowserFile? selectedFile;
     private bool isFileSelected = false;
     private string statusMessage = string.Empty;
@@ -57,6 +75,9 @@
     private string userId;
     private bool isDragOver = false;
     private string dragText = "Drag & drop a PDF here";
+    private int uploadProgress = 0;
+    private bool isProcessing = false;
+    private bool isUploading = false;
 
     // Getting the User Info
     protected override async Task OnInitializedAsync()
@@ -78,35 +99,50 @@
 
     private async Task UploadFile()
     {
+        isUploading = true;
+        isProcessing = false;
         if (selectedFile is not null)
         {
             try
             {
-                var content = new MultipartFormDataContent();
-                var stream = selectedFile.OpenReadStream(20 * 1024 * 1024);
-                var fileContent = new StreamContent(stream);
-                fileContent.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
+                using var stream = selectedFile.OpenReadStream(20 * 1024 * 1024);
 
-                content.Add(fileContent, "File", selectedFile.Name);
+                var content = new MultipartFormDataContent();
+
+                var progressContent = new ProgressStreamContent(stream, 81920, (sent, total) =>
+                {
+                    uploadProgress = (int)((sent / (double)total) * 100);
+                    InvokeAsync(StateHasChanged);
+                });
+
+                progressContent.Headers.ContentType =
+                    new System.Net.Http.Headers.MediaTypeHeaderValue("application/pdf");
+
+                content.Add(progressContent, "File", selectedFile.Name);
                 content.Add(new StringContent(userId), "UserId");
 
                 var response = await Http.PostAsync("api/Contracts/upload", content);
+                isUploading = false;
 
                 if (response.IsSuccessStatusCode)
                 {
+                    isProcessing = true;
                     statusMessage = "Upload successful!";
                     uploadedDocuments.Add(selectedFile.Name);
-                    selectedFile = null;
-                    isFileSelected = false;
+                    uploadProgress = 100;
+                    ToastService.Notify(new(ToastType.Success, $"Upload Successful"));
                 }
                 else
                 {
                     statusMessage = " Upload failed. Try again.";
+                    ToastService.Notify(new(ToastType.Danger, $"Upload Failed"));
+
                 }
             }
             catch (Exception ex)
             {
                 statusMessage = $"Error: {ex.Message}";
+                ToastService.Notify(new(ToastType.Danger, $"Upload Failed"));
             }
         }
     }
