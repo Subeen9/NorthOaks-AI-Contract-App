@@ -48,15 +48,34 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                     FileName = savedFileName,   // ✅ store actual saved file name
                     UploadDate = DateTime.Now,
                     UserId = dto.UserId,
-                    IsDeleted = false
+                    IsDeleted = false,
+                    IsProcessed = false,
                 };
 
                 await AddAsync(contract);
 
-                // Optional: OCR processing
-                await _documentProcessing.ProcessDocumentAsync(contract.Id, filePath);
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        contract.ProcessingStatus = "Working on Embeddings";
+                        await UpdateAsync(contract.Id, contract);
 
-                return contract;
+                        await _documentProcessing.ProcessDocumentAsync(contract.Id, filePath);
+
+                        contract.IsProcessed = true;
+                        contract.ProcessingStatus = "Completed";
+                        await UpdateAsync(contract.Id, contract);
+                    }
+                    catch (Exception ex)
+                    {
+                        contract.ProcessingStatus = "Error during processing";
+                        await UpdateAsync(contract.Id, contract);
+                        _logger.LogError(ex, "Error processing contract {ContractId}", contract.Id);
+                    }
+                });
+
+                return contract; 
             }
             catch (Exception ex)
             {
