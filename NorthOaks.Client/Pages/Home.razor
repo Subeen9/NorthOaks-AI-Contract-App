@@ -13,7 +13,9 @@
             <!-- Search Bar -->
             <div class="position-relative">
                 <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
-                <input type="text" class="form-control ps-5" placeholder="Search contracts..." style="width: 250px;" />
+                <input type="text" class="form-control ps-5"
+                       placeholder="Search contracts..." style="width: 250px;"
+                       @bind="searchTerm" />
             </div>
 
             <!-- View Mode Toggling -->
@@ -29,7 +31,7 @@
             </div>
         </div>
     </div>
-
+   
 
     @if (isLoading)
     {
@@ -39,23 +41,30 @@
     {
         <div class="alert alert-danger">@error</div>
     }
-    else
-    {
-        <p>@contracts.Count contracts found</p>
+   else
+{
+    var filteredContracts = contracts
+        .Where(c => string.IsNullOrEmpty(searchTerm)
+                 || CleanFileName(c.FileName).Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                 || (c.UploadedBy ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+        .ToList();
 
-        <div class="row g-4">
-            @foreach (var c in contracts)
-            {
-                <div class="col-md-4">
-                    <ContractCard Id="@c.Id"
-                                  FileName="@CleanFileName(c.FileName)"
-                                  UploadedBy="@(c.UploadedBy ?? "Unknown")"
-                                  UploadDate="@c.UploadDate"
-                                  UserId="@c.UserId" />
-                </div>
-            }
-        </div>
-    }
+    <p>@filteredContracts.Count contracts found</p>
+
+    <div class="row g-4">
+        @foreach (var c in filteredContracts)
+        {
+            <div class="col-md-4">
+                <ContractCard Id="@c.Id"
+                              FileName="@CleanFileName(c.FileName)"
+                              UploadedBy="@(c.UploadedBy ?? "Unknown")"
+                              UploadDate="@c.UploadDate"
+                              UserId="@c.UserId" />
+            </div>
+        }
+</div>
+
+}
 </div>
 
 @code {
@@ -63,6 +72,7 @@
     private bool isLoading = true;
     private string? error;
     private bool isGridView = true;
+    private string searchTerm = "";
 
     protected override async Task OnInitializedAsync()
     {
