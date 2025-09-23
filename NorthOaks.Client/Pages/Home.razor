@@ -3,10 +3,10 @@
 @inject HttpClient Http
 
 <div class="container mt-4">
-    <!-- Single Row: Title (left) + Search + View Mode (right) -->
+    <!--  Title + Search + View Mode -->
     <div class="d-flex justify-content-between align-items-center mb-3">
         <!-- Left: Title -->
-        <h3 class="mb-0">Contract Library</h3>
+        <h3 class="mb-0" style="color:#003768;">Contract Library</h3>
 
         <!-- Right: Search + View Mode -->
         <div class="d-flex align-items-center gap-2">
@@ -49,7 +49,7 @@
                  || (c.UploadedBy ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
         .ToList();
 
-    <p>@filteredContracts.Count contracts found</p>
+        <p style="color:#003768;">@filteredContracts.Count contracts found</p>
 
     <div class="row g-4">
         @foreach (var c in filteredContracts)
