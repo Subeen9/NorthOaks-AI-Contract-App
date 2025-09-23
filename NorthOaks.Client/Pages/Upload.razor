@@ -3,6 +3,7 @@
 @inject HttpClient Http
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JSRuntime
+@using NorthOaks.Shared.Models
 
 
 <h3 class="text-center mb-4">📄 Upload PDF Documents</h3>
@@ -78,6 +79,7 @@
     private int uploadProgress = 0;
     private bool isProcessing = false;
     private bool isUploading = false;
+    private string processingMessage = "";
 
     // Getting the User Info
     protected override async Task OnInitializedAsync()
@@ -96,6 +98,41 @@
         isFileSelected = selectedFile != null && selectedFile.ContentType == "application/pdf";
         statusMessage = isFileSelected ? $"Selected: {selectedFile.Name}" : " Please select a PDF file.";
     }
+    private async Task PollProcessingStatus(int contractId)
+    {
+        isProcessing = true;
+        processingMessage = "Processing your document... please wait";
+
+        while (true)
+        {
+            try
+            {
+          
+                var status = await Http.GetFromJsonAsync<ContractStatus>($"api/contracts/{contractId}/status");
+
+                if (status != null)
+                {
+                    processingMessage = status.ProcessingStatus ?? "Processing your document...";
+
+                    if (status.IsProcessed)
+                    {
+                        // Finished processing
+                        isProcessing = false;
+                        ToastService.Notify(new(ToastType.Success, "Document processed successfully!"));
+                        break;
+                    }
+                }
+            }
+            catch
+            {
+                
+            }
+
+            await Task.Delay(10000);
+            StateHasChanged();
+        }
+    }
+
 
     private async Task UploadFile()
     {
@@ -131,6 +168,11 @@
                     uploadedDocuments.Add(selectedFile.Name);
                     uploadProgress = 100;
                     ToastService.Notify(new(ToastType.Success, $"Upload Successful"));
+                    var uploadedContract = await response.Content.ReadFromJsonAsync<ContractStatus>();
+                    if (uploadedContract != null)
+                    {
+                        _ = PollProcessingStatus(uploadedContract.Id); // fire and forget
+                    }
                 }
                 else
                 {

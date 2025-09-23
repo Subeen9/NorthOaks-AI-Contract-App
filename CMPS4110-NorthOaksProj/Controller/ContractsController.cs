@@ -86,5 +86,19 @@ namespace CMPS4110_NorthOaksProj.Controllers
 
             };
         }
+        [HttpGet("{id}/status")]
+        public async Task<ActionResult<object>> GetStatus(int id)
+        {
+            var contract = await _contractsService.GetByIdWithUser(id);
+            if (contract == null) return NotFound();
+
+            return Ok(new
+            {
+                contract.Id,
+                contract.IsProcessed,
+                contract.ProcessingStatus
+            });
+        }
+
     }
 }
