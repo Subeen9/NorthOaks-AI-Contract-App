@@ -3,7 +3,33 @@
 @inject HttpClient Http
 
 <div class="container mt-4">
-    <h3 class="mb-2">Contract Library</h3>
+    <!-- Single Row: Title (left) + Search + View Mode (right) -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <!-- Left: Title -->
+        <h3 class="mb-0">Contract Library</h3>
+
+        <!-- Right: Search + View Mode -->
+        <div class="d-flex align-items-center gap-2">
+            <!-- Search Bar -->
+            <div class="position-relative">
+                <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                <input type="text" class="form-control ps-5" placeholder="Search contracts..." style="width: 250px;" />
+            </div>
+
+            <!-- View Mode Toggling -->
+            <div class="btn-group">
+                <button type="button" class="btn" style="@GetButtonStyle(true)"
+                        @onclick="() => toggleView(false)">
+                    <i class="bi bi-grid"></i>
+                </button>
+                <button type="button" class="btn" style="@GetButtonStyle(false)"
+                        @onclick="() => toggleView(true)">
+                    <i class="bi bi-list"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
 
     @if (isLoading)
     {
@@ -36,6 +62,7 @@
     private List<ContractReadDto> contracts = new();
     private bool isLoading = true;
     private string? error;
+    private bool isGridView = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -51,6 +78,23 @@
         finally
         {
             isLoading = false;
+        }
+    }
+    private void toggleView(bool grid)
+
+    {
+        grid = isGridView;
+    }
+
+    private string GetButtonStyle(bool isGrid)
+    {
+        if (isGrid == isGridView)
+        {
+            return "background-color:#003768; color:white; border:1px solid #003768;";
+        }
+        else
+        {
+            return "background-color:white; color:black; border:1px solid #6c757d;";
         }
     }
 

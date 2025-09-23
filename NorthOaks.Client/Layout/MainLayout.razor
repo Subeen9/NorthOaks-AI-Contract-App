@@ -25,24 +25,6 @@
                 
                 <div class="d-flex align-items-center gap-3">
 
-                    <!-- Search Bar -->
-                    <div class="position-relative">
-                        <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
-                        <input type="text" class="form-control ps-5" placeholder="Search contracts..." style="width: 300px;" />
-                    </div>
-
-                    <!-- View Mode Toggling -->
-                    <div class="btn-group">
-                                <button type="button" class="btn" style="@GetButtonStyle(true)"
-                                    @onclick= "()=>toggleView(false)">
-                            <i class="bi bi-grid"></i>
-                        </button>
-                                <button type="button" class="btn" style="@GetButtonStyle(false)"
-                                    @onclick= "()=>toggleView(true)">
-                            <i class="bi bi-list"></i>
-                        </button>
-                    </div>
-
                     <!-- Upload Button -->
                     <button class="btn text-white" 
                                     style="background: #003768" @onclick="NavigateToUpload">
@@ -94,7 +76,6 @@
     [Inject] private HttpClient Http { get; set; }
     [Inject] private NavigationManager Navigation { get; set; }
     [Inject] protected ToastService ToastService { get; set; } = default!;
-    private bool isGridView = true;
     private string initials = "";
 
     private void NavigateToUpload()
@@ -131,25 +112,6 @@
         string f = !string.IsNullOrEmpty(firstName) ? firstName[0].ToString().ToUpper() : "";
         string l = !string.IsNullOrEmpty(lastName) ? lastName[0].ToString().ToUpper() : "";
         return f + l;
-    }
-
-
-    private void toggleView(bool grid)
-
-    {
-        grid = isGridView;
-    }
-
-    private string GetButtonStyle(bool isGrid)
-    {
-        if (isGrid == isGridView)
-        {
-            return "background-color:#003768; color:white; border:1px solid #003768;";
-        }
-        else
-        {
-            return "background-color:white; color:black; border:1px solid #6c757d;";
-        }
     }
 
     private async Task Logout()
