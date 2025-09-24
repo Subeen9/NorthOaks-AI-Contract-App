@@ -54,13 +54,13 @@
                     </ProgressBar>
                 </Progress>
             }
-            @* @if (isProcessing)
+            @if (isProcessing)
             {
                 <div class="text-center my-4">
                     <Spinner Type="SpinnerType.Grow" Color="SpinnerColor.Primary" />
                     <p class="mt-2">Processing your document... please wait</p>
                 </div>
-            } *@
+            }
 
         </div>
      
@@ -138,12 +138,14 @@
     {
         isUploading = true;
         isProcessing = false;
+        uploadProgress = 0;
+        statusMessage = "Uploading...";
+
         if (selectedFile is not null)
         {
             try
             {
                 using var stream = selectedFile.OpenReadStream(20 * 1024 * 1024);
-
                 var content = new MultipartFormDataContent();
 
                 var progressContent = new ProgressStreamContent(stream, 81920, (sent, total) =>
@@ -159,30 +161,38 @@
                 content.Add(new StringContent(userId), "UserId");
 
                 var response = await Http.PostAsync("api/Contracts/upload", content);
+
                 isUploading = false;
 
                 if (response.IsSuccessStatusCode)
                 {
+                   
                     isProcessing = true;
+                    statusMessage = "Upload complete, processing...";
+
+                    var uploadedContract = await response.Content.ReadFromJsonAsync<ContractStatus>();
+
+                    // Simulate the processing
+                    await Task.Delay(400);
+
+                    isProcessing = false;
                     statusMessage = "Upload successful!";
                     uploadedDocuments.Add(selectedFile.Name);
                     uploadProgress = 100;
+
                     ToastService.Notify(new(ToastType.Success, $"Upload Successful"));
-                    var uploadedContract = await response.Content.ReadFromJsonAsync<ContractStatus>();
-                    // if (uploadedContract != null)
-                    // {
-                    //     _ = PollProcessingStatus(uploadedContract.Id); fire and forget
-                    // }
                 }
                 else
                 {
-                    statusMessage = " Upload failed. Try again.";
+                    isProcessing = false;
+                    statusMessage = "Upload failed. Try again.";
                     ToastService.Notify(new(ToastType.Danger, $"Upload Failed"));
-
                 }
             }
             catch (Exception ex)
             {
+                isUploading = false;
+                isProcessing = false;
                 statusMessage = $"Error: {ex.Message}";
                 ToastService.Notify(new(ToastType.Danger, $"Upload Failed"));
             }
