@@ -50,7 +50,7 @@
         .ToList();
 
         <p style="color:#003768;">@filteredContracts.Count contracts found</p>
-
+    @if(isGridView){
     <div class="row g-4">
         @foreach (var c in filteredContracts)
         {
@@ -62,9 +62,23 @@
                               UserId="@c.UserId" />
             </div>
         }
-</div>
+            </div>
+        }
+        else
+        {
+            <div class="list-group">
+                @foreach (var c in filteredContracts)
+                {
+                   <ContractList
+                       Id="@c.Id"
+                       FileName="@CleanFileName(c.FileName)"
+                       UploadDate="@c.UploadDate"
+                       UploadedBy="@c.UploadedBy"/>
+                }
+            </div>
+        }
 
-}
+    }
 </div>
 
 @code {
@@ -93,7 +107,7 @@
     private void toggleView(bool grid)
 
     {
-        grid = isGridView;
+        isGridView = grid;
     }
 
     private string GetButtonStyle(bool isGrid)
