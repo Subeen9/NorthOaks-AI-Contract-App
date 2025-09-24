@@ -54,13 +54,13 @@
                     </ProgressBar>
                 </Progress>
             }
-            @if (isProcessing)
+            @* @if (isProcessing)
             {
                 <div class="text-center my-4">
                     <Spinner Type="SpinnerType.Grow" Color="SpinnerColor.Primary" />
                     <p class="mt-2">Processing your document... please wait</p>
                 </div>
-            }
+            } *@
 
         </div>
      
@@ -98,40 +98,40 @@
         isFileSelected = selectedFile != null && selectedFile.ContentType == "application/pdf";
         statusMessage = isFileSelected ? $"Selected: {selectedFile.Name}" : " Please select a PDF file.";
     }
-    private async Task PollProcessingStatus(int contractId)
-    {
-        isProcessing = true;
-        processingMessage = "Processing your document... please wait";
+    // private async Task PollProcessingStatus(int contractId)
+    // {
+    //     isProcessing = true;
+    //     processingMessage = "Processing your document... please wait";
 
-        while (true)
-        {
-            try
-            {
+    //     while (true)
+    //     {
+    //         try
+    //         {
           
-                var status = await Http.GetFromJsonAsync<ContractStatus>($"api/contracts/{contractId}/status");
+    //             var status = await Http.GetFromJsonAsync<ContractStatus>($"api/contracts/{contractId}/status");
 
-                if (status != null)
-                {
-                    processingMessage = status.ProcessingStatus ?? "Processing your document...";
+    //             if (status != null)
+    //             {
+    //                 processingMessage = status.ProcessingStatus ?? "Processing your document...";
 
-                    if (status.IsProcessed)
-                    {
-                        // Finished processing
-                        isProcessing = false;
-                        ToastService.Notify(new(ToastType.Success, "Document processed successfully!"));
-                        break;
-                    }
-                }
-            }
-            catch
-            {
+    //                 if (status.IsProcessed)
+    //                 {
+    //                     Finished processing
+    //                     isProcessing = false;
+    //                     ToastService.Notify(new(ToastType.Success, "Document processed successfully!"));
+    //                     break;
+    //                 }
+    //             }
+    //         }
+    //         catch
+    //         {
                 
-            }
+    //         }
 
-            await Task.Delay(10000);
-            StateHasChanged();
-        }
-    }
+    //         await Task.Delay(10000);
+    //         StateHasChanged();
+    //     }
+    // }
 
 
     private async Task UploadFile()
@@ -169,10 +169,10 @@
                     uploadProgress = 100;
                     ToastService.Notify(new(ToastType.Success, $"Upload Successful"));
                     var uploadedContract = await response.Content.ReadFromJsonAsync<ContractStatus>();
-                    if (uploadedContract != null)
-                    {
-                        _ = PollProcessingStatus(uploadedContract.Id); // fire and forget
-                    }
+                    // if (uploadedContract != null)
+                    // {
+                    //     _ = PollProcessingStatus(uploadedContract.Id); fire and forget
+                    // }
                 }
                 else
                 {

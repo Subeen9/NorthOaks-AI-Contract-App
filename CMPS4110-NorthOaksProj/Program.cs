@@ -87,7 +87,7 @@ builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
 // Dependency Injection for services
 builder.Services.AddScoped<IContractsService, ContractsService>();
 builder.Services.AddScoped<IChatMessagesService, ChatMessagesService>();
-builder.Services.AddSingleton<IQdrantService, QdrantService>();
+builder.Services.AddScoped<IQdrantService, QdrantService>();
 builder.Services.AddScoped<IDocumentProcessingService, DocumentProcessingService>();
 
 // Razor Pages
