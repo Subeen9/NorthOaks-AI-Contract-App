@@ -15,7 +15,11 @@
         <small class="text-muted">Uploaded by @(UploadedBy ?? "Unknown") • @UploadDate.ToShortDateString()</small>
     </div>
 
-    <i class="bi bi-chevron-right text-muted"></i>
+    <button class="btn btn-sm btn-light"
+            @onclick:stopPropagation="true"
+            @onclick="OpenDelete">
+        <i class="bi bi-three-dots-vertical"></i>
+    </button>
 </div>
 
 @code {
@@ -23,4 +27,12 @@
     [Parameter] public string FileName { get; set; } = string.Empty;
     [Parameter] public string? UploadedBy { get; set; }
     [Parameter] public DateTime UploadDate { get; set; }
+    [Parameter] public EventCallback<int> OnDelete { get; set; }
+
+    private async Task OpenDelete()
+    {
+        if (OnDelete.HasDelegate)
+            await OnDelete.InvokeAsync(Id);
+
+    }
 }
