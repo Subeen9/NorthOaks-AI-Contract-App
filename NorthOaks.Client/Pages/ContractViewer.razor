@@ -1,49 +1,64 @@
 ﻿@page "/contract/{id:int}"
 @using NorthOaks.Shared.Model.Contracts
 @inject HttpClient Http
+@inject IJSRuntime JS
 
-<div class="container-fluid py-4 px-5 bg-light" style="min-height:100vh;">
-    <div class="row gx-4" style="height: calc(100vh - 120px);">
+<div class="viewer-wrapper">
+    <div class="pdf-area">
+        @if (contract == null)
+        {
+            <div class="text-muted m-3">Loading contract...</div>
+        }
+        else
+        {
+            <PdfViewer Class="pdf-frame"
+                       Url="@contract.FileUrl"
+                       OnDocumentLoaded="OnDocumentLoaded"
+                       OnPageChanged="OnPageChanged" />
+        }
+    </div>
 
-        <!-- PDF Viewer Area -->
-        <div class="col-lg-8 d-flex flex-column bg-white rounded shadow-sm p-3">
-            @if (contract == null)
+    <div class="resizer" @onmousedown="StartResize"></div>
+
+    <div id="chatPanel" class="chat-panel">
+        <div class="chat-header">
+            <h5>💬 Chat about this contract</h5>
+        </div>
+
+        <div id="chatMessages" class="chat-messages">
+            @if (messages.Count == 0)
             {
-                <div class="text-center my-auto text-muted">Loading contract...</div>
+                <div class="text-muted">No messages yet. Start chatting!</div>
             }
             else
             {
-                <h4 class="mb-3 text-truncate">@CleanFileName(contract.FileName)</h4>
-
-                <PdfViewer Class="flex-grow-1 border rounded"
-                           Style="width:100%; min-height:0; height:100%;"
-                           Url="@contract.FileUrl"
-                           OnDocumentLoaded="OnDocumentLoaded"
-                           OnPageChanged="OnPageChanged" />
+                @foreach (var msg in messages)
+                {
+                    <div class="message @(msg.IsUser ? "user-message" : "ai-message")">
+                        <strong>@(msg.IsUser ? "You" : "AI"):</strong> @msg.Text
+                    </div>
+                }
             }
         </div>
 
-        <!-- Chat Sidebar -->
-        <div class="col-lg-4 d-flex flex-column">
-            <div class="bg-white rounded shadow-sm p-3 flex-grow-1 d-flex flex-column">
-                <h5 class="mb-3">💬 Chat about this contract</h5>
-
-                <div class="flex-grow-1 border rounded p-2 mb-2 overflow-auto bg-light" style="min-height:0;">
-                    @foreach (var msg in messages)
-                    {
-                        <div class="mb-1">
-                            <strong>@msg.User:</strong> @msg.Text
-                        </div>
-                    }
-                </div>
-
-                <div class="mt-auto">
-                    <input class="form-control mb-2" @bind="newMessage" placeholder="Type a message..." />
-                    <button class="btn btn-primary w-100" @onclick="SendMessage">Send</button>
-                </div>
+        <div class="chat-input">
+            <div class="input-wrapper">
+                <input class="form-control chat-input-field"
+                       @bind="newMessage"
+                       @bind:event="oninput"
+                       placeholder="Type a message..."
+                       @onkeypress="OnKeyPress" />
+                <button class="send-btn-inside"
+                        @onclick="SendMessage"
+                        @onclick:preventDefault="true"
+                        disabled="@string.IsNullOrWhiteSpace(newMessage)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22,2 15,22 11,13 2,9"></polygon>
+                    </svg>
+                </button>
             </div>
         </div>
-
     </div>
 </div>
 
@@ -52,38 +67,42 @@
     private ContractReadDto? contract;
     private List<Message> messages = new();
     private string newMessage = "";
-    private string eventLog = "";
-   
 
     protected override async Task OnInitializedAsync()
     {
         contract = await Http.GetFromJsonAsync<ContractReadDto>($"/api/contracts/{id}");
     }
 
-    private string CleanFileName(string fileName)
+    private void OnDocumentLoaded(PdfViewerEventArgs args) { }
+    private void OnPageChanged(PdfViewerEventArgs args) { }
+
+    private async Task SendMessage()
     {
-        var i = fileName.IndexOf('_');
-        return (i >= 0 && i < fileName.Length - 1) ? fileName[(i + 1)..] : fileName;
+        if (string.IsNullOrWhiteSpace(newMessage)) return;
+
+        messages.Add(new Message { Text = newMessage.Trim(), IsUser = true });
+        messages.Add(new Message { Text = $"Got your message: {newMessage.Trim()}", IsUser = false });
+        newMessage = "";
+
+        await JS.InvokeVoidAsync("scrollChatToBottom");
     }
 
-    private void OnDocumentLoaded(PdfViewerEventArgs args)
-        => eventLog = $"Loaded {args.TotalPages} pages";
-
-    private void OnPageChanged(PdfViewerEventArgs args)
-        => eventLog = $"Page {args.CurrentPage} of {args.TotalPages}";
-
-    private void SendMessage()
+    private void OnKeyPress(KeyboardEventArgs e)
     {
-        if (!string.IsNullOrWhiteSpace(newMessage))
+        if (e.Key == "Enter")
         {
-            messages.Add(new Message { User = "You", Text = newMessage });
-            newMessage = string.Empty;
+            _ = SendMessage();
         }
+    }
+
+    private void StartResize(MouseEventArgs e)
+    {
+        JS.InvokeVoidAsync("startResizing");
     }
 
     public class Message
     {
-        public string User { get; set; } = "";
         public string Text { get; set; } = "";
+        public bool IsUser { get; set; }
     }
 }
