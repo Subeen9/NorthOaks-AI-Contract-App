@@ -1,9 +1,38 @@
 ﻿@page "/home"
 @using NorthOaks.Shared.Model.Contracts
 @inject HttpClient Http
+@inject IJSRuntime JS
 
-<div class="container mt-4">
-    <h3 class="mb-2">Contract Library</h3>
+<div class="container mt-4 mb-4">
+    <!--  Title + Search + View Mode -->
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <!-- Left: Title -->
+        <h3 class="mb-0" style="color:#003768;">Contract Library</h3>
+
+        <!-- Right: Search + View Mode -->
+        <div class="d-flex align-items-center gap-2">
+            <!-- Search Bar -->
+            <div class="position-relative">
+                <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+                <input type="text" class="form-control ps-5"
+                       placeholder="Search contracts..." style="width: 250px;"
+                       @bind="searchTerm" />
+            </div>
+
+            <!-- View Mode Toggling -->
+            <div class="btn-group">
+                <button type="button" class="btn" style="@GetButtonStyle(true)"
+                        @onclick="() => toggleView(false)">
+                    <i class="bi bi-grid"></i>
+                </button>
+                <button type="button" class="btn" style="@GetButtonStyle(false)"
+                        @onclick="() => toggleView(true)">
+                    <i class="bi bi-list"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+   
 
     @if (isLoading)
     {
@@ -13,29 +42,58 @@
     {
         <div class="alert alert-danger">@error</div>
     }
-    else
-    {
-        <p>@contracts.Count contracts found</p>
+   else
+{
+    var filteredContracts = contracts
+        .Where(c => string.IsNullOrEmpty(searchTerm)
+                 || CleanFileName(c.FileName).Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                 || (c.UploadedBy ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                 .OrderByDescending(c =>c.UploadDate)
+        .ToList();
 
-        <div class="row g-4">
-            @foreach (var c in contracts)
-            {
-                <div class="col-md-4">
-                    <ContractCard Id="@c.Id"
-                                  FileName="@CleanFileName(c.FileName)"
-                                  UploadedBy="@(c.UploadedBy ?? "Unknown")"
-                                  UploadDate="@c.UploadDate"
-                                  UserId="@c.UserId" />
-                </div>
-            }
-        </div>
+        <p style="color:#003768;">@filteredContracts.Count contracts found</p>
+    @if(isGridView){
+    <div class="row g-4">
+        @foreach (var c in filteredContracts)
+        {
+            <div class="col-md-4">
+                <ContractCard Id="@c.Id"
+                              FileName="@CleanFileName(c.FileName)"
+                              UploadedBy="@(c.UploadedBy ?? "Unknown")"
+                              UploadDate="@c.UploadDate"
+                              UserId="@c.UserId"
+                              onDelete="DeleteContract" />
+                              
+            </div>
+        }
+            </div>
+        }
+        else
+        {
+            <div class="list-group">
+                @foreach (var c in filteredContracts)
+                {
+                   <ContractList
+                       Id="@c.Id"
+                       FileName="@CleanFileName(c.FileName)"
+                       UploadDate="@c.UploadDate"
+                       UploadedBy="@c.UploadedBy"
+                       OnDelete="DeleteContract"/>
+                }
+            </div>
+        }
+
     }
 </div>
 
 @code {
+    [Inject] protected ToastService ToastService { get; set; } = default!;
     private List<ContractReadDto> contracts = new();
     private bool isLoading = true;
     private string? error;
+    private bool isGridView = true;
+    private string searchTerm = "";
+    private string errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
@@ -51,6 +109,50 @@
         finally
         {
             isLoading = false;
+        }
+    }
+    private async Task DeleteContract(int contractId)
+    {
+        errorMessage = "";
+        var confirmDelete = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to Delete");
+        if (!confirmDelete) return;
+        try
+        {
+            var response = await Http.DeleteAsync($"/api/Contracts/{contractId}");
+            if (response.IsSuccessStatusCode)
+            {
+                contracts.RemoveAll(c=> c.Id == contractId);
+                ToastService.Notify(new(ToastType.Success, "Contract Deleted Successfully"));
+
+                StateHasChanged();
+            }
+            else
+            {
+                errorMessage = "Delete Failed";
+
+            }
+        }
+        catch(Exception e)
+        {
+            errorMessage = $"Deletion Failed {e}";
+        }
+
+    }
+    private void toggleView(bool grid)
+
+    {
+        isGridView = grid;
+    }
+
+    private string GetButtonStyle(bool isGrid)
+    {
+        if (isGrid == isGridView)
+        {
+            return "background-color:#003768; color:white; border:1px solid #003768;";
+        }
+        else
+        {
+            return "background-color:white; color:black; border:1px solid #6c757d;";
         }
     }
 

@@ -26,6 +26,9 @@ namespace CMPS4110_NorthOaksProj.Models.Contracts
 
         public bool IsDeleted { get; set; } = false;
         public DateTime? DeletedAt { get; set; }
+        public bool IsProcessed { get; set; } = false;
+        public string? ProcessingStatus { get; set; }
+
 
         [NotMapped]
         public string? UploadedBy => $"{User?.FirstName} {User?.LastName}";

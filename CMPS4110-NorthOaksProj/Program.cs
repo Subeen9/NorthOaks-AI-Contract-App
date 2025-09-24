@@ -33,6 +33,7 @@ builder.Logging.AddDebug();
 
 // Add Swagger services with JWT authentication
 builder.Services.AddEndpointsApiExplorer();
+
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "CMPS4110-NorthOaksProj", Version = "v1" });
@@ -67,9 +68,8 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // Database connection
-builder.Services.AddDbContext<DataContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection"))
-);
+builder.Services.AddDbContextFactory<DataContext>(options =>
+    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Add Identity
 builder.Services.AddIdentity<User, IdentityRole<int>>(options =>

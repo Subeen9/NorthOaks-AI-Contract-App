@@ -10,7 +10,7 @@
     <div class="card shadow p-4" style="max-width:400px; width:100%;">
         <div class="text-center mb-3">
             <img src="images/NorthOaks.jpg" alt="North Oaks Logo" width="100" height="100" class="rounded-circle mb-2" />
-            <h4>Sign In</h4>
+            <h4 style="color:#003768;">Sign In</h4>
         </div>
 
         <EditForm Model="@loginModel" OnValidSubmit="HandleValidSubmit">
@@ -18,23 +18,35 @@
             <ValidationSummary />
 
             <div class="mb-3">
-                <label for="username" class="form-label">User Name</label>
+                <label for="username" class="form-label" style="color:#003768;">User Name</label>
                 <InputText id="username" @bind-Value="loginModel.UserName" class="form-control" />
                 <ValidationMessage For="@(() => loginModel.UserName)" />
             </div>
 
             <div class="mb-3">
-                <label for="password" class="form-label">Password</label>
+                <label for="password" class="form-label" style="color:#003768;">Password</label>
                 <InputText id="password" @bind-Value="loginModel.Password" Type="password" class="form-control" />
                 <ValidationMessage For="@(() => loginModel.Password)" />
             </div>
 
             <button type="submit" class="btn btn-primary w-100"
-                    style="background: #003768">Sign In</button>
+                    style="background: #003768" disabled ="@isLoading">
+                @if (isLoading)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    <text>Signing In...</text>
+                    
+
+                }
+                else
+                {
+                   <text>Sign In</text>
+                }
+                    </button>
         </EditForm>
 
         <div class="d-flex justify-content-between mt-3">
-            <a href="/register">Register</a>
+            <a href="/forgot-password">Register</a>
             <a href="/forgot-password">Forgot password?</a>
         </div>
 
@@ -46,12 +58,17 @@
 </div>
 
 @code {
+    [Inject] protected ToastService ToastService { get; set; } = default!;
+
+
     private LoginDto loginModel = new LoginDto();
     private string errorMessage;
+    private bool isLoading = false;
 
     private async Task HandleValidSubmit()
     {
         errorMessage = string.Empty;
+        isLoading = true;
 
         try
         {
@@ -66,22 +83,29 @@
 
                 // Notify provider
                 ((CustomAuthStateProvider)AuthProvider).NotifyUserAuthentication(token);
+                ToastService.Notify(new(ToastType.Success, $"User Successfully Logged In"));
 
                 // Go to home page
-                Navigation.NavigateTo("/home", true);
+                Navigation.NavigateTo("/home");
             }
             else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
                 errorMessage = "Invalid username or password.";
+                ToastService.Notify(new(ToastType.Danger, $"Login Failed. Invalid Credentials"));
             }
             else
             {
                 errorMessage = "Login failed. Please try again.";
+                ToastService.Notify(new(ToastType.Danger, $"Error Occured"));
             }
         }
         catch (Exception ex)
         {
             errorMessage = $"Error during login: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 

@@ -3,7 +3,7 @@
 @inject AuthenticationStateProvider AuthProvider
 @inject IJSRuntime JS
 
-
+<Toasts class="p-3" AutoHide="true" Delay="3000" Placement="ToastsPlacement.TopRight" />
 <div class="page">
 
     <main>
@@ -19,29 +19,11 @@
                                  style="width:32px; height:32px; background:#003768 ">
                         <i class="bi bi-file-earmark-text text-white"></i>
                     </div>
-                    <span class="fw-semibold fs-5">ContractHub</span>
+                            <span style="color:#003768;" class="fw-semibold fs-5">ContractHub</span>
                 </div>
 
                 
                 <div class="d-flex align-items-center gap-3">
-
-                    <!-- Search Bar -->
-                    <div class="position-relative">
-                        <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
-                        <input type="text" class="form-control ps-5" placeholder="Search contracts..." style="width: 300px;" />
-                    </div>
-
-                    <!-- View Mode Toggling -->
-                    <div class="btn-group">
-                                <button type="button" class="btn" style="@GetButtonStyle(true)"
-                                    @onclick= "()=>toggleView(false)">
-                            <i class="bi bi-grid"></i>
-                        </button>
-                                <button type="button" class="btn" style="@GetButtonStyle(false)"
-                                    @onclick= "()=>toggleView(true)">
-                            <i class="bi bi-list"></i>
-                        </button>
-                    </div>
 
                     <!-- Upload Button -->
                     <button class="btn text-white" 
@@ -86,11 +68,14 @@
             @Body
         </article>
     </main>
+   
 </div>
+
+
 @code {
     [Inject] private HttpClient Http { get; set; }
     [Inject] private NavigationManager Navigation { get; set; }
-    private bool isGridView = true;
+    [Inject] protected ToastService ToastService { get; set; } = default!;
     private string initials = "";
 
     private void NavigateToUpload()
@@ -129,25 +114,6 @@
         return f + l;
     }
 
-
-    private void toggleView(bool grid)
-   
-    {
-        grid = isGridView;
-    }
-
-    private string GetButtonStyle(bool isGrid)
-    {
-        if (isGrid == isGridView)
-        {
-            return "background-color:#003768; color:white; border:1px solid #003768;";
-        }
-        else
-        {
-            return "background-color:white; color:black; border:1px solid #6c757d;";
-        }
-    }
-
     private async Task Logout()
     {
         // Call server logout
@@ -158,8 +124,10 @@
 
         // Notify provider
         ((CustomAuthStateProvider)AuthProvider).NotifyUserLogout();
+        ToastService.Notify(new(ToastType.Success, $"Logout Successfull"));
+
 
         // Redirect
-        Navigation.NavigateTo("/", true);
+        Navigation.NavigateTo("/");
     }
 }

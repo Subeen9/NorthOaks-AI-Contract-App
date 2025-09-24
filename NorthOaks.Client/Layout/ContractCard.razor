@@ -6,8 +6,14 @@
      onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.1)'"
      onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
 
+    <button class="btn btn-sm btn-light position-absolute top-0 end-0 m-2 p-1"
+            @onclick:stopPropagation="true"
+            @onclick="OpenDelete">
+        <i class="bi bi-three-dots-vertical"></i>
+    </button>
+
     <div class="card-body d-flex flex-column">
-        <h5 class="card-title fw-bold">@FileName</h5>
+        <h5 class="card-title fw-bold" style="color:#003768;">@FileName</h5>
         <p class="text-muted mb-1">Uploaded by @UploadedBy</p>
 
         <small class="text-muted">Uploaded: @UploadDate.ToShortDateString()</small>
@@ -20,4 +26,12 @@
     [Parameter] public int UserId { get; set; }        // available if you want to use later
     [Parameter] public string? UploadedBy { get; set; }
     [Parameter] public DateTime UploadDate { get; set; }
+    [Parameter] public EventCallback<int> OnDelete{ get; set; }
+
+    private async Task OpenDelete()
+    {
+        if (OnDelete.HasDelegate)
+            await OnDelete.InvokeAsync(Id);
+        
+    }
 }
