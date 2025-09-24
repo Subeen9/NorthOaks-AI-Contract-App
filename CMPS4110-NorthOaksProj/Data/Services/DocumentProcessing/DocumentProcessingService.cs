@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 using CMPS4110_NorthOaksProj.Data.Services.QDrant;
 using CMPS4110_NorthOaksProj.Models.Contracts;
 using UglyToad.PdfPig;
@@ -6,25 +6,29 @@ using Tesseract;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Formats.Png;
+using CMPS4110_NorthOaksProj.Data.Services.Embeddings;
 using Page = UglyToad.PdfPig.Content.Page;
-
 
 namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
 {
+    public class DocumentProcessingService : IDocumentProcessingService
+    {
+        private readonly IQdrantService _qdrantService;
+        private readonly DataContext _context;
+        private readonly ILogger<DocumentProcessingService> _logger;
+        private readonly IEmbeddingClient _embeddings;
 
-
-        public class DocumentProcessingService : IDocumentProcessingService
+        public DocumentProcessingService(
+            IQdrantService qdrantService,
+            DataContext context,
+            ILogger<DocumentProcessingService> logger,
+            IEmbeddingClient embeddings)
         {
-            private readonly IQdrantService _qdrantService;
-            private readonly DataContext _context;
-            private readonly ILogger<DocumentProcessingService> _logger;
-
-            public DocumentProcessingService(IQdrantService qdrantService, DataContext context, ILogger<DocumentProcessingService> logger)
-            {
-                _qdrantService = qdrantService;
-                _context = context;
-                _logger = logger;
-            }
+            _qdrantService = qdrantService;
+            _context = context;
+            _logger = logger;
+            _embeddings = embeddings;
+        }
 
         public async Task ProcessDocumentAsync(int contractId, string filePath)
         {
@@ -33,32 +37,48 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                 var text = ExtractText(filePath);
                 var chunks = ChunkText(text);
 
-                var embeddings = new List<ContractEmbedding>();
+                if (chunks.Count == 0)
+                {
+                    _logger.LogWarning("No chunks produced for contract {ContractId}", contractId);
+                    return;
+                }
 
-                foreach (var (chunkText, index) in chunks.Select((text, i) => (text, i)))
+                // 1) Get embeddings in batch (MiniLM → 384 dims each)
+                var vectors = await _embeddings.EmbedBatchAsync(chunks);
+
+                // 2) Upsert to Qdrant + stage DB rows
+                var toInsert = new List<ContractEmbedding>(chunks.Count);
+
+                for (var i = 0; i < chunks.Count; i++)
                 {
                     try
                     {
-                        var embedding = GenerateEmbedding(chunkText);
-                        var pointId = await _qdrantService.InsertVectorAsync(embedding, contractId, index);
+                        var pointId = await _qdrantService.InsertVectorAsync(vectors[i], contractId, i);
 
-                        embeddings.Add(new ContractEmbedding
+                        toInsert.Add(new ContractEmbedding
                         {
                             ContractId = contractId,
-                            ChunkText = chunkText,
-                            ChunkIndex = index,
+                            ChunkText = chunks[i],
+                            ChunkIndex = i,
                             QdrantPointId = pointId
                         });
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error processing chunk {Index} for contract {ContractId}", index, contractId);
+                        _logger.LogError(ex, "Error processing chunk {Index} for contract {ContractId}", i, contractId);
                     }
                 }
-                _context.ContractEmbeddings.AddRange(embeddings);
-                await _context.SaveChangesAsync();
-                _logger.LogInformation("Successfully processed document for contract {ContractId} with {ChunkCount} chunks",
-                        contractId, embeddings.Count);
+
+                // 3) Commit once
+                if (toInsert.Count > 0)
+                {
+                    _context.ContractEmbeddings.AddRange(toInsert);
+                    await _context.SaveChangesAsync();
+                }
+
+                _logger.LogInformation(
+                    "Successfully processed document for contract {ContractId} with {ChunkCount} chunks",
+                    contractId, toInsert.Count);
             }
             catch (Exception ex)
             {
@@ -118,33 +138,25 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
         }
 
         private List<string> ChunkText(string text, int maxSize = 800)
-            {
-                var sentences = Regex.Split(text, @"(?<=[.!?])\s+").Where(s => !string.IsNullOrWhiteSpace(s));
-                var chunks = new List<string>();
-                var current = "";
+        {
+            var sentences = Regex.Split(text, @"(?<=[.!?])\s+").Where(s => !string.IsNullOrWhiteSpace(s));
+            var chunks = new List<string>();
+            var current = "";
 
-                foreach (var sentence in sentences)
+            foreach (var sentence in sentences)
+            {
+                if (current.Length + sentence.Length > maxSize && !string.IsNullOrEmpty(current))
                 {
-                    if (current.Length + sentence.Length > maxSize && !string.IsNullOrEmpty(current))
-                    {
-                        chunks.Add(current.Trim());
-                        current = "";
-                    }
-                    current += sentence + " ";
-                }
-
-                if (!string.IsNullOrEmpty(current))
                     chunks.Add(current.Trim());
-
-                return chunks;
+                    current = "";
+                }
+                current += sentence + " ";
             }
 
-            private float[] GenerateEmbedding(string text)
-            {
-                // Dummy embedding-- needs to be replaced by real model
-                var random = new Random(text.GetHashCode());
-                return Enumerable.Range(0, 384).Select(_ => (float)(random.NextDouble() - 0.5) * 2).ToArray();
-            }
+            if (!string.IsNullOrEmpty(current))
+                chunks.Add(current.Trim());
+
+            return chunks;
         }
-    
+    }
 }
