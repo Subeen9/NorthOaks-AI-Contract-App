@@ -30,11 +30,23 @@
             </div>
 
             <button type="submit" class="btn btn-primary w-100"
-                    style="background: #003768">Sign In</button>
+                    style="background: #003768" disabled ="@isLoading">
+                @if (isLoading)
+                {
+                    <span class="spinner-border spinner-border-sm me-2"></span>
+                    <text>Signing In...</text>
+                    
+
+                }
+                else
+                {
+                   <text>Sign In</text>
+                }
+                    </button>
         </EditForm>
 
         <div class="d-flex justify-content-between mt-3">
-            <a href="/register">Register</a>
+            <a href="/forgot-password">Register</a>
             <a href="/forgot-password">Forgot password?</a>
         </div>
 
@@ -51,10 +63,12 @@
 
     private LoginDto loginModel = new LoginDto();
     private string errorMessage;
+    private bool isLoading = false;
 
     private async Task HandleValidSubmit()
     {
         errorMessage = string.Empty;
+        isLoading = true;
 
         try
         {
@@ -88,6 +102,10 @@
         catch (Exception ex)
         {
             errorMessage = $"Error during login: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 
