@@ -47,6 +47,7 @@
         .Where(c => string.IsNullOrEmpty(searchTerm)
                  || CleanFileName(c.FileName).Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
                  || (c.UploadedBy ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                 .OrderByDescending(c =>c.UploadDate)
         .ToList();
 
         <p style="color:#003768;">@filteredContracts.Count contracts found</p>
