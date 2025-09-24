@@ -9,10 +9,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Resources\all-MiniLM-L6-v2-onnx\model.onnx" />
+    <None Remove="Resources\all-MiniLM-L6-v2-onnx\vocab.txt" />
     <None Remove="Resources\tessdata\eng.traineddata" />
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="Resources\all-MiniLM-L6-v2-onnx\model.onnx">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Resources\all-MiniLM-L6-v2-onnx\vocab.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
     <Content Include="Resources\tessdata\eng.traineddata">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
