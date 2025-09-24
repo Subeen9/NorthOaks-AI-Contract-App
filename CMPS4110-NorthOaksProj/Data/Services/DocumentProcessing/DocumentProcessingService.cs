@@ -29,7 +29,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
             _context = context;
             _logger = logger;
 
-            var modelPath = Path.Combine(AppContext.BaseDirectory, "Resources", "text-embedding-3-small.onnx");
+            var modelPath = Path.Combine(AppContext.BaseDirectory, "Resources", "all-MiniLM-L6-v2-onnx", "model.onnx");
             _onnxSession = new InferenceSession(modelPath);
             var vocabPath = Path.Combine(AppContext.BaseDirectory, "Resources", "all-MiniLM-L6-v2-onnx", "vocab.txt");
             _tokenizer = new ChunkTokenizer(vocabPath);
