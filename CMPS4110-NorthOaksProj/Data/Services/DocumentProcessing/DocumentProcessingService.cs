@@ -6,8 +6,11 @@ using Tesseract;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Formats.Png;
-using CMPS4110_NorthOaksProj.Data.Services.Embeddings;
+using Microsoft.ML.OnnxRuntime;
+using Microsoft.ML.OnnxRuntime.Tensors;
 using Page = UglyToad.PdfPig.Content.Page;
+
+
 
 namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
 {
@@ -16,18 +19,20 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
         private readonly IQdrantService _qdrantService;
         private readonly DataContext _context;
         private readonly ILogger<DocumentProcessingService> _logger;
-        private readonly IEmbeddingClient _embeddings;
+        private ChunkTokenizer _tokenizer;
+        private InferenceSession _onnxSession;
 
-        public DocumentProcessingService(
-            IQdrantService qdrantService,
-            DataContext context,
-            ILogger<DocumentProcessingService> logger,
-            IEmbeddingClient embeddings)
+        public DocumentProcessingService(IQdrantService qdrantService, DataContext context, ILogger<DocumentProcessingService> logger)
         {
             _qdrantService = qdrantService;
             _context = context;
             _logger = logger;
-            _embeddings = embeddings;
+
+            var modelPath = Path.Combine(AppContext.BaseDirectory, "Resources", "all-MiniLM-L6-v2-onnx", "model.onnx");
+            _onnxSession = new InferenceSession(modelPath);
+            var vocabPath = Path.Combine(AppContext.BaseDirectory, "Resources", "all-MiniLM-L6-v2-onnx", "vocab.txt");
+            _tokenizer = new ChunkTokenizer(vocabPath);
+
         }
 
         public async Task ProcessDocumentAsync(int contractId, string filePath)
@@ -37,48 +42,32 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                 var text = ExtractText(filePath);
                 var chunks = ChunkText(text);
 
-                if (chunks.Count == 0)
-                {
-                    _logger.LogWarning("No chunks produced for contract {ContractId}", contractId);
-                    return;
-                }
+                var embeddings = new List<ContractEmbedding>();
 
-                // 1) Get embeddings in batch (MiniLM → 384 dims each)
-                var vectors = await _embeddings.EmbedBatchAsync(chunks);
-
-                // 2) Upsert to Qdrant + stage DB rows
-                var toInsert = new List<ContractEmbedding>(chunks.Count);
-
-                for (var i = 0; i < chunks.Count; i++)
+                foreach (var (chunkText, index) in chunks.Select((text, i) => (text, i)))
                 {
                     try
                     {
-                        var pointId = await _qdrantService.InsertVectorAsync(vectors[i], contractId, i);
+                        var embedding = GenerateEmbedding(chunkText);
+                        var pointId = await _qdrantService.InsertVectorAsync(embedding, contractId, index);
 
-                        toInsert.Add(new ContractEmbedding
+                        embeddings.Add(new ContractEmbedding
                         {
                             ContractId = contractId,
-                            ChunkText = chunks[i],
-                            ChunkIndex = i,
+                            ChunkText = chunkText,
+                            ChunkIndex = index,
                             QdrantPointId = pointId
                         });
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error processing chunk {Index} for contract {ContractId}", i, contractId);
+                        _logger.LogError(ex, "Error processing chunk {Index} for contract {ContractId}", index, contractId);
                     }
                 }
-
-                // 3) Commit once
-                if (toInsert.Count > 0)
-                {
-                    _context.ContractEmbeddings.AddRange(toInsert);
-                    await _context.SaveChangesAsync();
-                }
-
-                _logger.LogInformation(
-                    "Successfully processed document for contract {ContractId} with {ChunkCount} chunks",
-                    contractId, toInsert.Count);
+                _context.ContractEmbeddings.AddRange(embeddings);
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Successfully processed document for contract {ContractId} with {ChunkCount} chunks",
+                        contractId, embeddings.Count);
             }
             catch (Exception ex)
             {
@@ -96,8 +85,8 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                 // Try text layer first
                 var text = string.Join("\n",
                     doc.GetPages()
-                       .Select(p => p.Text)
-                       .Where(t => !string.IsNullOrWhiteSpace(t)));
+                        .Select(p => p.Text)
+                        .Where(t => !string.IsNullOrWhiteSpace(t)));
 
                 if (!string.IsNullOrWhiteSpace(text))
                     return text;
@@ -105,7 +94,9 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                 _logger.LogInformation("No text layer found in {FilePath}, falling back to OCR", filePath);
 
                 var sb = new System.Text.StringBuilder();
-                using var engine = new TesseractEngine(@"./tessdata", "eng", EngineMode.Default);
+                var tessPath = GetTessDataPath();
+                using var engine = new TesseractEngine(tessPath, "eng", EngineMode.Default);
+
 
                 foreach (Page page in doc.GetPages())
                 {
@@ -157,6 +148,57 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                 chunks.Add(current.Trim());
 
             return chunks;
+        }
+
+        private float[] GenerateEmbedding(string text)
+        {
+            var inputIds = _tokenizer.Tokenize(text);
+            var attentionMask = inputIds.Select(id => id == 0 ? 0L : 1L).ToArray();
+
+            var inputIdsTensor = new DenseTensor<long>(new[] { 1, inputIds.Length });
+            var attentionMaskTensor = new DenseTensor<long>(new[] { 1, inputIds.Length });
+            for (int i = 0; i < inputIds.Length; i++)
+            {
+                inputIdsTensor[0, i] = inputIds[i];
+                attentionMaskTensor[0, i] = attentionMask[i];
+            }
+
+            var inputs = new List<NamedOnnxValue>
+            {
+                NamedOnnxValue.CreateFromTensor("input_ids", inputIdsTensor),
+                NamedOnnxValue.CreateFromTensor("attention_mask", attentionMaskTensor)
+            };
+
+            using var results = _onnxSession.Run(inputs);
+            var output = results.First().AsTensor<float>();
+
+            int seqLen = output.Dimensions[1];
+            int dim = output.Dimensions[2];
+            var embedding = new float[dim];
+
+            for (int i = 0; i < dim; i++)
+            {
+                float sum = 0f;
+                for (int j = 0; j < seqLen; j++)
+                    sum += output[0, j, i];
+                embedding[i] = sum / seqLen;
+            }
+
+            return embedding;
+        }
+
+        private string GetTessDataPath()
+        {
+            var tessPath = Path.Combine(AppContext.BaseDirectory, "Resources", "tessdata");
+
+            if (!Directory.Exists(tessPath))
+            {
+                throw new DirectoryNotFoundException(
+                    $"Tessdata folder not found at {tessPath}. " +
+                    $"Make sure eng.traineddata is copied to output.");
+            }
+
+            return tessPath;
         }
     }
 }
