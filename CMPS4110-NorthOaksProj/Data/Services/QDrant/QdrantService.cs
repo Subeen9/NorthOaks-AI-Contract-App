@@ -95,7 +95,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services
             }
         }
 
-        public async Task<Guid> InsertVectorAsync(float[] embedding, int contractId, int chunkIndex)
+        public async Task<Guid> InsertVectorAsync(float[] embedding, int contractId, int chunkIndex, string chunkText)
         {
             try
             {
@@ -110,6 +110,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                     {
                         ["contract_id"] = contractId,
                         ["chunk_index"] = chunkIndex,
+                        ["chunk_text"] = chunkText,
                         ["created_at"] = DateTime.UtcNow.ToString("O")
                     }
                 };
@@ -144,7 +145,10 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                     PointId = Guid.Parse(point.Id.Uuid),
                     Score = point.Score,
                     ContractId = (int)point.Payload["contract_id"].IntegerValue,
-                    ChunkIndex = (int)point.Payload["chunk_index"].IntegerValue
+                    ChunkIndex = (int)point.Payload["chunk_index"].IntegerValue,
+                    ChunkText = point.Payload.ContainsKey("chunk_text")
+                  ? point.Payload["chunk_text"].StringValue
+                  : string.Empty
                 }).ToList();
             }
             catch (Exception ex)
