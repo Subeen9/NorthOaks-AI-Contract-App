@@ -133,6 +133,8 @@ builder.Services.AddHttpClient<OllamaEmbeddingClient>((sp, http) =>
 
 // expose via interface for DI
 builder.Services.AddScoped<IEmbeddingClient>(sp => sp.GetRequiredService<OllamaEmbeddingClient>());
+builder.Services.AddScoped<MessageEmbeddingService>();
+
 
 
 
