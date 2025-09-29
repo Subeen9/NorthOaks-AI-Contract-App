@@ -66,7 +66,8 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Generation
                     num_predict = 500
                 }
             };
-           
+            try
+            {
                 _logger.LogDebug("Sending generation request to Ollama with model: {Model}", _model);
 
                 // make HTTP call
@@ -81,5 +82,17 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Generation
 
                 return result.response;
             }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "HTTP error calling Ollama generation API");
+                throw new InvalidOperationException("Failed to connect to Ollama. Make sure Ollama is running and the model is available.", ex);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error generating text with Ollama");
+                throw;
+            }
+        }
+    
     }
 }
