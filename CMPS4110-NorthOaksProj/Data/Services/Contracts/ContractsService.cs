@@ -34,7 +34,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                 if (!Directory.Exists(uploadsFolder))
                     Directory.CreateDirectory(uploadsFolder);
 
-                // ✅ Generate a unique saved filename
+                //  Generate a unique saved filename
                 var savedFileName = $"{Guid.NewGuid()}_{dto.File.FileName}";
                 var filePath = Path.Combine(uploadsFolder, savedFileName);
 
@@ -45,7 +45,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services
 
                 var contract = new Contract
                 {
-                    FileName = savedFileName,   // ✅ store actual saved file name
+                    FileName = savedFileName,   //  store actual saved file name
                     UploadDate = DateTime.Now,
                     UserId = dto.UserId,
                     IsDeleted = false

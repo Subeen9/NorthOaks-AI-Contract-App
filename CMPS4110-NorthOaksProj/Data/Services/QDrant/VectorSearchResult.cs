@@ -6,5 +6,7 @@
             public float Score { get; set; }
             public int ContractId { get; set; }
             public int ChunkIndex { get; set; }
-        }
+
+            public string ChunkText { get; set; } // Added property for chunk text
+    }
 }
