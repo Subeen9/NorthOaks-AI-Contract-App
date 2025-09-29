@@ -1,3 +1,4 @@
+using System.Text;
 using CMPS4110_NorthOaksProj.Data;
 using CMPS4110_NorthOaksProj.Data.Base;
 using CMPS4110_NorthOaksProj.Data.Services;
@@ -5,6 +6,7 @@ using CMPS4110_NorthOaksProj.Data.Services.Chat.Messages;
 using CMPS4110_NorthOaksProj.Data.Services.Contracts;
 using CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing;
 using CMPS4110_NorthOaksProj.Data.Services.Embeddings;
+using CMPS4110_NorthOaksProj.Data.Services.Generation;
 using CMPS4110_NorthOaksProj.Data.Services.QDrant;
 using CMPS4110_NorthOaksProj.Models.Contracts;
 using CMPS4110_NorthOaksProj.Models.Users;
@@ -17,7 +19,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Identity.Web.UI;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models; // Added for Swagger configuration
-using System.Text;
+
 
 
 
@@ -130,6 +132,16 @@ builder.Services.AddHttpClient<OllamaEmbeddingClient>((sp, http) =>
     var opts = sp.GetRequiredService<IOptions<OllamaOptions>>().Value;
     http.BaseAddress = new Uri(opts.BaseUrl);
 });
+
+
+// === Response Generation (Ollama Llama3.2) ===
+builder.Services.AddHttpClient<OllamaGenerationClient>((sp, http) =>
+{
+    var opts = sp.GetRequiredService<IOptions<OllamaOptions>>().Value;
+    http.BaseAddress = new Uri(opts.BaseUrl);
+});
+
+builder.Services.AddScoped<IOllamaGenerationClient>(sp => sp.GetRequiredService<OllamaGenerationClient>());
 
 // expose via interface for DI
 builder.Services.AddScoped<IEmbeddingClient>(sp => sp.GetRequiredService<OllamaEmbeddingClient>());
