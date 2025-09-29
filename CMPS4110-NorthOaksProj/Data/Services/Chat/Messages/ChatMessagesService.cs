@@ -86,6 +86,22 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                 var context = string.Join("\n\n", results.Select((r, i) =>
                     $"[Context {i + 1}]:\n{r.ChunkText}"));
 
+                // 5. building the rag prompt
+                var systemPrompt = @"You are a contract analysis expert...
+                                       Rules:
+                                       - Answer based ONLY on the information in the context provided
+                                       - If the context doesn't contain enough information to answer the question, say so clearly
+                                       - Do not use any external knowledge or make assumptions
+                                       - Be clear, concise, and professional
+                                       - If asked about specific clauses, reference them directly
+                                       - Do not make up information";
+
+                var userPrompt = $@"Context from the contract:
+                                       {context}
+                                       Usr Question:
+                                       {dto.Message}
+                                       Answer in a clear and concise manner based on the context above. If you can't answer from the context, say so.";
+
                 entity.Response = context;
 
                 await _context.SaveChangesAsync();
