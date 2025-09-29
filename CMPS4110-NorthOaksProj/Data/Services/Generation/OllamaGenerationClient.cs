@@ -66,8 +66,20 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Generation
                     num_predict = 500
                 }
             };
-            throw new NotImplementedException();
+           
+                _logger.LogDebug("Sending generation request to Ollama with model: {Model}", _model);
 
-        }
+                // make HTTP call
+                using var response = await _http.PostAsJsonAsync("/api/generate", request, ct);
+                response.EnsureSuccessStatusCode();
+
+                // deserialize response
+                var result = await response.Content.ReadFromJsonAsync<GenerateResponse>(cancellationToken: ct)
+                    ?? throw new InvalidOperationException("Empty generation response from Ollama");
+
+                _logger.LogDebug("Received response from Ollama: {ResponseLength} characters", result.response.Length);
+
+                return result.response;
+            }
     }
 }
