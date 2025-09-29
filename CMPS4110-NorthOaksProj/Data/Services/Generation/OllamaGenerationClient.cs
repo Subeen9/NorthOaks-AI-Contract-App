@@ -11,6 +11,28 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Generation
         private readonly string _model;
         private readonly ILogger<OllamaGenerationClient> _logger;
 
+        private sealed class GenerateRequest
+        {
+            public string model { get; set; } = default!;
+            public string prompt { get; set; } = default!;
+            public string? system { get; set; }
+            public bool stream { get; set; } = false;
+            public GenerateOptions? options { get; set; }
+        }
+
+        private sealed class GenerateOptions
+        {
+            public double temperature { get; set; } = 0.7;
+            public int num_predict { get; set; } = 500;
+        }
+
+        private sealed class GenerateResponse
+        {
+            public string model { get; set; } = default!;
+            public string response { get; set; } = default!;
+            public bool done { get; set; }
+        }
+
         public OllamaGenerationClient(
             HttpClient http,
             IOptions<OllamaOptions> opts,
