@@ -87,25 +87,23 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     $"[Context {i + 1}]:\n{r.ChunkText}"));
 
                 // 5. building the rag prompt
-                var SystemPrompt = @"You are a contract analysis expert...
+                var SystemPrompt = @"You are an AI Assitant which only have Knowledge based ON Provided context. You need to answer based on the following rules. 
                                        Rules:
                                        - Answer based ONLY on the information in the context provided
                                        - If the context doesn't contain enough information to answer the question, say so clearly
                                        - Do not use any external knowledge or make assumptions
-                                       - Be clear, concise, and professional
-                                       - If asked about specific clauses, reference them directly
+                                       - Give clear, concise, professional and Human Like Answer
                                        - Do not make up information";
 
-                var userPrompt = $@"Context from the contract:
-                                       {context}
-                                       User Question:
+                var userPrompt = $@"   {context}
                                        {dto.Message}
                                        Answer in a clear and concise manner based on the context above. If you can't answer from the context, say so.";
 
+                // 6. generate response using LLM
                 var generatedResponse = await _generationClient.GenerateAsync(prompt: userPrompt, systemPrompt: SystemPrompt);
 
+                // 7. save the generated response
                 entity.Response = generatedResponse;
-
                 await _context.SaveChangesAsync();
 
                 _logger.LogInformation("Successfully generated response for message {MessageId}", entity.Id);
