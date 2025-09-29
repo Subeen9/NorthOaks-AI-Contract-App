@@ -1,5 +1,6 @@
 ﻿@page "/contract/{id:int}"
 @using NorthOaks.Shared.Model.Contracts
+@using NorthOaks.Shared.Model.Chat
 @inject HttpClient Http
 @inject IJSRuntime JS
 
@@ -62,15 +63,33 @@
     </div>
 </div>
 
-@code {
+
+
+
+  @code {
     [Parameter] public int id { get; set; }
     private ContractReadDto? contract;
     private List<Message> messages = new();
     private string newMessage = "";
+    private int currentSessionId; // dynamically set when session is created
 
     protected override async Task OnInitializedAsync()
     {
+        // Load contract
         contract = await Http.GetFromJsonAsync<ContractReadDto>($"/api/contracts/{id}");
+
+        // Create a new chat session for this contract
+        var sessionResponse = await Http.PostAsJsonAsync("/api/chatsessions",
+            new CreateChatSessionDto { ContractIds = new List<int> { id } });
+
+        if (sessionResponse.IsSuccessStatusCode)
+        {
+            var session = await sessionResponse.Content.ReadFromJsonAsync<ChatSessionDto>();
+            if (session != null)
+            {
+                currentSessionId = session.Id;
+            }
+        }
     }
 
     private void OnDocumentLoaded(PdfViewerEventArgs args) { }
@@ -80,9 +99,48 @@
     {
         if (string.IsNullOrWhiteSpace(newMessage)) return;
 
-        messages.Add(new Message { Text = newMessage.Trim(), IsUser = true });
-        messages.Add(new Message { Text = $"Got your message: {newMessage.Trim()}", IsUser = false });
+        var userInput = newMessage.Trim();
         newMessage = "";
+
+        // Show user message immediately
+        messages.Add(new Message { Text = userInput, IsUser = true });
+        await InvokeAsync(StateHasChanged);
+
+        try
+        {
+            var request = new CreateChatMessageDto
+            {
+                SessionId = currentSessionId,
+                Message = userInput
+            };
+
+            var response = await Http.PostAsJsonAsync("/api/chatmessages", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ChatMessageDto>();
+                if (result != null && !string.IsNullOrWhiteSpace(result.Response))
+                {
+                    messages.Add(new Message { Text = result.Response, IsUser = false });
+                    await InvokeAsync(StateHasChanged); // force UI refresh
+                }
+                else
+                {
+                    messages.Add(new Message { Text = "⚠️ Empty response from backend", IsUser = false });
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+            else
+            {
+                messages.Add(new Message { Text = $"⚠️ Backend error: {response.StatusCode}", IsUser = false });
+                await InvokeAsync(StateHasChanged);
+            }
+        }
+        catch (Exception ex)
+        {
+            messages.Add(new Message { Text = $"⚠️ Exception: {ex.Message}", IsUser = false });
+            await InvokeAsync(StateHasChanged);
+        }
 
         await JS.InvokeVoidAsync("scrollChatToBottom");
     }

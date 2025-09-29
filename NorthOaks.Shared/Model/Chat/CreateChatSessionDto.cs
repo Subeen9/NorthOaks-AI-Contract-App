@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 
-namespace CMPS4110_NorthOaksProj.Models.Chat.Dtos
+namespace NorthOaks.Shared.Model.Chat
 {
     public class CreateChatSessionDto
     {

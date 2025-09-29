@@ -2,7 +2,8 @@
 using Microsoft.EntityFrameworkCore;
 using CMPS4110_NorthOaksProj.Data;
 using CMPS4110_NorthOaksProj.Models.Chat;
-using CMPS4110_NorthOaksProj.Models.Chat.Dtos;
+//using CMPS4110_NorthOaksProj.Models.Chat.Dtos;
+using NorthOaks.Shared.Model.Chat;
 
 namespace CMPS4110_NorthOaksProj.Controller
 {
