@@ -87,7 +87,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     $"[Context {i + 1}]:\n{r.ChunkText}"));
 
                 // 5. building the rag prompt
-                var systemPrompt = @"You are a contract analysis expert...
+                var SystemPrompt = @"You are a contract analysis expert...
                                        Rules:
                                        - Answer based ONLY on the information in the context provided
                                        - If the context doesn't contain enough information to answer the question, say so clearly
@@ -98,13 +98,17 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 
                 var userPrompt = $@"Context from the contract:
                                        {context}
-                                       Usr Question:
+                                       User Question:
                                        {dto.Message}
                                        Answer in a clear and concise manner based on the context above. If you can't answer from the context, say so.";
 
-                entity.Response = context;
+                var generatedResponse = await _generationClient.GenerateAsync(prompt: userPrompt, systemPrompt: SystemPrompt);
+
+                entity.Response = generatedResponse;
 
                 await _context.SaveChangesAsync();
+
+                _logger.LogInformation("Successfully generated response for message {MessageId}", entity.Id);
 
                 return MapToDto(entity);
             }
