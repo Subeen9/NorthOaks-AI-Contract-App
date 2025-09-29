@@ -4,6 +4,8 @@ using CMPS4110_NorthOaksProj.Models.Chat.Dtos;
 using Microsoft.EntityFrameworkCore;
 using CMPS4110_NorthOaksProj.Data.Services.Embeddings;
 using CMPS4110_NorthOaksProj.Data.Services.QDrant;
+using CMPS4110_NorthOaksProj.Data.Services.Generation;
+using CMPS4110_NorthOaksProj.Data.Services.Chat.Sessions;
 
 namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 {
@@ -12,15 +14,19 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
         private readonly DataContext _context;
         private readonly MessageEmbeddingService _messageEmbeddings;
         private readonly IQdrantService _qdrantService;
+        private readonly IOllamaGenerationClient _generationClient;
+        private readonly ILogger<ChatMessagesService> _logger;
 
         public ChatMessagesService(
             DataContext context,
             MessageEmbeddingService messageEmbeddings,
-            IQdrantService qdrantService) : base(context)
+            IQdrantService qdrantService, IOllamaGenerationClient generationClient, ILogger<ChatMessagesService> logger) : base(context)
         {
             _context = context;
             _messageEmbeddings = messageEmbeddings;
             _qdrantService = qdrantService;
+            _generationClient = generationClient;
+            _logger = logger;
         }
 
         public async Task<IEnumerable<ChatMessageDto>> GetBySession(int sessionId)
@@ -62,7 +68,9 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
             // 2. Search Qdrant for relevant contract chunks
             var results = await _qdrantService.SearchSimilarAsync(vector, limit: 5);
 
-            Console.WriteLine($"Search returned {results.Count} results");
+            _logger.LogInformation("Search returned {Count} results for message: {Message}",
+                    results.Count, dto.Message);
+
             foreach (var r in results)
             {
                 Console.WriteLine($"[Qdrant] score={r.Score:F2} | contract={r.ContractId} | chunk={r.ChunkText}");
@@ -73,14 +81,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 
             await _context.SaveChangesAsync();
 
-            return new ChatMessageDto
-            {
-                Id = entity.Id,
-                SessionId = entity.SessionId,
-                Message = entity.Message,
-                Response = entity.Response,
-                Timestamp = entity.Timestamp
-            };
+            return MapToDto(entity);
         }
 
         public async Task<bool> Delete(int id)
@@ -89,6 +90,17 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
             if (msg == null) return false;
             await DeleteAsync(id);
             return true;
+        }
+        private static ChatMessageDto MapToDto(ChatMessage entity)
+        {
+            return new ChatMessageDto
+            {
+                Id = entity.Id,
+                SessionId = entity.SessionId,
+                Message = entity.Message,
+                Response = entity.Response,
+                Timestamp = entity.Timestamp
+            };
         }
     }
 }
