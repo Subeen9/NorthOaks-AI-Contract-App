@@ -62,26 +62,37 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
             _context.ChatMessages.Add(entity);
             await _context.SaveChangesAsync();
 
-            // 1. Generate embedding for the message
-            var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
-
-            // 2. Search Qdrant for relevant contract chunks
-            var results = await _qdrantService.SearchSimilarAsync(vector, limit: 5);
-
-            _logger.LogInformation("Search returned {Count} results for message: {Message}",
-                    results.Count, dto.Message);
-
-            foreach (var r in results)
+            try
             {
-                Console.WriteLine($"[Qdrant] score={r.Score:F2} | contract={r.ContractId} | chunk={r.ChunkText}");
+                // 1. Generate embedding for the message
+                var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
+
+                // 2. Search Qdrant for relevant contract chunks
+                var results = await _qdrantService.SearchSimilarAsync(vector, limit: 5);
+
+                _logger.LogInformation("Search returned {Count} results for message: {Message}",
+                        results.Count, dto.Message);
+
+                foreach (var r in results)
+                {
+                    Console.WriteLine($"[Qdrant] score={r.Score:F2} | contract={r.ContractId} | chunk={r.ChunkText}");
+                }
+
+                // 3. For now, store top chunks as the "Response"
+                entity.Response = string.Join("\n", results.Select(r => $"{r.Score:F2} | {r.ChunkText}"));
+
+                await _context.SaveChangesAsync();
+
+                return MapToDto(entity);
             }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error processing message: {Message}", dto.Message);
+                entity.Response = "I encountered an error while processing your question. Please try again.";
+                await _context.SaveChangesAsync();
+                return MapToDto(entity);
 
-            // 3. For now, store top chunks as the "Response"
-            entity.Response = string.Join("\n", results.Select(r => $"{r.Score:F2} | {r.ChunkText}"));
-
-            await _context.SaveChangesAsync();
-
-            return MapToDto(entity);
+            }
         }
 
         public async Task<bool> Delete(int id)
