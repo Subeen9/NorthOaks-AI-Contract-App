@@ -1,24 +1,24 @@
 ﻿@inject NavigationManager Navigation
 
-<div class="list-group-item d-flex align-items-center justify-content-between mb-3"
+<div class="list-group-item d-flex align-items-center justify-content-between mb-3 contract-hover"
      style="cursor:pointer; border-radius:8px; transition: transform .15s ease, box-shadow .15s ease;"
      @onclick="@(() => Navigation.NavigateTo($"/contract/{Id}"))"
      onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.08)'"
      onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
 
     <!-- Left: File Icon -->
-    <i class="bi bi-file-earmark-text-fill text-primary me-3" style="font-size: 1.5rem;"></i>
+    <i class="bi bi-file-earmark-text-fill file-icon me-3" style="font-size: 1.5rem;"></i>
 
     <!-- Middle: File Info -->
     <div class="flex-grow-1">
-        <strong style="color:#003768;">@FileName</strong><br />
+        <strong class="contract-title">@FileName</strong><br />
         <small class="text-muted">Uploaded by @(UploadedBy ?? "Unknown") • @UploadDate.ToShortDateString()</small>
     </div>
 
     <button class="btn btn-sm btn-light"
             @onclick:stopPropagation="true"
             @onclick="OpenDelete">
-        <i class="bi bi-three-dots-vertical"></i>
+        <i class="bi bi-three-dots-vertical" style="color:black"></i>
     </button>
 </div>
 

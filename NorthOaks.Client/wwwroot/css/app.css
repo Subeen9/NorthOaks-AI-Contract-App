@@ -306,3 +306,37 @@ a, .btn-link {
         height: 60vh;
     }
 }
+.contract-hover {
+    transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease, color .2s ease;
+    cursor: pointer;
+}
+.contract-title {
+    color: #003768;
+    transition: color .18s ease;
+}
+
+.contract-hover:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+        background-color: #ba8e0b !important;
+        color: #fff !important;
+    }
+
+ .contract-hover:hover .text-muted {
+            color: #fdfdfd !important;
+        }
+
+ .contract-hover:hover i {
+            color: #fff !important;
+        }
+ .contract-hover:hover .contract-title {
+            color: #fff !important;
+        }
+    .contract-hover:hover .file-icon {
+        color: #fff !important;
+    }
+
+    .contract-hover:hover .bi-three-dots-vertical {
+        color: black !important;
+    }
+
