@@ -50,7 +50,24 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Generation
             string? systemPrompt = null,
             CancellationToken ct = default)
         {
+            if (string.IsNullOrWhiteSpace(prompt))
+                throw new ArgumentException("Prompt cannot be empty", nameof(prompt));
+
+            // build request
+            var request = new GenerateRequest
+            {
+                model = _model,
+                prompt = prompt,
+                system = systemPrompt,
+                stream = false,
+                options = new GenerateOptions
+                {
+                    temperature = 0.7,
+                    num_predict = 500
+                }
+            };
             throw new NotImplementedException();
+
         }
     }
 }
