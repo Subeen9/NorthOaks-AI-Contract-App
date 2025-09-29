@@ -68,18 +68,25 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                 var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
 
                 // 2. Search Qdrant for relevant contract chunks
-                var results = await _qdrantService.SearchSimilarAsync(vector, limit: 5);
+                var results = await _qdrantService.SearchSimilarAsync(vector, limit: 5, scoreThreshold: 0.3f);
 
                 _logger.LogInformation("Search returned {Count} results for message: {Message}",
                         results.Count, dto.Message);
 
-                foreach (var r in results)
+                // 3. checks if we found relevant chunks
+                if (results.Count == 0)
                 {
-                    Console.WriteLine($"[Qdrant] score={r.Score:F2} | contract={r.ContractId} | chunk={r.ChunkText}");
+                    entity.Response = "I'm sorry, I couldn't find any relevant information to answer your question."; 
+
+                    await _context.SaveChangesAsync();
+                    return MapToDto(entity);
                 }
 
-                // 3. For now, store top chunks as the "Response"
-                entity.Response = string.Join("\n", results.Select(r => $"{r.Score:F2} | {r.ChunkText}"));
+                // 4. Build context from retrieved chunks
+                var context = string.Join("\n\n", results.Select((r, i) =>
+                    $"[Context {i + 1}]:\n{r.ChunkText}"));
+
+                entity.Response = context;
 
                 await _context.SaveChangesAsync();
 
