@@ -148,50 +148,37 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
 
             var chunks = new List<string>();
             var current = new System.Text.StringBuilder();
-            var overlapBuffer = new Queue<string>();
 
             foreach (var sentence in sentences)
             {
                 var sentenceWithSpace = sentence + " ";
 
-                // Check if adding this sentence would exceed maxSize
                 if (current.Length + sentenceWithSpace.Length > maxSize && current.Length > 0)
                 {
-                    // Save current chunk
-                    chunks.Add(current.ToString().Trim());
+                    // save current chunk
+                    var chunk = current.ToString().Trim();
+                    chunks.Add(chunk);
 
-                    // Start new chunk with overlap from previous chunk
+                    // get overlap tail
+                    var overlapText = chunk.Length > overlap
+                        ? chunk.Substring(chunk.Length - overlap)
+                        : chunk;
+
+                    // start new chunk with overlap
                     current.Clear();
-                    foreach (var overlapSentence in overlapBuffer)
-                    {
-                        current.Append(overlapSentence).Append(" ");
-                    }
+                    current.Append(overlapText);
                 }
 
-                // Add sentence to current chunk
                 current.Append(sentenceWithSpace);
-
-                // Manage overlap buffer
-                overlapBuffer.Enqueue(sentenceWithSpace);
-
-                // Remove old sentences from buffer if overlap size exceeded
-                while (overlapBuffer.Sum(s => s.Length) > overlap && overlapBuffer.Count > 1)
-                {
-                    overlapBuffer.Dequeue();
-                }
             }
 
-            // Add the last chunk if it has content
             if (current.Length > 0)
             {
                 chunks.Add(current.ToString().Trim());
             }
 
-            _logger.LogInformation(
-                "Chunked text into {ChunkCount} chunks with overlap. Original length: {OriginalLength}, Average chunk size: {AvgSize}",
-                chunks.Count, text.Length, chunks.Count > 0 ? chunks.Average(c => c.Length) : 0);
-
             return chunks;
         }
+
     }
 }
