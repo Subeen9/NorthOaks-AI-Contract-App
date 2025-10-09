@@ -69,7 +69,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                 var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
 
                 // 2. Search Qdrant for relevant contract chunks
-                var results = await _qdrantService.SearchSimilarAsync(vector, limit: 5, scoreThreshold: 0.3f);
+                var results = await _qdrantService.SearchSimilarAsync(vector, limit: 12, scoreThreshold: 0.2f);
 
                 _logger.LogInformation("Search returned {Count} results for message: {Message}",
                         results.Count, dto.Message);
