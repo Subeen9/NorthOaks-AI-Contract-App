@@ -137,24 +137,59 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
             }
         }
 
-        private List<string> ChunkText(string text, int maxSize = 800)
+        private List<string> ChunkText(string text, int maxSize = 600, int overlap = 100)
         {
-            var sentences = Regex.Split(text, @"(?<=[.!?])\s+").Where(s => !string.IsNullOrWhiteSpace(s));
+            if (string.IsNullOrWhiteSpace(text))
+                return new List<string>();
+
+            var sentences = Regex.Split(text, @"(?<=[.!?])\s+")
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .ToList();
+
             var chunks = new List<string>();
-            var current = "";
+            var current = new System.Text.StringBuilder();
+            var overlapBuffer = new Queue<string>();
 
             foreach (var sentence in sentences)
             {
-                if (current.Length + sentence.Length > maxSize && !string.IsNullOrEmpty(current))
+                var sentenceWithSpace = sentence + " ";
+
+                // Check if adding this sentence would exceed maxSize
+                if (current.Length + sentenceWithSpace.Length > maxSize && current.Length > 0)
                 {
-                    chunks.Add(current.Trim());
-                    current = "";
+                    // Save current chunk
+                    chunks.Add(current.ToString().Trim());
+
+                    // Start new chunk with overlap from previous chunk
+                    current.Clear();
+                    foreach (var overlapSentence in overlapBuffer)
+                    {
+                        current.Append(overlapSentence).Append(" ");
+                    }
                 }
-                current += sentence + " ";
+
+                // Add sentence to current chunk
+                current.Append(sentenceWithSpace);
+
+                // Manage overlap buffer
+                overlapBuffer.Enqueue(sentenceWithSpace);
+
+                // Remove old sentences from buffer if overlap size exceeded
+                while (overlapBuffer.Sum(s => s.Length) > overlap && overlapBuffer.Count > 1)
+                {
+                    overlapBuffer.Dequeue();
+                }
             }
 
-            if (!string.IsNullOrEmpty(current))
-                chunks.Add(current.Trim());
+            // Add the last chunk if it has content
+            if (current.Length > 0)
+            {
+                chunks.Add(current.ToString().Trim());
+            }
+
+            _logger.LogInformation(
+                "Chunked text into {ChunkCount} chunks with overlap. Original length: {OriginalLength}, Average chunk size: {AvgSize}",
+                chunks.Count, text.Length, chunks.Count > 0 ? chunks.Average(c => c.Length) : 0);
 
             return chunks;
         }
