@@ -1,8 +1,20 @@
-﻿html, body {
+﻿/* ===============================
+   GLOBAL BASE STYLES
+   =============================== */
+html, body {
     height: 100%;
     margin: 0;
     padding: 0;
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    overflow: hidden;
+}
+
+/* CRITICAL FIX: Ensure all parent containers take full height */
+#app, .app, main {
+    height: 100%;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
 }
 
 h1:focus {
@@ -19,13 +31,24 @@ a, .btn-link {
     border-color: #1861ac;
 }
 
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus,
-.form-control:focus, .form-check-input:focus {
+.btn:focus,
+.btn:active:focus,
+.btn-link.nav-link:focus,
+.form-control:focus,
+.form-check-input:focus {
     box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
 }
 
 .content {
-    padding-top: 1.1rem;
+    padding: 0;
+    margin: 0;
+}
+
+/* Special override for contract viewer page */
+.contract-viewer-page ~ .content,
+body:has(.contract-viewer-page) .content {
+    padding: 0 !important;
+    margin: 0 !important;
 }
 
 .valid.modified:not([type=checkbox]) {
@@ -40,6 +63,9 @@ a, .btn-link {
     color: red;
 }
 
+/* ===============================
+   BLAZOR ERROR UI
+   =============================== */
 #blazor-error-ui {
     color-scheme: light only;
     background: lightyellow;
@@ -60,6 +86,9 @@ a, .btn-link {
         top: 0.5rem;
     }
 
+/* ===============================
+   LOADING PROGRESS
+   =============================== */
 .loading-progress {
     position: relative;
     display: block;
@@ -92,35 +121,61 @@ a, .btn-link {
     .loading-progress-text:after {
         content: var(--blazor-load-percentage-text, "Loading");
     }
-
-.viewer-wrapper {
-    display: flex;
-    height: 100vh;
+.contract-viewer-page {
+    position: absolute;
+    top: 65px;
+    left: 0;
+    right: 0;
+    bottom: 0;
     overflow: hidden;
-}
-
-.pdf-area {
-    flex-grow: 1;
-    min-width: 250px;
+    padding: 0;
+    margin: 0;
     display: flex;
     flex-direction: column;
+}
+.contract-viewer-page .content {
     height: 100%;
     overflow: hidden;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+.viewer-wrapper {
+    display: flex;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    background: #f5f5f5;
+    min-height: 0;
+}
+.pdf-area {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-right: 1px solid #ddd;
+    overflow: hidden;
+    min-width: 300px;
+    min-height: 0;
 }
 
 .pdf-frame {
-    flex-grow: 1;
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    height: 100%;
+    flex: 1 1 auto;
     width: 100%;
+    height: 100%;
+    border: none;
+    background: #fff;
+    border-radius: 4px;
 }
-
 .resizer {
     width: 6px;
-    background: #f0f0f0;
+    background: #e9e9e9;
     cursor: ew-resize;
     transition: background 0.2s ease;
+    flex-shrink: 0;
 }
 
     .resizer:hover {
@@ -136,185 +191,222 @@ a, .btn-link {
         background: #bbb;
         border-radius: 1px;
     }
-
 .chat-panel {
-    width: 400px;
-    min-width: 250px;
-    max-width: 70%;
+    width: 420px;
+    min-width: 280px;
+    max-width: 50vw;
     display: flex;
     flex-direction: column;
     border-left: 1px solid #ddd;
-    height: 100vh;
+    background: #fff;
+    height: 100%;
     overflow: hidden;
+    min-height: 0;
 }
-
 .chat-header {
-    padding: 10px;
+    padding: 12px 16px;
     border-bottom: 1px solid #ddd;
     background: #f8f9fa;
+    font-weight: 600;
     flex-shrink: 0;
 }
-
-.chat-messages {
-    flex: 1 1 0;
+#chatMessages.chat-messages {
+    flex: 1 1 auto;
     min-height: 0;
-    max-height: calc(100vh - 220px);
-    padding: 10px;
     overflow-y: auto;
     overflow-x: hidden;
+    padding: 16px;
     background: #fafafa;
     display: flex;
     flex-direction: column;
+    scroll-behavior: smooth;
 }
-
 .message {
-    margin-bottom: 8px;
-    padding: 8px 12px;
-    border-radius: 12px;
-    max-width: 280px;
+    margin-bottom: 12px;
+    padding: 10px 14px;
+    border-radius: 18px;
+    max-width: 70%;
     word-wrap: break-word;
-    white-space: pre-wrap;
-    overflow-wrap: break-word;
-    hyphens: auto;
+    line-height: 1.4;
+    font-size: 14px;
+    position: relative;
+    animation: slideIn 0.2s ease;
 }
 
-.chat-panel.chat-right .user-message {
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.message strong {
+    display: block;
+    font-size: 11px;
+    margin-bottom: 4px;
+    opacity: 0.8;
+    font-weight: 600;
+}
+
+.user-message {
     background: #007bff;
-    color: white;
+    color: #fff;
     align-self: flex-end;
+    border-bottom-right-radius: 4px;
+    margin-left: auto;
 }
 
-.chat-panel.chat-right .ai-message {
-    background: #f1f3f4;
-    color: #333;
+.user-message strong {
+    color: rgba(255,255,255,0.9);
+}
+
+.ai-message {
+    background: #e9ecef;
+    color: #212529;
     align-self: flex-start;
+    border-bottom-left-radius: 4px;
+    margin-right: auto;
 }
 
-.chat-panel.chat-left .user-message {
-    background: #007bff;
-    color: white;
-    align-self: flex-start;
-}
-
-.chat-panel.chat-left .ai-message {
-    background: #f1f3f4;
-    color: #333;
-    align-self: flex-end;
+.ai-message strong {
+    color: #495057;
 }
 
 .chat-input {
-    padding: 15px;
+    flex-shrink: 0;
+    padding: 12px 16px;
     border-top: 1px solid #ddd;
     background: #fff;
-    flex-shrink: 0;
+    box-shadow: 0 -2px 6px rgba(0,0,0,0.05);
 }
 
 .input-wrapper {
     position: relative;
-    display: block;
     width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
 }
 
 .chat-input-field {
-    border-radius: 24px !important;
-    padding: 12px 50px 12px 16px !important;
-    border: 1px solid #ddd !important;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    flex: 1;
     width: 100% !important;
+    max-width: 100% !important;
     box-sizing: border-box !important;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 10px 16px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    resize: none !important;
+    overflow-y: auto;
+    overflow-x: hidden !important;
+    min-height: 40px;
+    max-height: 150px;
+    line-height: 1.5;
+    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    word-wrap: break-word !important;
+    white-space: pre-wrap !important;
+    overflow-wrap: break-word !important;
 }
 
     .chat-input-field:focus {
-        border-color: #007bff !important;
-        box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25) !important;
-        outline: none !important;
+        border-color: #007bff;
+        box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        outline: none;
+    }
+
+    .chat-input-field::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .chat-input-field::-webkit-scrollbar-track {
+        background: transparent;
+        margin: 4px 0;
+    }
+
+    .chat-input-field::-webkit-scrollbar-thumb {
+        background: #ccc;
+        border-radius: 10px;
+    }
+
+    .chat-input-field::-webkit-scrollbar-thumb:hover {
+        background: #999;
     }
 
 .send-btn-inside {
-    position: absolute;
-    right: 8px;
-    top: 50%;
-    transform: translateY(-50%);
+    flex-shrink: 0;
+    align-self: flex-end;
     background: #007bff;
     border: none;
     border-radius: 50%;
-    width: 32px;
-    height: 32px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    transition: all 0.3s ease;
-    z-index: 2;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    margin-bottom: 2px;
 }
 
-    .send-btn-inside:not(:disabled) {
-        cursor: pointer;
+    .send-btn-inside:hover:not(:disabled) {
+        background: #0056b3;
+        transform: scale(1.05);
+        box-shadow: 0 2px 8px rgba(0,123,255,0.3);
     }
-
-        .send-btn-inside:not(:disabled):hover {
-            background: #0056b3;
-            transform: scale(1.1) translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 123, 255, 0.4);
-        }
-
-        .send-btn-inside:not(:disabled):active {
-            transform: scale(1.05) translateY(-1px);
-        }
 
     .send-btn-inside:disabled {
         background: #ccc;
-        cursor: default;
-        transform: none;
-        box-shadow: none;
-        pointer-events: none;
+        cursor: not-allowed;
     }
 
-        .send-btn-inside:disabled:hover {
-            transform: none;
-            box-shadow: none;
-            background: #ccc;
-        }
+    .send-btn-inside svg {
+        width: 18px;
+        height: 18px;
+    }
 
 @media (max-width: 768px) {
     .viewer-wrapper {
         flex-direction: column;
     }
 
+    .pdf-area {
+        height: 60vh;
+        border-right: none;
+        border-bottom: 1px solid #ddd;
+    }
+
     .resizer {
         height: 6px;
         width: 100%;
         cursor: ns-resize;
-        background: #ccc;
     }
-
-        .resizer::after {
-            width: 40px;
-            height: 2px;
-        }
 
     .chat-panel {
-        width: 100% !important;
-        min-width: unset;
-        max-width: unset;
+        height: 40vh;
+        width: 100%;
+        max-width: 100%;
         border-left: none;
         border-top: 1px solid #ddd;
-        height: 40vh;
-    }
-
-    .pdf-area {
-        height: 60vh;
     }
 }
 
 .contract-hover {
-    transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease, color .2s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease;
     cursor: pointer;
 }
 
 .contract-title {
     color: #003768;
-    transition: color .18s ease;
+    transition: color 0.18s ease;
 }
 
 .contract-hover:hover {
@@ -324,18 +416,9 @@ a, .btn-link {
     color: #fff !important;
 }
 
-    .contract-hover:hover .text-muted {
-        color: #fdfdfd !important;
-    }
-
-    .contract-hover:hover i {
-        color: #fff !important;
-    }
-
-    .contract-hover:hover .contract-title {
-        color: #fff !important;
-    }
-
+    .contract-hover:hover .text-muted,
+    .contract-hover:hover i,
+    .contract-hover:hover .contract-title,
     .contract-hover:hover .file-icon {
         color: #fff !important;
     }
