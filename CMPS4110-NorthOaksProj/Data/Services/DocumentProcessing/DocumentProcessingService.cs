@@ -137,26 +137,48 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
             }
         }
 
-        private List<string> ChunkText(string text, int maxSize = 800)
+        private List<string> ChunkText(string text, int maxSize = 600, int overlap = 100)
         {
-            var sentences = Regex.Split(text, @"(?<=[.!?])\s+").Where(s => !string.IsNullOrWhiteSpace(s));
+            if (string.IsNullOrWhiteSpace(text))
+                return new List<string>();
+
+            var sentences = Regex.Split(text, @"(?<=[.!?])\s+")
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .ToList();
+
             var chunks = new List<string>();
-            var current = "";
+            var current = new System.Text.StringBuilder();
 
             foreach (var sentence in sentences)
             {
-                if (current.Length + sentence.Length > maxSize && !string.IsNullOrEmpty(current))
+                var sentenceWithSpace = sentence + " ";
+
+                if (current.Length + sentenceWithSpace.Length > maxSize && current.Length > 0)
                 {
-                    chunks.Add(current.Trim());
-                    current = "";
+                    // save current chunk
+                    var chunk = current.ToString().Trim();
+                    chunks.Add(chunk);
+
+                    // get overlap tail
+                    var overlapText = chunk.Length > overlap
+                        ? chunk.Substring(chunk.Length - overlap)
+                        : chunk;
+
+                    // start new chunk with overlap
+                    current.Clear();
+                    current.Append(overlapText);
                 }
-                current += sentence + " ";
+
+                current.Append(sentenceWithSpace);
             }
 
-            if (!string.IsNullOrEmpty(current))
-                chunks.Add(current.Trim());
+            if (current.Length > 0)
+            {
+                chunks.Add(current.ToString().Trim());
+            }
 
             return chunks;
         }
+
     }
 }
