@@ -354,7 +354,6 @@ body:has(.contract-viewer-page) .content {
     .contract-hover:hover .bi-three-dots-vertical {
         color: black !important;
     }
-
 .pagination .page-link {
     color: #ba8e0b;
     border: 1px solid #003768;
@@ -438,6 +437,54 @@ body:has(.contract-viewer-page) .content {
 
     40% {
         transform: scale(1.2);
-        opacity: 1;SS
+        opacity: 1;
     }
 }
+.contracthub-button {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    transition: transform 0.15s ease, color 0.2s ease;
+}
+
+    .contracthub-button:hover {
+        transform: translateY(-1px);
+    }
+
+    .contracthub-button .logo-box {
+        transition: background 0.2s ease, transform 0.2s ease;
+    }
+
+    .contracthub-button:hover .logo-box {
+        background: #ba8e0b !important;
+        transform: scale(1.05);
+    }
+
+    .contracthub-button:hover .logo-text {
+        color: #ba8e0b !important;
+    }
+.btn.text-white[style*="#003768"] {
+    transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+    .btn.text-white[style*="#003768"]:hover {
+        background-color: #ba8e0b !important;
+        transform: translateY(-1px);
+    }
+.btn.btn-link.position-relative {
+    color: #003768;
+    transition: color 0.2s ease, transform 0.15s ease;
+}
+
+    .btn.btn-link.position-relative:hover {
+        color: #ba8e0b;
+        transform: scale(1.1);
+    }
+.btn.rounded-circle.text-white[style*="#003768"] {
+    transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+    .btn.rounded-circle.text-white[style*="#003768"]:hover {
+        background-color: #ba8e0b !important;
+        transform: scale(1.05);
+    }
