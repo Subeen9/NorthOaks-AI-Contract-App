@@ -24,11 +24,11 @@
             <!-- View Mode Toggling -->
             <div class="btn-group">
                 <button type="button" class="btn" style="@GetButtonStyle(true)"
-                        @onclick="() => toggleView(false)">
+                        @onclick="() => toggleView(true)">
                     <i class="bi bi-grid"></i>
                 </button>
                 <button type="button" class="btn" style="@GetButtonStyle(false)"
-                        @onclick="() => toggleView(true)">
+                        @onclick="() => toggleView(false)">
                     <i class="bi bi-list"></i>
                 </button>
             </div>
@@ -109,7 +109,7 @@
 
                     {
 
-                        var pageNum = i; // Create local copy
+                        var pageNum = i; 
 
                         <li class="page-item @(currentPage == pageNum ? "active" : "")">
 
