@@ -23,6 +23,8 @@ namespace CMPS4110_NorthOaksProj.Data.Services
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
+                new Claim(JwtRegisteredClaimNames.Name, user.FirstName),
+                new Claim (JwtRegisteredClaimNames.FamilyName, user.LastName),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim("uid", user.Id.ToString())
             };

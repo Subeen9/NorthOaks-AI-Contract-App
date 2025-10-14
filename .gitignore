@@ -1,0 +1,13 @@
+# Ignore bin and obj everywhere
+**/bin/
+**/obj/
+.vs
+# Ignore accidentally added top-level files if they’re outside the project
+!/CMPS4110-NorthOaksProj/CMPS4110-NorthOaksProj/**
+CMPS4110-NorthOaksProj/UploadedContracts
+
+# Ignore Resources folder
+CMPS4110-NorthOaksProj/Resources/
+
+# Ignore Qdrant storage collections
+CMPS4110-NorthOaksProj/qdrant_storage/collections/
