@@ -3,7 +3,8 @@
 @using NorthOaks.Shared.Model.Chat
 @inject HttpClient Http
 @inject IJSRuntime JS
-
+@using Microsoft.AspNetCore.Authorization
+@attribute [Authorize]
 <div class="contract-viewer-page">
     <div class="viewer-wrapper">
         <div class="pdf-area">
