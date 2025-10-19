@@ -85,6 +85,8 @@ builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
 .AddDefaultTokenProviders();
 
 // Dependency Injection for services
+builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();         // Background task queue services
+builder.Services.AddHostedService<TaskRunner>();
 builder.Services.AddScoped<IContractsService, ContractsService>();
 builder.Services.AddScoped<IChatMessagesService, ChatMessagesService>();
 builder.Services.AddScoped<IQdrantService, QdrantService>();
@@ -169,10 +171,6 @@ builder.Services.AddResponseCompression(opts =>
     opts.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
         ["application/octet-stream"]);
 });
-
-// Background task queue services
-builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
-builder.Services.AddHostedService<TaskRunner>();
 
 var app = builder.Build();
 

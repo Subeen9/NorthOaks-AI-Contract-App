@@ -65,28 +65,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
 
             var contract = await _contractsService.UploadContract(dto, _env.WebRootPath);
 
-            taskQueue.QueueBackgroundWorkItem(async token =>
-            {
-                try
-                {
-                    await _contractsService.ProcessContractAsync(contract.Id, _env.WebRootPath, token);
-
-                    // Notify user via SignalR
-                    await _hubContext.Clients.Group(userGroup).SendAsync("ProcessingUpdate", new
-                    {
-                        message = "Processing complete!",
-                        progress = 100
-                    });
-                }
-                catch (Exception ex)
-                {
-                    await _hubContext.Clients.Group(userGroup).SendAsync("ProcessingUpdate", new
-                    {
-                        message = $"Error processing file: {ex.Message}",
-                        progress = -1
-                    });
-                }
-            });
+            taskQueue.QueueContractProcessing(contract.Id, _env.WebRootPath, userGroup, _hubContext);
 
             // reload with User so UploadedBy isn’t null
             var savedContract = await _contractsService.GetByIdWithUser(contract.Id);
