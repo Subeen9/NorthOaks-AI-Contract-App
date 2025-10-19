@@ -53,9 +53,6 @@ namespace CMPS4110_NorthOaksProj.Data.Services
 
                 await AddAsync(contract);
 
-                // Optional: OCR processing
-                await _documentProcessing.ProcessDocumentAsync(contract.Id, filePath);
-
                 return contract;
             }
             catch (Exception ex)
@@ -99,6 +96,16 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                 .Where(c => !c.IsDeleted && c.Id == id)
                 .Include(c => c.User)
                 .FirstOrDefaultAsync();
+        }
+
+        public async Task ProcessContractAsync(int contractId, string rootPath, CancellationToken token)
+        {
+            var contract = await GetByIdAsync(contractId);
+            if (contract == null) return;
+
+            var filePath = Path.Combine(rootPath, "UploadedContracts", contract.FileName);
+
+            await _documentProcessing.ProcessDocumentAsync(contract.Id, filePath);
         }
     }
 }

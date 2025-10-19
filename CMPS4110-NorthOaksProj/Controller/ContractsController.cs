@@ -1,7 +1,9 @@
 ﻿using CMPS4110_NorthOaksProj.Data.Services.Contracts;
+using CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing;
+using CMPS4110_NorthOaksProj.Hubs;
 using CMPS4110_NorthOaksProj.Models.Contracts;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 
 
 namespace CMPS4110_NorthOaksProj.Controllers
@@ -13,13 +15,16 @@ namespace CMPS4110_NorthOaksProj.Controllers
     {
         private readonly IContractsService _contractsService;
         private readonly IWebHostEnvironment _env;
+        private readonly IHubContext<ProcessingHub> _hubContext;
 
         public ContractsController(
             IContractsService contractsService,
-            IWebHostEnvironment env)
+            IWebHostEnvironment env,
+            IHubContext<ProcessingHub> hubContext)
         {
             _contractsService = contractsService;
             _env = env;
+            _hubContext = hubContext;
         }
 
         // GET: api/contracts
@@ -45,12 +50,43 @@ namespace CMPS4110_NorthOaksProj.Controllers
         // POST: api/contracts/upload
         [HttpPost("upload")]
       //   [Authorize] //  any logged-in user can upload
-        public async Task<ActionResult<ContractReadDto>> Upload([FromForm] ContractUploadDto dto)
+        public async Task<ActionResult<ContractReadDto>> Upload([FromForm] ContractUploadDto dto, [FromServices] IBackgroundTaskQueue taskQueue)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
             if (dto.File == null || dto.File.Length == 0) return BadRequest("No file uploaded.");
 
+            var userGroup = User.Identity?.Name ?? dto.UserId.ToString();
+            await _hubContext.Clients.Group(userGroup).SendAsync("ProcessingUpdate", new
+            {
+                message = "Upload received. Starting processing...",
+                progress = 10
+            });
+
+
             var contract = await _contractsService.UploadContract(dto, _env.WebRootPath);
+
+            taskQueue.QueueBackgroundWorkItem(async token =>
+            {
+                try
+                {
+                    await _contractsService.ProcessContractAsync(contract.Id, _env.WebRootPath, token);
+
+                    // Notify user via SignalR
+                    await _hubContext.Clients.Group(userGroup).SendAsync("ProcessingUpdate", new
+                    {
+                        message = "Processing complete!",
+                        progress = 100
+                    });
+                }
+                catch (Exception ex)
+                {
+                    await _hubContext.Clients.Group(userGroup).SendAsync("ProcessingUpdate", new
+                    {
+                        message = $"Error processing file: {ex.Message}",
+                        progress = -1
+                    });
+                }
+            });
 
             // reload with User so UploadedBy isn’t null
             var savedContract = await _contractsService.GetByIdWithUser(contract.Id);
