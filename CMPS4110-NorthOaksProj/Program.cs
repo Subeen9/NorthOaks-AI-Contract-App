@@ -170,6 +170,9 @@ builder.Services.AddResponseCompression(opts =>
         ["application/octet-stream"]);
 });
 
+// Background task queue services
+builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();
+builder.Services.AddHostedService<TaskRunner>();
 
 var app = builder.Build();
 
