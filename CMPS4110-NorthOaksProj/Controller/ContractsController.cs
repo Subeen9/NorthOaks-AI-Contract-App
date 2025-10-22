@@ -16,15 +16,19 @@ namespace CMPS4110_NorthOaksProj.Controllers
         private readonly IContractsService _contractsService;
         private readonly IWebHostEnvironment _env;
         private readonly IHubContext<ProcessingHub> _hubContext;
+        private readonly IHubContext<NotificationHub> _notificationHub;
+
 
         public ContractsController(
             IContractsService contractsService,
             IWebHostEnvironment env,
-            IHubContext<ProcessingHub> hubContext)
+            IHubContext<ProcessingHub> hubContext,
+            IHubContext<NotificationHub> notificationHub)
         {
             _contractsService = contractsService;
             _env = env;
             _hubContext = hubContext;
+            _notificationHub = notificationHub;
         }
 
         // GET: api/contracts
@@ -49,7 +53,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
 
         // POST: api/contracts/upload
         [HttpPost("upload")]
-      //   [Authorize] //  any logged-in user can upload
+        //   [Authorize] //  any logged-in user can upload
         public async Task<ActionResult<ContractReadDto>> Upload([FromForm] ContractUploadDto dto, [FromServices] IBackgroundTaskQueue taskQueue)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
@@ -62,13 +66,20 @@ namespace CMPS4110_NorthOaksProj.Controllers
                 progress = 10
             });
 
-
             var contract = await _contractsService.UploadContract(dto, _env.WebRootPath);
-
             taskQueue.QueueContractProcessing(contract.Id, _env.WebRootPath, userGroup, _hubContext);
 
-            // reload with User so UploadedBy isn’t null
+            //  fetch contract again to include user info
             var savedContract = await _contractsService.GetByIdWithUser(contract.Id);
+            var uploadedBy = savedContract?.User != null
+                ? $"{savedContract.User.FirstName} {savedContract.User.LastName}"
+                : "Unknown User";
+
+            //  broadcast notification (to all users)
+            await _notificationHub.Clients.All.SendAsync(
+                "ReceiveNotification",
+                $"Contract '{dto.File.FileName}' was uploaded by {uploadedBy}."
+            );
 
             var readDto = ToReadDto(savedContract!);
             return CreatedAtAction(nameof(GetById), new { id = readDto.Id }, readDto);
@@ -76,11 +87,23 @@ namespace CMPS4110_NorthOaksProj.Controllers
 
         // DELETE: api/contracts/{id}
         [HttpDelete("{id:int}")]
-      //  [Authorize] 
+        //  [Authorize] 
         public async Task<ActionResult> Delete(int id)
         {
             var action = await _contractsService.DeleteContract(id, _env.ContentRootPath);
             if (!action) return NotFound();
+
+            //  reload for name & filename
+            var deletedContract = await _contractsService.GetByIdWithUser(id);
+            var deletedBy = deletedContract?.User != null
+                ? $"{deletedContract.User.FirstName} {deletedContract.User.LastName}"
+                : "Unknown User";
+
+            await _notificationHub.Clients.All.SendAsync(
+                "ReceiveNotification",
+                $"Contract '{deletedContract?.FileName ?? id.ToString()}' was deleted by {deletedBy}."
+            );
+
             return NoContent();
         }
 
