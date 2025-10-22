@@ -1,6 +1,7 @@
 ﻿using CMPS4110_NorthOaksProj.Models.Chat;
-using CMPS4110_NorthOaksProj.Models.Users;
 using CMPS4110_NorthOaksProj.Models.Contracts;
+using CMPS4110_NorthOaksProj.Models.Notifications;
+using CMPS4110_NorthOaksProj.Models.Users;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -17,6 +18,8 @@ namespace CMPS4110_NorthOaksProj.Data
         public DbSet<ChatSession> ChatSessions { get; set; } = null!;
         public DbSet<ChatMessage> ChatMessages { get; set; } = null!;
         public DbSet<ChatSessionContract> ChatSessionContracts { get; set; } = null!;
+        public DbSet<Notification> Notifications { get; set; }
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

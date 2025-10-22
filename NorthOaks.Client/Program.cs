@@ -18,7 +18,7 @@ builder.Services.AddAuthorizationCore();
 builder.Services.AddBlazorBootstrap();
 
 //Notification
-builder.Services.AddScoped<NotificationProvider>();
+builder.Services.AddSingleton<NotificationProvider>();
 
 
 

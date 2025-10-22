@@ -4,6 +4,7 @@ using CMPS4110_NorthOaksProj.Hubs;
 using CMPS4110_NorthOaksProj.Models.Contracts;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
+using System.Security.Claims;
 
 
 namespace CMPS4110_NorthOaksProj.Controllers
@@ -61,9 +62,14 @@ namespace CMPS4110_NorthOaksProj.Controllers
             if (!ModelState.IsValid) return BadRequest(ModelState);
             if (dto.File == null || dto.File.Length == 0) return BadRequest("No file uploaded.");
 
-            var userGroup = User.Identity?.Name ?? dto.UserId.ToString();
+            // --- THIS IS THE FIX ---
+            // Get the ID of the user who is *actually* uploading
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            // Inform uploader processing started (you already have this)
+            // This userGroup logic should also use the real ID
+            var userGroup = currentUserId ?? "unknown_user";
+
+            // ... (Your processing hub logic)
             await _hubContext.Clients.Group(userGroup).SendAsync("ProcessingUpdate", new
             {
                 message = "Upload received. Starting processing...",
@@ -78,11 +84,11 @@ namespace CMPS4110_NorthOaksProj.Controllers
                 ? $"{savedContract.User.FirstName} {savedContract.User.LastName}"
                 : "Unknown User";
 
-            // ✅ Send structured notification payload
+            // --- SEND THE CORRECT ID ---
             await _notificationHub.Clients.All.SendAsync("ReceiveNotification", new
             {
                 Message = $"Contract '{dto.File.FileName}' uploaded by {uploadedBy}.",
-                UserId = dto.UserId
+                UserId = currentUserId // Use the ID from the claim
             });
 
             var readDto = ToReadDto(savedContract!);
@@ -92,27 +98,43 @@ namespace CMPS4110_NorthOaksProj.Controllers
         // DELETE: api/contracts/{id}
         [HttpDelete("{id:int}")]
         //  [Authorize] 
+
         public async Task<ActionResult> Delete(int id)
         {
+            // --- 1. Get contract details FIRST ---
+            // We need to get the contract object *before* it's soft-deleted.
+            var contractToDel = await _contractsService.GetByIdWithUser(id);
+            if (contractToDel == null) return NotFound("Contract not found.");
+
+            // Save the file name for the notification message
+            var contractFileName = contractToDel.FileName;
+
+            // --- 2. Get the DELETOR's info from the token claims ---
+            // (This is the same logic from your MainLayout)
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+            var firstName = User.FindFirstValue("name") ?? "";
+            var lastName = User.FindFirstValue("family_name") ?? "";
+            var deletedByName = $"{firstName} {lastName}".Trim();
+
+            // Fallback just in case claims are empty
+            if (string.IsNullOrWhiteSpace(deletedByName))
+            {
+                deletedByName = "Unknown User";
+            }
+
+            // --- 3. Now, perform the soft delete ---
             var action = await _contractsService.DeleteContract(id, _env.ContentRootPath);
-            if (!action) return NotFound();
+            if (!action) return BadRequest("Delete action failed."); // Should be covered by the first check
 
-            // reload contract to get deletedBy and user info
-            var deletedContract = await _contractsService.GetByIdWithUser(id);
-            var deletedBy = deletedContract?.User != null
-                ? $"{deletedContract.User.FirstName} {deletedContract.User.LastName}"
-                : "Unknown User";
-
-            // ✅ structured payload again
+            // --- 4. Send the notification with the correct info ---
             await _notificationHub.Clients.All.SendAsync("ReceiveNotification", new
             {
-                Message = $"Contract '{deletedContract?.FileName ?? id.ToString()}' deleted by {deletedBy}.",
-                UserId = deletedContract?.UserId
+                Message = $"Contract '{contractFileName}' deleted by {deletedByName}.",
+                UserId = currentUserId // This is the ID of the deletor
             });
 
             return NoContent();
         }
-
         //  Mapping helper
         private static ContractReadDto ToReadDto(Contract contract)
         {

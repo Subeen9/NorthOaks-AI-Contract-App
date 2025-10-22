@@ -1,10 +1,13 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
 @using NorthOaks.Client.Providers
+@using BlazorBootstrap
+@using System.Security.Claims
 
 @inherits LayoutComponentBase
+@implements IDisposable
+
 @inject AuthenticationStateProvider AuthProvider
 @inject NotificationProvider Notifications
-
 @inject IJSRuntime JS
 
 <Toasts class="p-3" AutoHide="true" Delay="3000" Placement="ToastsPlacement.TopRight" />
@@ -15,31 +18,45 @@
             <Authorized>
                 <header class="border-bottom bg-white px-4 py-3">
                     <div class="d-flex align-items-center justify-content-between">
-
                         <div class="d-flex align-items-center contracthub-button" @onclick="NavigateToHome">
                             <span class="fw-semibold fs-3 logo-text" style="color:#003768;">
-                                <img src="images/northoaks leaf.png" alt="ContractHub Logo" style="width:32px; height:32px; vertical-align:middle; margin-right:4px;" />
+                                <img src="images/northoaks leaf.png" alt="ContractHub Logo"
+                                     style="width:32px; height:32px; vertical-align:middle; margin-right:4px;" />
                                 NorthOaks Contract AI
                             </span>
                         </div>
 
-
-
                         <div class="d-flex align-items-center gap-3">
-
                             <button class="btn text-white" style="background: #003768" @onclick="NavigateToUpload">
                                 <i class="bi bi-upload me-2"></i> Upload Contract
                             </button>
-                            <button class="btn btn-link position-relative" title="Notifications" @onclick="ClearNotifications">
-                                <i class="bi bi-bell fs-5"></i>
 
-                                @if (unreadCount > 0)
-                                {
-                                    <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                        @unreadCount
-                                    </span>
-                                }
-                            </button>
+                            <div class="dropdown">
+                                <button class="btn btn-link position-relative" title="Notifications"
+                                        id="notificationMenu" data-bs-toggle="dropdown" aria-expanded="false"
+                                        @onclick="ClearNotifications">
+                                    <i class="bi bi-bell fs-5"></i>
+                                    @if (unreadCount > 0)
+                                    {
+                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                                            @unreadCount
+                                        </span>
+                                    }
+                                </button>
+                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationMenu">
+                                    @if (Notifications.Messages.Count == 0)
+                                    {
+                                        <li><span class="dropdown-item-text">No new notifications</span></li>
+                                    }
+                                    else
+                                    {
+                                        @foreach (var msg in Notifications.Messages)
+                                        {
+                                            <li><span class="dropdown-item-text">@msg</span></li>
+                                        }
+                                    }
+                                </ul>
+                            </div>
 
                             <div class="dropdown">
                                 <button class="btn rounded-circle text-white"
@@ -73,25 +90,25 @@
     [Inject] private HttpClient Http { get; set; }
     [Inject] private NavigationManager Navigation { get; set; }
     [Inject] protected ToastService ToastService { get; set; } = default!;
+
     private string initials = "";
-
-    //Notification Count
-
     private int unreadCount = 0;
+
     private void NavigateToUpload() => Navigation.NavigateTo("/upload");
     private void NavigateToHome() => Navigation.NavigateTo("/home");
 
     protected override async Task OnInitializedAsync()
     {
-        //Subscribe to notifications before anything else
-        Notifications.OnChange += UpdateUnreadCount;
-        unreadCount = Notifications.UnreadCount;
-        //Auth 
+        // --- 1. GET USER ID FROM AUTH TOKEN ---
         var authState = await AuthProvider.GetAuthenticationStateAsync();
         var user = authState.User;
+        string currentUserIdFromClaims = null;
 
         if (user?.Identity?.IsAuthenticated == true)
         {
+            currentUserIdFromClaims = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
+                                   ?? user.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
+
             var firstName = user.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? "";
             var lastName = user.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value ?? "";
             initials = GetInitials(firstName, lastName);
@@ -100,15 +117,31 @@
         {
             initials = "NA";
         }
+
+        // --- 2. INITIALIZE NOTIFICATION PROVIDER ---
+        try
+        {
+            await Notifications.InitializeAsync(currentUserIdFromClaims);
+        }
+        catch (Exception ex)
+        {
+            Console.Error.WriteLine($"SignalR Connection Failed: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, "Notification service failed to connect. Check console."));
+        }
+
+        // --- 3. SUBSCRIBE TO COUNT CHANGES (REMOVED TOAST SUBSCRIPTION) ---
+        Notifications.OnCountChanged += UpdateUnreadCount;
+        unreadCount = Notifications.UnreadCount;
     }
-    //  Handle notification updates
+
+    // This method updates the bell icon
     private void UpdateUnreadCount()
     {
         unreadCount = Notifications.UnreadCount;
         InvokeAsync(StateHasChanged);
     }
 
-    //  Clear when user clicks bell
+    // This method clears the badge
     private void ClearNotifications()
     {
         Notifications.ClearUnread();
@@ -128,5 +161,11 @@
         ((CustomAuthStateProvider)AuthProvider).NotifyUserLogout();
         ToastService.Notify(new(ToastType.Success, "Logout Successful"));
         Navigation.NavigateTo("/");
+    }
+
+    // Unsubscribe from events to prevent memory leaks
+    public void Dispose()
+    {
+        Notifications.OnCountChanged -= UpdateUnreadCount;
     }
 }
