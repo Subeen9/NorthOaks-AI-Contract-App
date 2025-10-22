@@ -197,6 +197,7 @@ app.MapStaticAssets();
 app.MapControllers();
 app.MapFallbackToFile("index.html");
 app.MapHub<ProcessingHub>("/processingHub");
+app.MapHub<NotificationHub>("/hubs/notification");
 
 // === Debug endpoints ===
 app.MapPost("/debug/embed", async (

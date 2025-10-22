@@ -2,6 +2,8 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using NorthOaks.Client;
+using NorthOaks.Client.Providers;
+
 
 
 
@@ -14,6 +16,10 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.
 builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthStateProvider>();
 builder.Services.AddAuthorizationCore();
 builder.Services.AddBlazorBootstrap();
+
+//Notification
+builder.Services.AddScoped<NotificationProvider>();
+
 
 
 await builder.Build().RunAsync();
