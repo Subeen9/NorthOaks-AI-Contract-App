@@ -1,15 +1,15 @@
 ﻿using CMPS4110_NorthOaksProj.Data.Base;
-using CMPS4110_NorthOaksProj.Models.Chat;
-using NorthOaks.Shared.Model.Chat;
-using Microsoft.EntityFrameworkCore;
-using CMPS4110_NorthOaksProj.Data.Services.Embeddings;
-using CMPS4110_NorthOaksProj.Data.Services.QDrant;
-using CMPS4110_NorthOaksProj.Data.Services.Generation;
 using CMPS4110_NorthOaksProj.Data.Services.Chat.Sessions;
-
+using CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing;
+using CMPS4110_NorthOaksProj.Data.Services.Embeddings;
+using CMPS4110_NorthOaksProj.Data.Services.Generation;
+using CMPS4110_NorthOaksProj.Data.Services.QDrant;
+using CMPS4110_NorthOaksProj.Models.Chat;
+using Microsoft.EntityFrameworkCore;
+using NorthOaks.Shared.Model.Chat;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Linq;
 
 namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 {
@@ -95,7 +95,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 
                 // ===== Existing lightweight RAG path =====
                 var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
-                var results = await _qdrantService.SearchSimilarAsync(vector, limit: 12, scoreThreshold: 0.2f);
+                var results = await _qdrantService.SearchSimilarAsync(vector, limit: 20, scoreThreshold: 0.15f);
 
 
                 _logger.LogInformation("Search returned {Count} results for message: {Message}",
@@ -108,8 +108,15 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     return MapToDto(entity);
                 }
 
-                var contextText = string.Join("\n\n", results.Select((r, i) =>
-                    $"[Context {i + 1}]:\n{r.ChunkText}"));
+                //  Deduplicate repeated or overlapping chunks
+                var dedupedTexts = ContextBuilder.DeduplicateChunks(results.Select(r => r.ChunkText).ToList());
+
+                var filteredResults = results
+                    .Where(r => dedupedTexts.Contains(r.ChunkText))
+                    .Take(12) 
+                    .ToList();
+
+                var contextText = ContextBuilder.BuildStructuredContext(filteredResults);
 
                 var systemPrompt = "Answer ONLY from the provided context. Be clear and concise. If the context is insufficient, say so plainly. Do not invent facts.";
                 var userPrompt = $@"{contextText}
