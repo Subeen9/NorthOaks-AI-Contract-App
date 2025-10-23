@@ -67,8 +67,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                     {
                         _logger.LogError(ex, "Error processing chunk {Index} for contract {ContractId}", i, contractId);
                     }
-                }
-
+                
                 if (toInsert.Count > 0)
                 {
                     _context.ContractEmbeddings.AddRange(toInsert);

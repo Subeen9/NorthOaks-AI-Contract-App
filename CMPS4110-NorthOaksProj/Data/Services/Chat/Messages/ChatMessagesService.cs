@@ -78,74 +78,58 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                 Message = dto.Message
             };
 
-            _context.ChatMessages.Add(entity);
-            await _context.SaveChangesAsync();
-
             try
             {
-                // ===== FAST SUMMARY path =====
+                // Generate summary response
                 if (IsSummaryIntent(dto.Message))
                 {
-                    _logger.LogInformation("Summary intent detected for session {SessionId}", dto.SessionId);
-                    var summaryResponse = await HandleSummaryAsync(dto.SessionId, dto.Message);
-                    entity.Response = summaryResponse;
-                    await _context.SaveChangesAsync();
-                    return MapToDto(entity);
+                    _logger.LogInformation("Summary headsup detected for session {SessionId}", dto.SessionId);
+                    entity.Response = await HandleSummaryAsync(dto.SessionId, dto.Message);
                 }
-
-                // ===== Existing lightweight RAG path =====
-                var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
-                var results = await _qdrantService.SearchSimilarAsync(vector, limit: 12, scoreThreshold: 0.2f);
-
-
-                _logger.LogInformation("Search returned {Count} results for message: {Message}",
-                        results.Count, dto.Message);
-
-                if (results.Count == 0)
+                else
                 {
-                    entity.Response = "I'm sorry, I couldn't find any relevant information to answer your question.";
-                    await _context.SaveChangesAsync();
-                    return MapToDto(entity);
+                    //Rag response
+                    var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
+                    var results = await _qdrantService.SearchSimilarAsync(vector, limit: 12, scoreThreshold: 0.2f);
+
+
+                    _logger.LogInformation("Search returned {Count} results for message: {Message}",
+                            results.Count, dto.Message);
+
+                    if (results.Count == 0)
+                    {
+                        entity.Response = "I'm sorry, I couldn't find any relevant information to answer your question.";
+                    } else
+                    {
+                        var contextText = string.Join("\n\n", results.Select((r, i) =>
+                           $"[Context {i + 1}]:\n{r.ChunkText}"));
+
+                        var systemPrompt = "Answer ONLY from the provided context. Be clear and concise. If the context is insufficient, say so plainly. Do not invent facts.";
+                        var userPrompt = $@"{contextText} User question: {dto.Message} Answer concisely using ONLY the context above. If you can't answer from the context, say so.";
+
+                        var generatedResponse = await _generationClient.GenerateAsync(userPrompt, systemPrompt);
+
+                        entity.Response = generatedResponse;
+                        _logger.LogInformation("Successfully generated response for message {MessageId}", entity.Id);
+                    }
                 }
-
-                var contextText = string.Join("\n\n", results.Select((r, i) =>
-                    $"[Context {i + 1}]:\n{r.ChunkText}"));
-
-                var systemPrompt = "Answer ONLY from the provided context. Be clear and concise. If the context is insufficient, say so plainly. Do not invent facts.";
-                var userPrompt = $@"{contextText}
-
-User question: {dto.Message}
-
-Answer concisely using ONLY the context above. If you can't answer from the context, say so.";
-
-                var generatedResponse = await _generationClient.GenerateAsync(userPrompt, systemPrompt);
-
-                entity.Response = generatedResponse;
-                await _context.SaveChangesAsync();
-
-                _logger.LogInformation("Successfully generated response for message {MessageId}", entity.Id);
-                return MapToDto(entity);
-            }
-            catch (TaskCanceledException)
-            {
-                entity.Response = "⚠️ Exception: The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.";
-                await _context.SaveChangesAsync();
-                return MapToDto(entity);
             }
             catch (OperationCanceledException)
             {
                 entity.Response = "⚠️ Exception: The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.";
-                await _context.SaveChangesAsync();
-                return MapToDto(entity);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing message: {Message}", dto.Message);
                 entity.Response = "I encountered an error while processing your question. Please try again.";
-                await _context.SaveChangesAsync();
-                return MapToDto(entity);
             }
+            _context.ChatMessages.Add(entity);
+            await _context.SaveChangesAsync();
+            return MapToDto(entity);
         }
+    
+        
+                    
 
         public async Task<bool> Delete(int id)
         {
@@ -259,10 +243,6 @@ Answer concisely using ONLY the context above. If you can't answer from the cont
                     prompt: userPrompt.ToString(),
                     systemPrompt: systemPrompt
                 );
-            }
-            catch (TaskCanceledException)
-            {
-                return "⚠️ Exception: The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.";
             }
             catch (OperationCanceledException)
             {
