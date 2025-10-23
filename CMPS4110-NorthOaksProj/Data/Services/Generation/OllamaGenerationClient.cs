@@ -62,8 +62,8 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Generation
                 stream = false,
                 options = new GenerateOptions
                 {
-                    temperature = 0.7,
-                    num_predict = 500
+                    temperature = 0.4,
+                    num_predict = 400
                 }
             };
             try
