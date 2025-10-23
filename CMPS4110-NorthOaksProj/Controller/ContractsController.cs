@@ -23,7 +23,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
         private readonly IWebHostEnvironment _env;
         private readonly IHubContext<ProcessingHub> _hubContext;
         private readonly IHubContext<NotificationHub> _notificationHub;
-        private readonly DataContext _context; // ✅ EF context for saving notifications
+        private readonly DataContext _context; //  EF context for saving notifications
 
         public ContractsController(
             IContractsService contractsService,
@@ -150,7 +150,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
 
             await _context.SaveChangesAsync();
 
-            // ✅ SignalR push
+            //  SignalR push
             await _notificationHub.Clients.All.SendAsync("ReceiveNotification", new
             {
                 Message = $"Contract '{fileName}' deleted by {deletedByName}.",

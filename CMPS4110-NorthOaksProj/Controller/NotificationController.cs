@@ -1,36 +1,72 @@
 ﻿using CMPS4110_NorthOaksProj.Data.Services.Notifications;
 using CMPS4110_NorthOaksProj.Models.Notifications;
+using CMPS4110_NorthOaksProj.Models.Users; // <-- Make sure this 'using' matches your User model location
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity; // <-- Required for UserManager
 using Microsoft.AspNetCore.Mvc;
+using NorthOaks.Shared.Model.Notifications;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
 namespace CMPS4110_NorthOaksProj.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize] // <-- This must be enabled
     public class NotificationsController : ControllerBase
     {
         private readonly NotificationService _service;
         private readonly ILogger<NotificationsController> _logger;
+        private readonly UserManager<User> _userManager; // <-- Inject UserManager
 
-        public NotificationsController(NotificationService service, ILogger<NotificationsController> logger)
+        // Updated constructor
+        public NotificationsController(NotificationService service,
+            ILogger<NotificationsController> logger,
+            UserManager<User> userManager) // <-- Add UserManager
         {
             _service = service;
             _logger = logger;
+            _userManager = userManager; // <-- Set UserManager
         }
 
         // ============================
         // GET UNREAD NOTIFICATIONS
         // ============================
-        [HttpGet("unread/{userId:int}")]
-        public async Task<ActionResult<IEnumerable<Notification>>> GetUnread(int userId)
+        // This route now correctly accepts a string username
+        [HttpGet("unread/{username}")] // <-- Changed from userId:int
+        public async Task<ActionResult<IEnumerable<NotificationDto>>> GetUnread(string username)
         {
             try
             {
-                var items = await _service.GetUnreadAsync(userId);
-                return Ok(items);
+                // 1. Find the user by their STRING username (e.g., "Subeen9")
+                var user = await _userManager.FindByNameAsync(username);
+                if (user == null)
+                {
+                    _logger.LogWarning("GetUnread: User not found with username {Username}", username);
+                    return NotFound("User not found");
+                }
+
+                // 2. Now, use the user's INT ID to call the service
+                var items = await _service.GetUnreadAsync(user.Id);
+
+                // 3. Convert to DTOs to send to the client
+                //    (Assuming you have a NotificationDto in a shared project)
+                var dtos = items.Select(n => new NotificationDto
+                {
+                    Id = n.Id,
+                    Message = n.Message,
+                    CreatedAt = n.CreatedAt,
+                    IsRead = n.IsRead,
+                    TargetUserId = n.TargetUserId
+                }).ToList();
+
+                return Ok(dtos);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching unread notifications for user {UserId}", userId);
+                _logger.LogError(ex, "Error fetching unread notifications for user {Username}", username);
                 return StatusCode(500, "An error occurred while fetching notifications.");
             }
         }
@@ -38,17 +74,28 @@ namespace CMPS4110_NorthOaksProj.Controllers
         // ============================
         // MARK ALL AS READ
         // ============================
-        [HttpPost("mark-read/{userId:int}")]
-        public async Task<IActionResult> MarkRead(int userId)
+        // This route also accepts the string username
+        [HttpPost("mark-read/{username}")] // <-- Changed from userId:int
+        public async Task<IActionResult> MarkRead(string username)
         {
             try
             {
-                await _service.MarkAllAsReadAsync(userId);
+                // 1. Find the user by their STRING username
+                var user = await _userManager.FindByNameAsync(username);
+                if (user == null)
+                {
+                    _logger.LogWarning("MarkRead: User not found with username {Username}", username);
+                    return NotFound("User not found");
+                }
+
+                // 2. Use the user's INT ID to call the service
+                await _service.MarkAllAsReadAsync(user.Id);
+
                 return Ok(new { message = "Notifications marked as read." });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error marking notifications as read for user {UserId}", userId);
+                _logger.LogError(ex, "Error marking notifications as read for user {Username}", username);
                 return StatusCode(500, "An error occurred while marking notifications as read.");
             }
         }

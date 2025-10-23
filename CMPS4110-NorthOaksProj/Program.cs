@@ -1,23 +1,24 @@
-﻿using System.Text;
-using CMPS4110_NorthOaksProj.Data;
+﻿using CMPS4110_NorthOaksProj.Data;
 using CMPS4110_NorthOaksProj.Data.Services;
 using CMPS4110_NorthOaksProj.Data.Services.Chat.Messages;
 using CMPS4110_NorthOaksProj.Data.Services.Contracts;
 using CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing;
 using CMPS4110_NorthOaksProj.Data.Services.Embeddings;
 using CMPS4110_NorthOaksProj.Data.Services.Generation;
+using CMPS4110_NorthOaksProj.Data.Services.Notifications;
 using CMPS4110_NorthOaksProj.Data.Services.QDrant;
+using CMPS4110_NorthOaksProj.Hubs;
 using CMPS4110_NorthOaksProj.Models.Users;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.Identity.Web.UI;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models; // Added for Swagger configuration
-using Microsoft.AspNetCore.ResponseCompression;
-using CMPS4110_NorthOaksProj.Hubs;
+using System.Text;
 
 
 
@@ -88,6 +89,7 @@ builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
 builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();         // Background task queue services
 builder.Services.AddHostedService<TaskRunner>();
 builder.Services.AddScoped<IContractsService, ContractsService>();
+builder.Services.AddScoped<NotificationService>();
 builder.Services.AddScoped<IChatMessagesService, ChatMessagesService>();
 builder.Services.AddScoped<IQdrantService, QdrantService>();
 builder.Services.AddScoped<IDocumentProcessingService, DocumentProcessingService>();

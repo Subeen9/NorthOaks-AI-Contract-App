@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
-using NorthOaks.Shared.Model.Notifications; // <-- Uses shared DTO
+using NorthOaks.Shared.Model.Notifications; // Uses shared DTO
 using System.Net.Http.Json;
 
 namespace NorthOaks.Client.Providers
@@ -24,7 +24,7 @@ namespace NorthOaks.Client.Providers
             _navigation = navigation;
         }
 
-        // Initialize notifications for current user
+        // === Initialize notifications for current user ===
         public async Task InitializeAsync(string userId)
         {
             if (_isInitialized || string.IsNullOrWhiteSpace(userId))
@@ -32,19 +32,20 @@ namespace NorthOaks.Client.Providers
 
             _currentUserId = userId;
 
-            // === 1️⃣ Load unread notifications from API (offline support)
+            // === 1️⃣ Load unread notifications from API (offline/persistent support) ===
             try
             {
                 using var http = new HttpClient { BaseAddress = new Uri(_navigation.BaseUri) };
-                var offline = await http.GetFromJsonAsync<List<NotificationDto>>($"api/notifications/unread/{userId}");
+                var offline = await http.GetFromJsonAsync<List<NotificationDto>>("api/notifications/unread");
 
                 if (offline != null && offline.Any())
                 {
                     Messages.Clear();
-                    foreach (var n in offline)
-                        Messages.Insert(0, n);
 
-                    _unreadCount = offline.Count;
+                    foreach (var n in offline.OrderByDescending(x => x.CreatedAt))
+                        Messages.Add(n);
+
+                    _unreadCount = offline.Count(x => !x.IsRead);
                     OnCountChanged?.Invoke();
                 }
             }
@@ -53,7 +54,7 @@ namespace NorthOaks.Client.Providers
                 Console.WriteLine($"⚠️ Failed to load offline notifications: {ex.Message}");
             }
 
-            // === 2️⃣ Set up SignalR live notifications
+            // === 2️⃣ Set up SignalR live notifications ===
             _hubConnection = new HubConnectionBuilder()
                 .WithUrl(_navigation.ToAbsoluteUri("/hubs/notification"))
                 .WithAutomaticReconnect()
@@ -61,12 +62,8 @@ namespace NorthOaks.Client.Providers
 
             _hubConnection.On<NotificationMessage>("ReceiveNotification", (payload) =>
             {
-                Console.WriteLine("--- NOTIFICATION RECEIVED ---");
-                Console.WriteLine($"Payload UserID (from server): '{payload?.UserId}'");
-                Console.WriteLine($"Client UserID (from MainLayout): '{_currentUserId}'");
-                // --- END DEBUGGING CODE ---
                 if (payload == null || payload.UserId == _currentUserId)
-                    return;
+                    return; // Skip self notifications
 
                 var notification = new NotificationDto
                 {
@@ -96,15 +93,16 @@ namespace NorthOaks.Client.Providers
             }
         }
 
-        // === 3️⃣ Mark all notifications as read (called from MainLayout bell)
+        // === 3️⃣ Mark all notifications as read (called when bell is opened) ===
         public async Task ClearUnread()
         {
-            if (string.IsNullOrEmpty(_currentUserId)) return;
+            if (string.IsNullOrEmpty(_currentUserId))
+                return;
 
             try
             {
                 using var http = new HttpClient { BaseAddress = new Uri(_navigation.BaseUri) };
-                await http.PostAsync($"api/notifications/mark-read/{_currentUserId}", null);
+                await http.PostAsync("api/notifications/mark-read", null);
             }
             catch (Exception ex)
             {
@@ -118,6 +116,7 @@ namespace NorthOaks.Client.Providers
             OnCountChanged?.Invoke();
         }
 
+        // === 4️⃣ Dispose connection cleanly ===
         public async ValueTask DisposeAsync()
         {
             try
@@ -138,7 +137,7 @@ namespace NorthOaks.Client.Providers
         }
     }
 
-    // Payload from SignalR hub
+    // === Payload type received from SignalR backend ===
     public class NotificationMessage
     {
         public string Message { get; set; } = string.Empty;
