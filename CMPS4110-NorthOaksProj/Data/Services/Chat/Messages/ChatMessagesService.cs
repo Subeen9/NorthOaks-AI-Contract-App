@@ -175,6 +175,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                 .Where(e => contractIds.Contains(e.ContractId))
                 .OrderBy(e => e.ContractId)
                 .ThenBy(e => e.ChunkIndex)
+                .Take(MAX_EXCERPTS_TOTAL)
                 .Select(e => new { e.ContractId, e.ChunkIndex, e.ChunkText })
                 .ToListAsync();
 
@@ -225,7 +226,6 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
             userPrompt.AppendLine("Summarize the following text clearly and briefly.");
             userPrompt.AppendLine("Focus on the main points, important facts, names, and numbers.");
             userPrompt.AppendLine("Use concise paragraphs.");
-            userPrompt.AppendLine("Keep the total summary under 200 words.");
             userPrompt.AppendLine();
             userPrompt.AppendLine("=== DOCUMENT START ===");
             userPrompt.AppendLine(sb.ToString());
