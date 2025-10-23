@@ -17,7 +17,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Notifications
         }
 
         // Note: This method is no longer used by the controller,
-        // but it's kept here in case you use it elsewhere.
+        
         // The ContractsController has its own save logic.
         public async Task SaveNotificationAsync(string message, int triggeredByUserId)
         {

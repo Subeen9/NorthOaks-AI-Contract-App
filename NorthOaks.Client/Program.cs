@@ -33,6 +33,6 @@ builder.Services.AddAuthorizationCore();
 builder.Services.AddBlazorBootstrap();
 
 //Notification
-builder.Services.AddSingleton<NotificationProvider>();
+builder.Services.AddScoped<NotificationProvider>();
 
 await builder.Build().RunAsync();

@@ -8,6 +8,7 @@ using NorthOaks.Shared.Model.Notifications;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace CMPS4110_NorthOaksProj.Controllers
@@ -35,24 +36,18 @@ namespace CMPS4110_NorthOaksProj.Controllers
         // GET UNREAD NOTIFICATIONS
         // ============================
         // This route now correctly accepts a string username
-        [HttpGet("unread/{username}")] // <-- Changed from userId:int
-        public async Task<ActionResult<IEnumerable<NotificationDto>>> GetUnread(string username)
+        [HttpGet("unread")]
+        public async Task<ActionResult<IEnumerable<NotificationDto>>> GetUnread()
         {
             try
             {
-                // 1. Find the user by their STRING username (e.g., "Subeen9")
-                var user = await _userManager.FindByNameAsync(username);
-                if (user == null)
-                {
-                    _logger.LogWarning("GetUnread: User not found with username {Username}", username);
-                    return NotFound("User not found");
-                }
+                // Pull numeric ID from the JWT claim (your token has "uid")
+                var currentUserIdStr = User.FindFirstValue("uid");
+                if (!int.TryParse(currentUserIdStr, out var currentUserId))
+                    return Unauthorized("Invalid user ID in token.");
 
-                // 2. Now, use the user's INT ID to call the service
-                var items = await _service.GetUnreadAsync(user.Id);
+                var items = await _service.GetUnreadAsync(currentUserId);
 
-                // 3. Convert to DTOs to send to the client
-                //    (Assuming you have a NotificationDto in a shared project)
                 var dtos = items.Select(n => new NotificationDto
                 {
                     Id = n.Id,
@@ -66,38 +61,29 @@ namespace CMPS4110_NorthOaksProj.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error fetching unread notifications for user {Username}", username);
+                _logger.LogError(ex, "Error fetching unread notifications");
                 return StatusCode(500, "An error occurred while fetching notifications.");
             }
         }
 
-        // ============================
-        // MARK ALL AS READ
-        // ============================
-        // This route also accepts the string username
-        [HttpPost("mark-read/{username}")] // <-- Changed from userId:int
-        public async Task<IActionResult> MarkRead(string username)
+        [HttpPost("mark-read")]
+        public async Task<IActionResult> MarkRead()
         {
             try
             {
-                // 1. Find the user by their STRING username
-                var user = await _userManager.FindByNameAsync(username);
-                if (user == null)
-                {
-                    _logger.LogWarning("MarkRead: User not found with username {Username}", username);
-                    return NotFound("User not found");
-                }
+                var currentUserIdStr = User.FindFirstValue("uid");
+                if (!int.TryParse(currentUserIdStr, out var currentUserId))
+                    return Unauthorized("Invalid user ID in token.");
 
-                // 2. Use the user's INT ID to call the service
-                await _service.MarkAllAsReadAsync(user.Id);
-
+                await _service.MarkAllAsReadAsync(currentUserId);
                 return Ok(new { message = "Notifications marked as read." });
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error marking notifications as read for user {Username}", username);
+                _logger.LogError(ex, "Error marking notifications as read");
                 return StatusCode(500, "An error occurred while marking notifications as read.");
             }
         }
+
     }
 }
