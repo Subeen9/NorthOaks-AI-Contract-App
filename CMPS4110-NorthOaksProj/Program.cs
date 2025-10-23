@@ -134,7 +134,7 @@ builder.Services.AddHttpClient<OllamaEmbeddingClient>((sp, http) =>
 });
 
 
-// === Response Generation (Ollama Llama3.2) ===
+// === Response Generation ===
 builder.Services.AddHttpClient<OllamaGenerationClient>((sp, http) =>
 {
     var opts = sp.GetRequiredService<IOptions<OllamaOptions>>().Value;

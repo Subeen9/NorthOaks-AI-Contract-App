@@ -39,7 +39,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Generation
             ILogger<OllamaGenerationClient> logger)
         {
             _http = http;
-            _model = opts.Value.GenerationModel ?? "llama3.2";
+            _model = opts.Value.GenerationModel ?? "qwen3:4b";
             _logger = logger;
         }
 
