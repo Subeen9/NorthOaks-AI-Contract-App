@@ -86,7 +86,7 @@
                 ToastService.Notify(new(ToastType.Success, $"User Successfully Logged In"));
 
                 // Go to home page
-                Navigation.NavigateTo("/home");
+                Navigation.NavigateTo("/home", forceLoad: true);
             }
             else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {

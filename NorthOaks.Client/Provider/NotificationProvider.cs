@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.SignalR.Client;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using NorthOaks.Shared.Model.Notifications; // <-- Uses shared DTO
+using System.Net.Http.Json;
 
 namespace NorthOaks.Client.Providers
 {
@@ -14,7 +14,7 @@ namespace NorthOaks.Client.Providers
 
         private int _unreadCount = 0;
         public int UnreadCount => _unreadCount;
-        public List<string> Messages { get; } = new();
+        public List<NotificationDto> Messages { get; } = new();
 
         public event Action<string>? OnMessageReceived;
         public event Action? OnCountChanged;
@@ -24,34 +24,61 @@ namespace NorthOaks.Client.Providers
             _navigation = navigation;
         }
 
-        // Called from MainLayout after login
+        // Initialize notifications for current user
         public async Task InitializeAsync(string userId)
         {
-            // Guard: don’t reinitialize or start with no user
             if (_isInitialized || string.IsNullOrWhiteSpace(userId))
                 return;
 
             _currentUserId = userId;
 
+            // === 1️⃣ Load unread notifications from API (offline support)
+            try
+            {
+                using var http = new HttpClient { BaseAddress = new Uri(_navigation.BaseUri) };
+                var offline = await http.GetFromJsonAsync<List<NotificationDto>>($"api/notifications/unread/{userId}");
+
+                if (offline != null && offline.Any())
+                {
+                    Messages.Clear();
+                    foreach (var n in offline)
+                        Messages.Insert(0, n);
+
+                    _unreadCount = offline.Count;
+                    OnCountChanged?.Invoke();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️ Failed to load offline notifications: {ex.Message}");
+            }
+
+            // === 2️⃣ Set up SignalR live notifications
             _hubConnection = new HubConnectionBuilder()
                 .WithUrl(_navigation.ToAbsoluteUri("/hubs/notification"))
                 .WithAutomaticReconnect()
                 .Build();
 
-            // When backend pushes a notification
             _hubConnection.On<NotificationMessage>("ReceiveNotification", (payload) =>
             {
-                if (payload == null)
+                Console.WriteLine("--- NOTIFICATION RECEIVED ---");
+                Console.WriteLine($"Payload UserID (from server): '{payload?.UserId}'");
+                Console.WriteLine($"Client UserID (from MainLayout): '{_currentUserId}'");
+                // --- END DEBUGGING CODE ---
+                if (payload == null || payload.UserId == _currentUserId)
                     return;
 
-                // Skip own actions
-                if (!string.IsNullOrEmpty(payload.UserId) && payload.UserId == _currentUserId)
-                    return;
+                var notification = new NotificationDto
+                {
+                    Message = payload.Message,
+                    TargetUserId = int.TryParse(payload.UserId, out var uid) ? uid : 0,
+                    CreatedAt = DateTime.UtcNow,
+                    IsRead = false
+                };
 
-                Messages.Insert(0, payload.Message);
+                Messages.Insert(0, notification);
                 _unreadCount++;
 
-                // Raise events to UI
                 OnMessageReceived?.Invoke(payload.Message);
                 OnCountChanged?.Invoke();
             });
@@ -69,14 +96,28 @@ namespace NorthOaks.Client.Providers
             }
         }
 
-        // Clears unread count when bell is opened
-        public void ClearUnread()
+        // === 3️⃣ Mark all notifications as read (called from MainLayout bell)
+        public async Task ClearUnread()
         {
+            if (string.IsNullOrEmpty(_currentUserId)) return;
+
+            try
+            {
+                using var http = new HttpClient { BaseAddress = new Uri(_navigation.BaseUri) };
+                await http.PostAsync($"api/notifications/mark-read/{_currentUserId}", null);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"⚠️ Failed to mark notifications as read: {ex.Message}");
+            }
+
+            foreach (var msg in Messages)
+                msg.IsRead = true;
+
             _unreadCount = 0;
             OnCountChanged?.Invoke();
         }
 
-        // Gracefully disconnect when app is disposed or user logs out
         public async ValueTask DisposeAsync()
         {
             try
@@ -97,10 +138,10 @@ namespace NorthOaks.Client.Providers
         }
     }
 
-    // === Payload type from backend ===
+    // Payload from SignalR hub
     public class NotificationMessage
     {
         public string Message { get; set; } = string.Empty;
-        public string? UserId { get; set; }  // senderId from backend
+        public string? UserId { get; set; }
     }
 }

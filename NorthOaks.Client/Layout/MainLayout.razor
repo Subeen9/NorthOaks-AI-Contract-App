@@ -1,5 +1,6 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
 @using NorthOaks.Client.Providers
+@using NorthOaks.Shared.Model.Notifications
 @using BlazorBootstrap
 @using System.Security.Claims
 
@@ -9,6 +10,9 @@
 @inject AuthenticationStateProvider AuthProvider
 @inject NotificationProvider Notifications
 @inject IJSRuntime JS
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject ToastService ToastService
 
 <Toasts class="p-3" AutoHide="true" Delay="3000" Placement="ToastsPlacement.TopRight" />
 
@@ -16,9 +20,11 @@
     <main>
         <AuthorizeView>
             <Authorized>
-                <header class="border-bottom bg-white px-4 py-3">
+                <header class="border-bottom bg-white px-4 py-3 shadow-sm">
                     <div class="d-flex align-items-center justify-content-between">
-                        <div class="d-flex align-items-center contracthub-button" @onclick="NavigateToHome">
+
+                        <!-- Logo -->
+                        <div class="d-flex align-items-center contracthub-button" @onclick="NavigateToHome" style="cursor:pointer;">
                             <span class="fw-semibold fs-3 logo-text" style="color:#003768;">
                                 <img src="images/northoaks leaf.png" alt="ContractHub Logo"
                                      style="width:32px; height:32px; vertical-align:middle; margin-right:4px;" />
@@ -26,11 +32,14 @@
                             </span>
                         </div>
 
+                        <!-- Right section -->
                         <div class="d-flex align-items-center gap-3">
-                            <button class="btn text-white" style="background: #003768" @onclick="NavigateToUpload">
+                            <!-- Upload -->
+                            <button class="btn text-white" style="background:#003768" @onclick="NavigateToUpload">
                                 <i class="bi bi-upload me-2"></i> Upload Contract
                             </button>
 
+                            <!-- Notifications -->
                             <div class="dropdown">
                                 <button class="btn btn-link position-relative" title="Notifications"
                                         id="notificationMenu" data-bs-toggle="dropdown" aria-expanded="false"
@@ -43,28 +52,35 @@
                                         </span>
                                     }
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="notificationMenu">
+
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width:320px;">
                                     @if (Notifications.Messages.Count == 0)
                                     {
-                                        <li><span class="dropdown-item-text">No new notifications</span></li>
+                                        <li><span class="dropdown-item-text text-muted">No new notifications</span></li>
                                     }
                                     else
                                     {
-                                        @foreach (var msg in Notifications.Messages)
+                                        @foreach (var n in Notifications.Messages)
                                         {
-                                            <li><span class="dropdown-item-text">@msg</span></li>
+                                            <li class="dropdown-item-text">
+                                                <div class="fw-semibold">@n.Message</div>
+                                                <small class="text-muted">@n.GetTimeAgo()</small>
+                                            </li>
+                                            <li><hr class="dropdown-divider" /></li>
                                         }
                                     }
                                 </ul>
                             </div>
 
+                            <!-- Profile -->
                             <div class="dropdown">
                                 <button class="btn rounded-circle text-white"
                                         type="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false"
-                                        style="width: 40px; height: 40px; background: #003768">
+                                        style="width:40px; height:40px; background:#003768">
                                     @initials
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="userMenu">
                                     <li>
                                         <button class="dropdown-item" @onclick="Logout">
                                             <i class="bi bi-box-arrow-right me-2"></i> Logout
@@ -76,7 +92,9 @@
                     </div>
                 </header>
             </Authorized>
+
             <NotAuthorized>
+                @Body
             </NotAuthorized>
         </AuthorizeView>
 
@@ -87,70 +105,61 @@
 </div>
 
 @code {
-    [Inject] private HttpClient Http { get; set; }
-    [Inject] private NavigationManager Navigation { get; set; }
-    [Inject] protected ToastService ToastService { get; set; } = default!;
-
     private string initials = "";
     private int unreadCount = 0;
+    private string? currentUserId;
 
     private void NavigateToUpload() => Navigation.NavigateTo("/upload");
     private void NavigateToHome() => Navigation.NavigateTo("/home");
 
     protected override async Task OnInitializedAsync()
     {
-        // --- 1. GET USER ID FROM AUTH TOKEN ---
-        var authState = await AuthProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
-        string currentUserIdFromClaims = null;
-
-        if (user?.Identity?.IsAuthenticated == true)
-        {
-            currentUserIdFromClaims = user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
-                                   ?? user.Claims.FirstOrDefault(c => c.Type == "sub")?.Value;
-
-            var firstName = user.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? "";
-            var lastName = user.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value ?? "";
-            initials = GetInitials(firstName, lastName);
-        }
-        else
-        {
-            initials = "NA";
-        }
-
-        // --- 2. INITIALIZE NOTIFICATION PROVIDER ---
         try
         {
-            await Notifications.InitializeAsync(currentUserIdFromClaims);
+            var authState = await AuthProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+
+            if (user?.Identity?.IsAuthenticated == true)
+            {
+                currentUserId = user.Claims.FirstOrDefault(c => c.Type == "sub")?.Value
+                ?? user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
+                ?? string.Empty;
+
+                var firstName = user.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? "";
+                var lastName = user.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value ?? "";
+                initials = GetInitials(firstName, lastName);
+
+                await Notifications.InitializeAsync(currentUserId);
+                Notifications.OnCountChanged += UpdateUnreadCount;
+                unreadCount = Notifications.UnreadCount;
+            }
+            else
+            {
+                initials = "NA";
+            }
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"SignalR Connection Failed: {ex.Message}");
-            ToastService.Notify(new(ToastType.Danger, "Notification service failed to connect. Check console."));
+            Console.Error.WriteLine($"❌ Initialization failed: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, "Failed to initialize notifications."));
         }
-
-        // --- 3. SUBSCRIBE TO COUNT CHANGES (REMOVED TOAST SUBSCRIPTION) ---
-        Notifications.OnCountChanged += UpdateUnreadCount;
-        unreadCount = Notifications.UnreadCount;
     }
 
-    // This method updates the bell icon
     private void UpdateUnreadCount()
     {
         unreadCount = Notifications.UnreadCount;
         InvokeAsync(StateHasChanged);
     }
 
-    // This method clears the badge
-    private void ClearNotifications()
+    private async void ClearNotifications()
     {
-        Notifications.ClearUnread();
+        await Notifications.ClearUnread();
     }
 
     private string GetInitials(string firstName, string lastName)
     {
-        string f = !string.IsNullOrEmpty(firstName) ? firstName[0].ToString().ToUpper() : "";
-        string l = !string.IsNullOrEmpty(lastName) ? lastName[0].ToString().ToUpper() : "";
+        var f = !string.IsNullOrEmpty(firstName) ? firstName[0].ToString().ToUpper() : "";
+        var l = !string.IsNullOrEmpty(lastName) ? lastName[0].ToString().ToUpper() : "";
         return f + l;
     }
 
@@ -160,10 +169,9 @@
         await JS.InvokeVoidAsync("localStorage.removeItem", "authToken");
         ((CustomAuthStateProvider)AuthProvider).NotifyUserLogout();
         ToastService.Notify(new(ToastType.Success, "Logout Successful"));
-        Navigation.NavigateTo("/");
+        Navigation.NavigateTo("/", forceLoad: true);
     }
 
-    // Unsubscribe from events to prevent memory leaks
     public void Dispose()
     {
         Notifications.OnCountChanged -= UpdateUnreadCount;
