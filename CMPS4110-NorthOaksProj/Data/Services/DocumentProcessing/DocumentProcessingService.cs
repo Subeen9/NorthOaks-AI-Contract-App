@@ -92,43 +92,46 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
             try
             {
                 using var doc = PdfDocument.Open(filePath);
-
-                // Try text layer first
-                var text = string.Join("\n",
-                    doc.GetPages()
-                       .Select(p => p.Text)
-                       .Where(t => !string.IsNullOrWhiteSpace(t)));
-
-                if (!string.IsNullOrWhiteSpace(text))
-                    return text;
-
-                _logger.LogInformation("No text layer found in {FilePath}, falling back to OCR", filePath);
+                using var engine = new TesseractEngine(@"./tessdata", "eng", EngineMode.Default);
+                engine.DefaultPageSegMode = PageSegMode.Auto;
 
                 var sb = new System.Text.StringBuilder();
-                using var engine = new TesseractEngine(@"./tessdata", "eng", EngineMode.Default);
 
                 foreach (Page page in doc.GetPages())
                 {
-                    var images = page.GetImages().ToList();
-                    if (images.Count == 0)
+                    string pageText = page.Text?.Trim();
+                    if (!string.IsNullOrWhiteSpace(pageText))
                     {
-                        _logger.LogInformation("No embedded images on page {PageNumber}, skipping OCR", page.Number);
-                        continue;
-                    }
+                        sb.AppendLine(pageText);
+                    } 
 
-                    foreach (var img in images)
+                    var images = page.GetImages().ToList();
+
+                    if (images.Count > 0)
                     {
-                        using var image = Image.Load<Rgba32>(img.RawBytes);
+                        _logger.LogInformation("Running OCR on {Count} images for page {PageNumber}", images.Count, page.Number);
+
                         using var ms = new MemoryStream();
-                        image.Save(ms, new PngEncoder());
-                        ms.Seek(0, SeekOrigin.Begin);
-                        using var pix = Pix.LoadFromMemory(ms.ToArray());
-                        using var pageOcr = engine.Process(pix);
-                        sb.AppendLine(pageOcr.GetText());
+                        foreach (var img in images)
+                        {
+                            using var image = Image.Load<Rgba32>(img.RawBytes);
+                            ms.SetLength(0);
+                            image.Save(ms, new PngEncoder());
+                            ms.Position = 0;
+                            ms.Seek(0, SeekOrigin.Begin);
+                            using var pix = Pix.LoadFromMemory(ms.ToArray());
+                            using var pageOcr = engine.Process(pix);
+                            var cleanText = Regex.Replace(pageOcr.GetText(), @"\s+", " ").Trim();
+                            if (!string.IsNullOrWhiteSpace(cleanText))
+                                sb.AppendLine(cleanText);
+                        }
                     }
                 }
+                var result = sb.ToString().Trim();
+                if (string.IsNullOrWhiteSpace(result))
+                    _logger.LogWarning("No readable text or OCR output found in {FilePath}", filePath);
 
-                return sb.ToString();
+                return result;
             }
             catch (Exception ex)
             {
