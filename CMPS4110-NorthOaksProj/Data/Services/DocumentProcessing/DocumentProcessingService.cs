@@ -67,7 +67,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                     {
                         _logger.LogError(ex, "Error processing chunk {Index} for contract {ContractId}", i, contractId);
                     }
-                
+                }
                 if (toInsert.Count > 0)
                 {
                     _context.ContractEmbeddings.AddRange(toInsert);
@@ -83,6 +83,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                 _logger.LogError(ex, "Failed to process document for contract {ContractId}", contractId);
                 throw;
             }
+            
         }
 
         private string ExtractText(string filePath)
@@ -152,7 +153,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
 
                 if (current.Length + sentence.Length + 1 > maxSize && current.Length > 0)
                 {
-                   
+
                     chunks.Add(current.ToString().Trim());
                     current.Clear();
                 }
@@ -166,6 +167,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
             }
 
             return chunks;
+        
         }
 
     }
