@@ -48,7 +48,7 @@ namespace NorthOaks.Client.Providers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠️ Failed to load offline notifications: {ex.Message}");
+                Console.WriteLine($" Failed to load offline notifications: {ex.Message}");
             }
 
             // === 2️⃣ Set up SignalR connection ===
@@ -62,7 +62,7 @@ namespace NorthOaks.Client.Providers
             {
                 if (!string.IsNullOrEmpty(_currentUserName))
                 {
-                    Console.WriteLine($"🔁 Reconnected — rejoining group: {_currentUserName}");
+                    Console.WriteLine($" Reconnected — rejoining group: {_currentUserName}");
                     await _hubConnection.InvokeAsync("JoinUserGroup", _currentUserName);
                 }
             };
@@ -96,14 +96,14 @@ namespace NorthOaks.Client.Providers
             {
                 await _hubConnection.StartAsync();
                 await _hubConnection.InvokeAsync("JoinUserGroup", _currentUserName);
-                Console.WriteLine($"✅ Connected and joined group: {_currentUserName}");
+                Console.WriteLine($" Connected and joined group: {_currentUserName}");
                 await Task.Delay(300); // small delay ensures stable join
                 _isInitialized = true;
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine($"❌ Failed to connect NotificationHub: {ex.Message}");
-                Console.WriteLine("⚠️ Continuing in offline mode (API polling only).");
+                Console.Error.WriteLine($" Failed to connect NotificationHub: {ex.Message}");
+                Console.WriteLine(" Continuing in offline mode (API polling only).");
             }
         }
 
@@ -123,7 +123,7 @@ namespace NorthOaks.Client.Providers
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"⚠️ Failed to mark notifications as read: {ex.Message}");
+                Console.WriteLine($" Failed to mark notifications as read: {ex.Message}");
             }
         }
 
@@ -138,7 +138,7 @@ namespace NorthOaks.Client.Providers
                 }
                 catch (Exception ex)
                 {
-                    Console.Error.WriteLine($"⚠️ Error disposing NotificationProvider: {ex.Message}");
+                    Console.Error.WriteLine($" Error disposing NotificationProvider: {ex.Message}");
                 }
             }
 

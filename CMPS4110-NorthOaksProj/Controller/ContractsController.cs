@@ -50,12 +50,12 @@ namespace CMPS4110_NorthOaksProj.Controllers
 
             // Get current username from token (normalized for group match)
             var currentUserName =
-    User.FindFirstValue("preferred_username") ??
-    User.FindFirstValue("unique_name") ??
-    User.FindFirstValue(ClaimTypes.NameIdentifier) ??   // <— added this
-    User.FindFirstValue("sub") ??
-    User.Identity?.Name ??
-    "unknown_user";
+             User.FindFirstValue("preferred_username") ??
+             User.FindFirstValue("unique_name") ??
+             User.FindFirstValue(ClaimTypes.NameIdentifier) ??   //Had to do this to get the username correctly. Was having issue. 
+             User.FindFirstValue("sub") ??
+              User.Identity?.Name ??
+               "unknown_user";
 
             Console.WriteLine($"[DEBUG BACKEND] currentUserName = {currentUserName}");
 
@@ -129,12 +129,12 @@ namespace CMPS4110_NorthOaksProj.Controllers
 
             var fileName = contractToDel.FileName;
             var currentUserName =
-     User.FindFirstValue("preferred_username") ??
-     User.FindFirstValue("unique_name") ??
-     User.FindFirstValue(ClaimTypes.NameIdentifier) ??   // <— added this
-     User.FindFirstValue("sub") ??
-     User.Identity?.Name ??
-     "unknown_user";
+             User.FindFirstValue("preferred_username") ??
+              User.FindFirstValue("unique_name") ??
+                User.FindFirstValue(ClaimTypes.NameIdentifier) ??   // <— added this
+              User.FindFirstValue("sub") ??
+            User.Identity?.Name ??
+            "unknown_user";
 
             Console.WriteLine($"[DEBUG BACKEND] currentUserName = {currentUserName}");
 

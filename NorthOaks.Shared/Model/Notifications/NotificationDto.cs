@@ -8,7 +8,7 @@
         public bool IsRead { get; set; }
         public DateTime CreatedAt { get; set; }
 
-        // Optional: for UI convenience — returns user-friendly time label
+        //  for UI convenience — returns user-friendly time label
         public string GetTimeAgo()
         {
             var diff = DateTime.UtcNow - CreatedAt;
