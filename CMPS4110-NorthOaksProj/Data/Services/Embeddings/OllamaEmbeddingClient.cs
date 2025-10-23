@@ -6,7 +6,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Embeddings
     public sealed class OllamaOptions
     {
         public string BaseUrl { get; set; } = "http://localhost:11434";
-        public string Model { get; set; } = "all-minilm"; // 384 dims
+        public string Model { get; set; } = "nomic-embed-text"; // 384 dims
         public string GenerationModel { get; set; } = "llama3.2";
     }
 
