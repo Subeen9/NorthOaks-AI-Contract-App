@@ -54,6 +54,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                 var chunkTexts = chunks.Select(c => c.ChunkText).ToList();
                 var vectors = await _embeddings.EmbedBatchAsync(chunkTexts);
                 vectors = EmbeddingUtils.NormalizeBatch(vectors);
+                EmbeddingUtils.PrintNormStats(vectors);
 
                 // Insert to Qdrant + stage DB rows
                 var toInsert = new List<ContractEmbedding>(chunks.Count);

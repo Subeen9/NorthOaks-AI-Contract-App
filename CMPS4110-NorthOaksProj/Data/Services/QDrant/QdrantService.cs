@@ -127,7 +127,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services
             }
         }
 
-        public async Task<List<VectorSearchResult>> SearchSimilarAsync(float[] queryEmbedding, int limit = 10, float scoreThreshold = 0.5f)
+        public async Task<List<VectorSearchResult>> SearchSimilarAsync(float[] queryEmbedding, int limit = 20, float scoreThreshold = 0.15f)
         {
             try
             {
