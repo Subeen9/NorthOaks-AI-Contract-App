@@ -70,6 +70,8 @@ namespace NorthOaks.Client.Providers
             // Handle incoming notifications
             _hubConnection.On<NotificationMessage>("ReceiveNotification", (payload) =>
             {
+                Console.WriteLine($"[DEBUG FRONTEND] payload.UserId = '{payload?.UserId}', currentUser = '{_currentUserName}'");
+
                 if (payload == null) return;
                 if (payload.UserId?.Trim().ToLower() == _currentUserName) return; // skip self
 
