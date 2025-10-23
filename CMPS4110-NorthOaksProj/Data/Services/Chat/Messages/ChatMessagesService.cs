@@ -93,13 +93,11 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     return MapToDto(entity);
                 }
 
-                // ===== Existing lightweight RAG path =====
+                // ===== RAG path =====
                 var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
                 var results = await _qdrantService.SearchSimilarAsync(vector, limit: 20, scoreThreshold: 0.15f);
 
-
-                _logger.LogInformation("Search returned {Count} results for message: {Message}",
-                        results.Count, dto.Message);
+                _logger.LogInformation("Search returned {Count} results for message: {Message}", results.Count, dto.Message);
 
                 if (results.Count == 0)
                 {
@@ -108,24 +106,42 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     return MapToDto(entity);
                 }
 
-                //  Deduplicate repeated or overlapping chunks
+                // Deduplicate overlapping chunks
                 var dedupedTexts = ContextBuilder.DeduplicateChunks(results.Select(r => r.ChunkText).ToList());
 
                 var filteredResults = results
                     .Where(r => dedupedTexts.Contains(r.ChunkText))
-                    .Take(12) 
+                    .Take(12)
                     .ToList();
 
+                // Build structured clause context
                 var contextText = ContextBuilder.BuildStructuredContext(filteredResults);
 
-                var systemPrompt = "Answer ONLY from the provided context. Be clear and concise. If the context is insufficient, say so plainly. Do not invent facts.";
-                var userPrompt = $@"{contextText}
 
-User question: {dto.Message}
+                var systemPrompt = @"
+You are a contract analysis assistant.
+Use ONLY the clauses provided in the context to answer the question.
+Quote clause numbers or titles when possible.
+If the answer cannot be found, reply exactly: 'Not found in contract.'
+Be concise, factual, and avoid speculation.
+";
 
-Answer concisely using ONLY the context above. If you can't answer from the context, say so.";
+                // Combine user question + context
+                var userPrompt = $@"
+Context:
+{contextText}
 
-                var generatedResponse = await _generationClient.GenerateAsync(userPrompt, systemPrompt);
+User question:
+{dto.Message}
+
+Answer:
+";
+
+                // Call generation client with both prompts
+                var generatedResponse = await _generationClient.GenerateAsync(
+                    userPrompt,
+                    systemPrompt
+                );
 
                 entity.Response = generatedResponse;
                 await _context.SaveChangesAsync();
@@ -135,13 +151,13 @@ Answer concisely using ONLY the context above. If you can't answer from the cont
             }
             catch (TaskCanceledException)
             {
-                entity.Response = "⚠️ Exception: The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.";
+                entity.Response = "⚠️ The request was canceled due to timeout (100 seconds).";
                 await _context.SaveChangesAsync();
                 return MapToDto(entity);
             }
             catch (OperationCanceledException)
             {
-                entity.Response = "⚠️ Exception: The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.";
+                entity.Response = "⚠️ The request was canceled due to timeout (100 seconds).";
                 await _context.SaveChangesAsync();
                 return MapToDto(entity);
             }
@@ -153,6 +169,7 @@ Answer concisely using ONLY the context above. If you can't answer from the cont
                 return MapToDto(entity);
             }
         }
+
 
         public async Task<bool> Delete(int id)
         {
