@@ -11,19 +11,20 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Linq;
 
+
 namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 {
-    public class ChatMessagesService : EntityBaseRepository<ChatMessage>, IChatMessagesService
+    public class ChatMessagesService : EntityBaseRepository<ChatMessage>,IChatMessagesService
     {
-        // Summary intent detection (incl. common typos)
+        // Summary intent detection 
         private static readonly Regex SummaryRegex = new(
             @"\b(summarize|summary|summarise|summarzie|summery|tl;dr|tldr|short\s+version|condense|brief\s+me|give\s+me\s+a\s+summary)\b",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-        // --- SPEED TUNING CONSTANTS (kept tight to stay under 100s) ---
-        private const int MAX_EXCERPTS_TOTAL = 40;     // total chunks across all docs
+        // optimization constants for 100 second LLM timeout
+        private const int MAX_EXCERPTS_TOTAL = 40;     // limits total chunks across all docs
         private const int MAX_EXCERPTS_PER_DOC = 30;     // per-doc cap
-        private const int MAX_CONTEXT_CHARS = 9000;   // ~6–7k tokens model-dependent
+        private const int MAX_CONTEXT_CHARS = 9000;   // ~6–7k tokens per model
         private const int MIN_CHUNK_LEN = 20;     // skip crumbs
 
         private readonly DataContext _context;
@@ -78,74 +79,59 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                 Message = dto.Message
             };
 
-            _context.ChatMessages.Add(entity);
-            await _context.SaveChangesAsync();
-
             try
             {
-                // ===== FAST SUMMARY path =====
+                // Generate summary response
                 if (IsSummaryIntent(dto.Message))
                 {
-                    _logger.LogInformation("Summary intent detected for session {SessionId}", dto.SessionId);
-                    var summaryResponse = await HandleSummaryAsync(dto.SessionId, dto.Message);
-                    entity.Response = summaryResponse;
-                    await _context.SaveChangesAsync();
-                    return MapToDto(entity);
+                    _logger.LogInformation("Summary headsup detected for session {SessionId}", dto.SessionId);
+                    entity.Response = await HandleSummaryAsync(dto.SessionId, dto.Message);
                 }
-
-                // ===== Existing lightweight RAG path =====
-                var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
-                var results = await _qdrantService.SearchSimilarAsync(vector, limit: 12, scoreThreshold: 0.2f);
-
-
-                _logger.LogInformation("Search returned {Count} results for message: {Message}",
-                        results.Count, dto.Message);
-
-                if (results.Count == 0)
+                else
                 {
-                    entity.Response = "I'm sorry, I couldn't find any relevant information to answer your question.";
-                    await _context.SaveChangesAsync();
-                    return MapToDto(entity);
+                    //Rag response
+                    var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
+                    var results = await _qdrantService.SearchSimilarAsync(vector, limit: 12, scoreThreshold: 0.2f);
+
+
+                    _logger.LogInformation("Search returned {Count} results for message: {Message}",
+                            results.Count, dto.Message);
+
+                    if (results.Count == 0)
+                    {
+                        entity.Response = "I'm sorry, I couldn't find any relevant information to answer your question.";
+                    }
+                    else
+                    {
+                        var contextText = string.Join("\n\n", results.Select((r, i) =>
+                           $"[Context {i + 1}]:\n{r.ChunkText}"));
+
+                        var systemPrompt = "Answer ONLY from the provided context. Be clear and concise. If the context is insufficient, say so plainly. Do not invent facts.";
+                        var userPrompt = $@"{contextText} User question: {dto.Message} Answer concisely using ONLY the context above. If you can't answer from the context, say so.";
+
+                        var generatedResponse = await _generationClient.GenerateAsync(userPrompt, systemPrompt);
+
+                        entity.Response = generatedResponse;
+                        _logger.LogInformation("Successfully generated response for message {MessageId}", entity.Id);
+                    }
                 }
-
-                var contextText = string.Join("\n\n", results.Select((r, i) =>
-                    $"[Context {i + 1}]:\n{r.ChunkText}"));
-
-                var systemPrompt = "Answer ONLY from the provided context. Be clear and concise. If the context is insufficient, say so plainly. Do not invent facts.";
-                var userPrompt = $@"{contextText}
-
-User question: {dto.Message}
-
-Answer concisely using ONLY the context above. If you can't answer from the context, say so.";
-
-                var generatedResponse = await _generationClient.GenerateAsync(userPrompt, systemPrompt);
-
-                entity.Response = generatedResponse;
-                await _context.SaveChangesAsync();
-
-                _logger.LogInformation("Successfully generated response for message {MessageId}", entity.Id);
-                return MapToDto(entity);
-            }
-            catch (TaskCanceledException)
-            {
-                entity.Response = "⚠️ Exception: The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.";
-                await _context.SaveChangesAsync();
-                return MapToDto(entity);
             }
             catch (OperationCanceledException)
             {
                 entity.Response = "⚠️ Exception: The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.";
-                await _context.SaveChangesAsync();
-                return MapToDto(entity);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing message: {Message}", dto.Message);
                 entity.Response = "I encountered an error while processing your question. Please try again.";
-                await _context.SaveChangesAsync();
-                return MapToDto(entity);
             }
+            _context.ChatMessages.Add(entity);
+            await _context.SaveChangesAsync();
+            return MapToDto(entity);
         }
+
+
+
 
         public async Task<bool> Delete(int id)
         {
@@ -164,17 +150,17 @@ Answer concisely using ONLY the context above. If you can't answer from the cont
             Timestamp = entity.Timestamp
         };
 
-        // ===== intent detection =====
+        // intent detection
         private static bool IsSummaryIntent(string? text)
         {
             if (string.IsNullOrWhiteSpace(text)) return false;
             return SummaryRegex.IsMatch(text);
         }
 
-        // ===== FAST summary handler (EF, but hard-capped for speed) =====
+        // summary handler
         private async Task<string> HandleSummaryAsync(int sessionId, string userMessage)
         {
-            // 1) Contracts attached to this session
+            //  contracts linked to session
             var contractIds = await _context.ChatSessionContracts
                 .AsNoTracking()
                 .Where(x => x.ChatSessionId == sessionId)
@@ -185,19 +171,20 @@ Answer concisely using ONLY the context above. If you can't answer from the cont
             if (contractIds.Count == 0)
                 return "I don’t see any document linked to this chat to summarize.";
 
-            // 2) Pull ordered chunks, but hard-cap count and characters
+            //  pulls text chunks with limits
             var rawChunks = await _context.ContractEmbeddings
                 .AsNoTracking()
                 .Where(e => contractIds.Contains(e.ContractId))
                 .OrderBy(e => e.ContractId)
                 .ThenBy(e => e.ChunkIndex)
+                .Take(MAX_EXCERPTS_TOTAL)
                 .Select(e => new { e.ContractId, e.ChunkIndex, e.ChunkText })
                 .ToListAsync();
 
             if (rawChunks.Count == 0)
                 return "No text was found to summarize for the linked document(s).";
 
-            // 3) Build a small context (limit per doc + global + char budget)
+            //  Build context with limits
             var sb = new StringBuilder(MAX_CONTEXT_CHARS + 512);
             var totalChars = 0;
             var totalTaken = 0;
@@ -215,17 +202,19 @@ Answer concisely using ONLY the context above. If you can't answer from the cont
                     var text = (c.ChunkText ?? string.Empty).Trim();
                     if (text.Length < MIN_CHUNK_LEN) continue;
 
-                    if (totalChars + text.Length + 64 > MAX_CONTEXT_CHARS) { totalTaken = MAX_EXCERPTS_TOTAL; break; }
+                    if (totalChars + text.Length + 64 > MAX_CONTEXT_CHARS) break;
 
-                    sb.AppendLine($"--- Document #{g.Key} | Chunk {c.ChunkIndex} ---");
-                    sb.AppendLine(text);
-                    sb.AppendLine();
+                    sb.Append("--- Document #").Append(g.Key)
+                      .Append(" | Chunk ")
+                      .Append(c.ChunkIndex)
+                      .AppendLine(" ---")
+                      .AppendLine(text)
+                      .AppendLine();
 
                     takenForThisDoc++;
                     totalTaken++;
                     totalChars += text.Length;
 
-                    if (totalTaken >= MAX_EXCERPTS_TOTAL) break;
                 }
                 if (totalTaken >= MAX_EXCERPTS_TOTAL) break;
             }
@@ -235,13 +224,12 @@ Answer concisely using ONLY the context above. If you can't answer from the cont
             if (totalTaken == 0)
                 return "I couldn’t extract enough readable text to summarize.";
 
-            // 4) **Ultra-simple, ultra-fast prompt** (no doc-type branching)
+            // System + user prompt
             var systemPrompt = "Summarize briefly and faithfully. Use ONLY the provided text. Keep it under 200 words. Do not invent facts.";
             var userPrompt = new StringBuilder(2048);
             userPrompt.AppendLine("Summarize the following text clearly and briefly.");
             userPrompt.AppendLine("Focus on the main points, important facts, names, and numbers.");
             userPrompt.AppendLine("Use concise paragraphs.");
-            userPrompt.AppendLine("Keep the total summary under 200 words.");
             userPrompt.AppendLine();
             userPrompt.AppendLine("=== DOCUMENT START ===");
             userPrompt.AppendLine(sb.ToString());
@@ -252,7 +240,7 @@ Answer concisely using ONLY the context above. If you can't answer from the cont
             userPrompt.AppendLine();
             userPrompt.AppendLine("Return only the final summary text — no introductions or headings.");
 
-            // 5) One small LLM call (fast)
+            //   LLM call 
             try
             {
                 return await _generationClient.GenerateAsync(
@@ -260,13 +248,9 @@ Answer concisely using ONLY the context above. If you can't answer from the cont
                     systemPrompt: systemPrompt
                 );
             }
-            catch (TaskCanceledException)
-            {
-                return "⚠️ Exception: The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.";
-            }
             catch (OperationCanceledException)
             {
-                return "⚠️ Exception: The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.";
+                return "Exception: The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.";
             }
             catch (Exception ex)
             {

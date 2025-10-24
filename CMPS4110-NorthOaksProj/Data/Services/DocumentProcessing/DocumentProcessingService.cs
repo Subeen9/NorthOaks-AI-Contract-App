@@ -43,10 +43,10 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                     return;
                 }
 
-                // 1) Get embeddings in batch (MiniLM → 384 dims each)
+                // Get embeddings in batch (MiniLM → 384 dims each)
                 var vectors = await _embeddings.EmbedBatchAsync(chunks);
 
-                // 2) Upsert to Qdrant + stage DB rows
+                //  Upsert to Qdrant + stage DB rows
                 var toInsert = new List<ContractEmbedding>(chunks.Count);
 
                 for (var i = 0; i < chunks.Count; i++)
@@ -68,8 +68,6 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                         _logger.LogError(ex, "Error processing chunk {Index} for contract {ContractId}", i, contractId);
                     }
                 }
-
-                // 3) Commit once
                 if (toInsert.Count > 0)
                 {
                     _context.ContractEmbeddings.AddRange(toInsert);
@@ -85,6 +83,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                 _logger.LogError(ex, "Failed to process document for contract {ContractId}", contractId);
                 throw;
             }
+            
         }
 
         private string ExtractText(string filePath)
@@ -137,7 +136,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
             }
         }
 
-        private List<string> ChunkText(string text, int maxSize = 600, int overlap = 100)
+        private List<string> ChunkText(string text, int maxSize = 600)
         {
             if (string.IsNullOrWhiteSpace(text))
                 return new List<string>();
@@ -151,25 +150,15 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
 
             foreach (var sentence in sentences)
             {
-                var sentenceWithSpace = sentence + " ";
 
-                if (current.Length + sentenceWithSpace.Length > maxSize && current.Length > 0)
+                if (current.Length + sentence.Length + 1 > maxSize && current.Length > 0)
                 {
-                    // save current chunk
-                    var chunk = current.ToString().Trim();
-                    chunks.Add(chunk);
 
-                    // get overlap tail
-                    var overlapText = chunk.Length > overlap
-                        ? chunk.Substring(chunk.Length - overlap)
-                        : chunk;
-
-                    // start new chunk with overlap
+                    chunks.Add(current.ToString().Trim());
                     current.Clear();
-                    current.Append(overlapText);
                 }
 
-                current.Append(sentenceWithSpace);
+                current.Append(sentence + " ");
             }
 
             if (current.Length > 0)
@@ -178,6 +167,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
             }
 
             return chunks;
+        
         }
 
     }
