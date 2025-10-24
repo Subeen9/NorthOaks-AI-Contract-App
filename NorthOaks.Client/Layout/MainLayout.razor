@@ -41,36 +41,53 @@
 
                             <!-- Notifications -->
                             <div class="dropdown">
-                                <button class="btn btn-link position-relative" title="Notifications"
-                                        id="notificationMenu" data-bs-toggle="dropdown" aria-expanded="false"
-                                        @onclick="ClearNotifications">
+                                <button class="btn btn-link position-relative"
+                                        id="notificationMenu"
+                                        data-bs-toggle="dropdown"
+                                        aria-expanded="false"
+                                        @onclick="OnDropdownOpened">
                                     <i class="bi bi-bell fs-5"></i>
+
                                     @if (unreadCount > 0)
                                     {
-                                        <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
-                                            @unreadCount
-                                        </span>
+                                        <span class="notif-badge">@unreadCount</span>
                                     }
                                 </button>
 
-                                <ul class="dropdown-menu dropdown-menu-end shadow-sm" style="min-width:320px;">
-                                    @if (Notifications.Messages.Count == 0)
-                                    {
-                                        <li><span class="dropdown-item-text text-muted">No new notifications</span></li>
-                                    }
-                                    else
-                                    {
-                                        @foreach (var n in Notifications.Messages)
+                                <div class="dropdown-menu dropdown-menu-end notif-dropdown p-0 shadow-sm border-0">
+                                    <div class="notif-header d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                                        <span class="fw-semibold text-dark">Notifications</span>
+                                        <span class="notif-header__action @(unreadCount == 0 ? "text-muted opacity-50" : "text-primary")"
+                                              style="cursor:pointer;"
+                                              @onclick="ClearNotifications">
+                                            Mark all as read
+                                        </span>
+                                    </div>
+
+                                    <div class="notification-list">
+                                        @if (Notifications.Messages.Count == 0)
                                         {
-                                            <li class="dropdown-item-text">
-                                                <div class="fw-semibold">@n.Message</div>
-                                                <small class="text-muted">@n.GetTimeAgo()</small>
-                                            </li>
-                                            <li><hr class="dropdown-divider" /></li>
+                                            <div class="text-center text-muted py-3">
+                                                No new notifications
+                                            </div>
                                         }
-                                    }
-                                </ul>
+                                        else
+                                        {
+                                            @foreach (var n in Notifications.Messages)
+                                            {
+                                                <div class="notification-item @(n.IsRead ? "" : "unread") px-3 py-2 border-bottom">
+                                                    <div class="notification-item__msg fw-medium">@n.Message</div>
+                                                    <div class="notification-item__time small text-muted">
+                                                        @n.CreatedAt.ToLocalTime().ToString("MMM dd, hh:mm tt")
+                                                    </div>
+                                                </div>
+                                            }
+                                        }
+                                    </div>
+                                </div>
                             </div>
+
+
 
                             <!-- Profile -->
                             <div class="dropdown">
@@ -171,6 +188,17 @@
         ToastService.Notify(new(ToastType.Success, "Logout Successful"));
         Navigation.NavigateTo("/", forceLoad: true);
     }
+    private async Task OnDropdownOpened()
+    {
+        // Automatically mark all as read when the dropdown is opened
+        if (Notifications.UnreadCount > 0)
+        {
+            await Notifications.ClearUnread();
+            unreadCount = 0;
+            StateHasChanged();
+        }
+    }
+
 
     public void Dispose()
     {
