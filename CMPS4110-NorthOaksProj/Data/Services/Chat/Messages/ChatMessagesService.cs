@@ -66,9 +66,27 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                 })
                 .ToListAsync();
         }
+        private string CleanGeneratedResponse(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return text;
+
+            // Remove clause/chunk references like "Clause8: Chunk1"
+            text = Regex.Replace(text, @"Clause\d+: Chunk\d+", "", RegexOptions.IgnoreCase);
+
+            // Remove excessive symbols like *, +, etc. at the start of lines
+            text = Regex.Replace(text, @"^[\*\+\-]\s*", "", RegexOptions.Multiline);
+
+            // Normalize whitespace
+            text = Regex.Replace(text, @"\s{2,}", " ").Trim();
+
+            return text;
+        }
+
 
         public async Task<ChatMessageDto?> Create(CreateChatMessageDto dto)
         {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
             var exists = await _context.ChatSessions.AsNoTracking().AnyAsync(s => s.Id == dto.SessionId);
             if (!exists) return null;
 
@@ -80,24 +98,33 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 
             _context.ChatMessages.Add(entity);
             await _context.SaveChangesAsync();
+            _logger.LogInformation("⏱️ DB save took {Ms}ms", sw.ElapsedMilliseconds);
+            sw.Restart();
 
             try
             {
                 // ===== FAST SUMMARY path =====
                 if (IsSummaryIntent(dto.Message))
                 {
-                    _logger.LogInformation("Summary intent detected for session {SessionId}", dto.SessionId);
+                    _logger.LogInformation("📋 Summary intent detected for session {SessionId}", dto.SessionId);
                     var summaryResponse = await HandleSummaryAsync(dto.SessionId, dto.Message);
+                    _logger.LogInformation("⏱️ Summary took {Ms}ms", sw.ElapsedMilliseconds);
                     entity.Response = summaryResponse;
                     await _context.SaveChangesAsync();
                     return MapToDto(entity);
                 }
 
                 // ===== RAG path =====
-                var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
-                var results = await _qdrantService.SearchSimilarAsync(vector, limit: 20, scoreThreshold: 0.15f);
+                _logger.LogInformation("🔍 Starting RAG pipeline for: {Message}", dto.Message);
 
-                _logger.LogInformation("Search returned {Count} results for message: {Message}", results.Count, dto.Message);
+                var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
+                _logger.LogInformation("⏱️ Message embedding took {Ms}ms", sw.ElapsedMilliseconds);
+                sw.Restart();
+
+                var results = await _qdrantService.SearchSimilarAsync(vector, limit: 20, scoreThreshold: 0.15f);
+                _logger.LogInformation("⏱️ Vector search took {Ms}ms, found {Count} results",
+                    sw.ElapsedMilliseconds, results.Count);
+                sw.Restart();
 
                 if (results.Count == 0)
                 {
@@ -108,25 +135,27 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 
                 // Deduplicate overlapping chunks
                 var dedupedTexts = ContextBuilder.DeduplicateChunks(results.Select(r => r.ChunkText).ToList());
-
                 var filteredResults = results
                     .Where(r => dedupedTexts.Contains(r.ChunkText))
                     .Take(12)
                     .ToList();
 
+                _logger.LogInformation("🧹 Deduplication: {Original} → {Filtered} chunks",
+                    results.Count, filteredResults.Count);
+
                 // Build structured clause context
                 var contextText = ContextBuilder.BuildStructuredContext(filteredResults);
-
+                _logger.LogInformation("📝 Context built: {Length} characters", contextText.Length);
 
                 var systemPrompt = @"
-You are a contract analysis assistant.
-Use ONLY the clauses provided in the context to answer the question.
-Quote clause numbers or titles when possible.
+You are a professional contract analysis assistant.
+Use only the clauses provided in the context to answer the question.
+Do NOT include internal labels, clause numbers, chunk identifiers, or any metadata in the output.
+Provide a clean, concise, professional, human-readable response.
 If the answer cannot be found, reply exactly: 'Not found in contract.'
-Be concise, factual, and avoid speculation.
+Avoid using jargon or technical references unrelated to the user question.
 ";
 
-                // Combine user question + context
                 var userPrompt = $@"
 Context:
 {contextText}
@@ -137,34 +166,62 @@ User question:
 Answer:
 ";
 
-                // Call generation client with both prompts
-                var generatedResponse = await _generationClient.GenerateAsync(
+                _logger.LogInformation("🤖 Calling LLM generation (model: {Model})", "llama3.2");
+                _logger.LogInformation("📊 Prompt size: system={SystemLen}chars, user={UserLen}chars",
+                    systemPrompt.Length, userPrompt.Length);
+
+                sw.Restart();
+                var rawresponse = await _generationClient.GenerateAsync(
                     userPrompt,
                     systemPrompt
                 );
+                var generatedResponse = CleanGeneratedResponse(rawresponse);
+                _logger.LogInformation("⏱️ LLM generation took {Ms}ms, response length: {Len}",
+                    sw.ElapsedMilliseconds, generatedResponse?.Length ?? 0);
 
-                entity.Response = generatedResponse;
+                if (string.IsNullOrWhiteSpace(generatedResponse))
+                {
+                    _logger.LogWarning("⚠️ Empty response from LLM!");
+                    entity.Response = "The model returned an empty response. Please try rephrasing your question.";
+                }
+                else
+                {
+                    entity.Response = generatedResponse;
+                }
+
                 await _context.SaveChangesAsync();
-
-                _logger.LogInformation("Successfully generated response for message {MessageId}", entity.Id);
+                _logger.LogInformation("✅ Successfully generated response for message {MessageId}", entity.Id);
                 return MapToDto(entity);
             }
-            catch (TaskCanceledException)
+            catch (TaskCanceledException ex)
             {
+                _logger.LogError(ex, "⏱️ TIMEOUT after {Ms}ms at: {StackTrace}",
+                    sw.ElapsedMilliseconds, ex.StackTrace);
                 entity.Response = "⚠️ The request was canceled due to timeout (100 seconds).";
                 await _context.SaveChangesAsync();
                 return MapToDto(entity);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
+                _logger.LogError(ex, "⏱️ OPERATION CANCELED after {Ms}ms at: {StackTrace}",
+                    sw.ElapsedMilliseconds, ex.StackTrace);
                 entity.Response = "⚠️ The request was canceled due to timeout (100 seconds).";
+                await _context.SaveChangesAsync();
+                return MapToDto(entity);
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.LogError(ex, "🌐 HTTP ERROR: {Message}, StatusCode: {StatusCode}",
+                    ex.Message, ex.StatusCode);
+                entity.Response = $"Connection error: {ex.Message}. Is Ollama running?";
                 await _context.SaveChangesAsync();
                 return MapToDto(entity);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error processing message: {Message}", dto.Message);
-                entity.Response = "I encountered an error while processing your question. Please try again.";
+                _logger.LogError(ex, "❌ UNEXPECTED ERROR after {Ms}ms: {ExceptionType} - {Message}",
+                    sw.ElapsedMilliseconds, ex.GetType().Name, ex.Message);
+                entity.Response = $"Error: {ex.Message}";
                 await _context.SaveChangesAsync();
                 return MapToDto(entity);
             }
@@ -198,6 +255,8 @@ Answer:
         // ===== FAST summary handler (EF, but hard-capped for speed) =====
         private async Task<string> HandleSummaryAsync(int sessionId, string userMessage)
         {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
             // 1) Contracts attached to this session
             var contractIds = await _context.ChatSessionContracts
                 .AsNoTracking()
@@ -206,10 +265,13 @@ Answer:
                 .Distinct()
                 .ToListAsync();
 
-            if (contractIds.Count == 0)
-                return "I don’t see any document linked to this chat to summarize.";
+            _logger.LogInformation("📄 Found {Count} contracts for session {SessionId}",
+                contractIds.Count, sessionId);
 
-            // 2) Pull ordered chunks, but hard-cap count and characters
+            if (contractIds.Count == 0)
+                return "I don't see any document linked to this chat to summarize.";
+
+            // 2) Pull ordered chunks
             var rawChunks = await _context.ContractEmbeddings
                 .AsNoTracking()
                 .Where(e => contractIds.Contains(e.ContractId))
@@ -218,10 +280,14 @@ Answer:
                 .Select(e => new { e.ContractId, e.ChunkIndex, e.ChunkText })
                 .ToListAsync();
 
+            _logger.LogInformation("⏱️ Fetched {Count} chunks in {Ms}ms",
+                rawChunks.Count, sw.ElapsedMilliseconds);
+            sw.Restart();
+
             if (rawChunks.Count == 0)
                 return "No text was found to summarize for the linked document(s).";
 
-            // 3) Build a small context (limit per doc + global + char budget)
+            // 3) Build context
             var sb = new StringBuilder(MAX_CONTEXT_CHARS + 512);
             var totalChars = 0;
             var totalTaken = 0;
@@ -239,7 +305,11 @@ Answer:
                     var text = (c.ChunkText ?? string.Empty).Trim();
                     if (text.Length < MIN_CHUNK_LEN) continue;
 
-                    if (totalChars + text.Length + 64 > MAX_CONTEXT_CHARS) { totalTaken = MAX_EXCERPTS_TOTAL; break; }
+                    if (totalChars + text.Length + 64 > MAX_CONTEXT_CHARS)
+                    {
+                        totalTaken = MAX_EXCERPTS_TOTAL;
+                        break;
+                    }
 
                     sb.AppendLine($"--- Document #{g.Key} | Chunk {c.ChunkIndex} ---");
                     sb.AppendLine(text);
@@ -256,10 +326,12 @@ Answer:
 
             sb.AppendLine("=== DOCUMENT EXCERPTS END ===");
 
-            if (totalTaken == 0)
-                return "I couldn’t extract enough readable text to summarize.";
+            _logger.LogInformation("📦 Context built: {Chunks} chunks, {Chars} chars",
+                totalTaken, totalChars);
 
-            // 4) **Ultra-simple, ultra-fast prompt** (no doc-type branching)
+            if (totalTaken == 0)
+                return "I couldn't extract enough readable text to summarize.";
+
             var systemPrompt = "Summarize briefly and faithfully. Use ONLY the provided text. Keep it under 200 words. Do not invent facts.";
             var userPrompt = new StringBuilder(2048);
             userPrompt.AppendLine("Summarize the following text clearly and briefly.");
@@ -276,29 +348,39 @@ Answer:
             userPrompt.AppendLine();
             userPrompt.AppendLine("Return only the final summary text — no introductions or headings.");
 
-            // 5) One small LLM call (fast)
             try
             {
-                return await _generationClient.GenerateAsync(
+                _logger.LogInformation("🤖 Calling LLM for summary generation");
+                sw.Restart();
+
+                var result = await _generationClient.GenerateAsync(
                     prompt: userPrompt.ToString(),
                     systemPrompt: systemPrompt
                 );
+
+                _logger.LogInformation("⏱️ Summary generation took {Ms}ms, length: {Len}",
+                    sw.ElapsedMilliseconds, result?.Length ?? 0);
+
+                return result;
             }
-            catch (TaskCanceledException)
+            catch (TaskCanceledException ex)
             {
-                return "⚠️ Exception: The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.";
+                _logger.LogError(ex, "⏱️ Summary TIMEOUT after {Ms}ms", sw.ElapsedMilliseconds);
+                return "⚠️ Summary generation timed out (100 seconds).";
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
-                return "⚠️ Exception: The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.";
+                _logger.LogError(ex, "⏱️ Summary CANCELED after {Ms}ms", sw.ElapsedMilliseconds);
+                return "⚠️ Summary generation was canceled (100 seconds).";
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Fast summary generation failed.");
-                return "I couldn’t generate the summary due to an internal issue. Please try again.";
+                _logger.LogError(ex, "❌ Summary generation failed after {Ms}ms: {Type}",
+                    sw.ElapsedMilliseconds, ex.GetType().Name);
+                return "I couldn't generate the summary due to an internal issue. Please try again.";
             }
         }
     }
-}
+    }
 
 
