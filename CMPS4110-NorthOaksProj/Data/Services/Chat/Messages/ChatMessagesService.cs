@@ -98,7 +98,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 
             _context.ChatMessages.Add(entity);
             await _context.SaveChangesAsync();
-            _logger.LogInformation("⏱️ DB save took {Ms}ms", sw.ElapsedMilliseconds);
+            _logger.LogInformation("DB save took {Ms}ms", sw.ElapsedMilliseconds);
             sw.Restart();
 
             try
@@ -106,23 +106,23 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                 // ===== FAST SUMMARY path =====
                 if (IsSummaryIntent(dto.Message))
                 {
-                    _logger.LogInformation("📋 Summary intent detected for session {SessionId}", dto.SessionId);
+                    _logger.LogInformation("Summary intent detected for session {SessionId}", dto.SessionId);
                     var summaryResponse = await HandleSummaryAsync(dto.SessionId, dto.Message);
-                    _logger.LogInformation("⏱️ Summary took {Ms}ms", sw.ElapsedMilliseconds);
+                    _logger.LogInformation("Summary took {Ms}ms", sw.ElapsedMilliseconds);
                     entity.Response = summaryResponse;
                     await _context.SaveChangesAsync();
                     return MapToDto(entity);
                 }
 
                 // ===== RAG path =====
-                _logger.LogInformation("🔍 Starting RAG pipeline for: {Message}", dto.Message);
+                _logger.LogInformation("Starting RAG pipeline for: {Message}", dto.Message);
 
                 var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
-                _logger.LogInformation("⏱️ Message embedding took {Ms}ms", sw.ElapsedMilliseconds);
+                _logger.LogInformation("Message embedding took {Ms}ms", sw.ElapsedMilliseconds);
                 sw.Restart();
 
                 var results = await _qdrantService.SearchSimilarAsync(vector, limit: 20, scoreThreshold: 0.15f);
-                _logger.LogInformation("⏱️ Vector search took {Ms}ms, found {Count} results",
+                _logger.LogInformation("Vector search took {Ms}ms, found {Count} results",
                     sw.ElapsedMilliseconds, results.Count);
                 sw.Restart();
 
@@ -140,12 +140,12 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     .Take(12)
                     .ToList();
 
-                _logger.LogInformation("🧹 Deduplication: {Original} → {Filtered} chunks",
+                _logger.LogInformation("Deduplication: {Original} → {Filtered} chunks",
                     results.Count, filteredResults.Count);
 
                 // Build structured clause context
                 var contextText = ContextBuilder.BuildStructuredContext(filteredResults);
-                _logger.LogInformation("📝 Context built: {Length} characters", contextText.Length);
+                _logger.LogInformation("Context built: {Length} characters", contextText.Length);
 
                 var systemPrompt = @"
 You are a professional contract analysis assistant.
@@ -166,8 +166,8 @@ User question:
 Answer:
 ";
 
-                _logger.LogInformation("🤖 Calling LLM generation (model: {Model})", "llama3.2");
-                _logger.LogInformation("📊 Prompt size: system={SystemLen}chars, user={UserLen}chars",
+                _logger.LogInformation("Calling LLM generation (model: {Model})", "llama3.2");
+                _logger.LogInformation("Prompt size: system={SystemLen}chars, user={UserLen}chars",
                     systemPrompt.Length, userPrompt.Length);
 
                 sw.Restart();
@@ -176,12 +176,12 @@ Answer:
                     systemPrompt
                 );
                 var generatedResponse = CleanGeneratedResponse(rawresponse);
-                _logger.LogInformation("⏱️ LLM generation took {Ms}ms, response length: {Len}",
+                _logger.LogInformation("LLM generation took {Ms}ms, response length: {Len}",
                     sw.ElapsedMilliseconds, generatedResponse?.Length ?? 0);
 
                 if (string.IsNullOrWhiteSpace(generatedResponse))
                 {
-                    _logger.LogWarning("⚠️ Empty response from LLM!");
+                    _logger.LogWarning("Empty response from LLM!");
                     entity.Response = "The model returned an empty response. Please try rephrasing your question.";
                 }
                 else
@@ -190,28 +190,28 @@ Answer:
                 }
 
                 await _context.SaveChangesAsync();
-                _logger.LogInformation("✅ Successfully generated response for message {MessageId}", entity.Id);
+                _logger.LogInformation("Successfully generated response for message {MessageId}", entity.Id);
                 return MapToDto(entity);
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogError(ex, "⏱️ TIMEOUT after {Ms}ms at: {StackTrace}",
+                _logger.LogError(ex, "TIMEOUT after {Ms}ms at: {StackTrace}",
                     sw.ElapsedMilliseconds, ex.StackTrace);
-                entity.Response = "⚠️ The request was canceled due to timeout (100 seconds).";
+                entity.Response = "The request was canceled due to timeout (100 seconds).";
                 await _context.SaveChangesAsync();
                 return MapToDto(entity);
             }
             catch (OperationCanceledException ex)
             {
-                _logger.LogError(ex, "⏱️ OPERATION CANCELED after {Ms}ms at: {StackTrace}",
+                _logger.LogError(ex, "OPERATION CANCELED after {Ms}ms at: {StackTrace}",
                     sw.ElapsedMilliseconds, ex.StackTrace);
-                entity.Response = "⚠️ The request was canceled due to timeout (100 seconds).";
+                entity.Response = "The request was canceled due to timeout (100 seconds).";
                 await _context.SaveChangesAsync();
                 return MapToDto(entity);
             }
             catch (HttpRequestException ex)
             {
-                _logger.LogError(ex, "🌐 HTTP ERROR: {Message}, StatusCode: {StatusCode}",
+                _logger.LogError(ex, "HTTP ERROR: {Message}, StatusCode: {StatusCode}",
                     ex.Message, ex.StatusCode);
                 entity.Response = $"Connection error: {ex.Message}. Is Ollama running?";
                 await _context.SaveChangesAsync();
@@ -219,7 +219,7 @@ Answer:
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ UNEXPECTED ERROR after {Ms}ms: {ExceptionType} - {Message}",
+                _logger.LogError(ex, "UNEXPECTED ERROR after {Ms}ms: {ExceptionType} - {Message}",
                     sw.ElapsedMilliseconds, ex.GetType().Name, ex.Message);
                 entity.Response = $"Error: {ex.Message}";
                 await _context.SaveChangesAsync();
@@ -265,7 +265,7 @@ Answer:
                 .Distinct()
                 .ToListAsync();
 
-            _logger.LogInformation("📄 Found {Count} contracts for session {SessionId}",
+            _logger.LogInformation("Found {Count} contracts for session {SessionId}",
                 contractIds.Count, sessionId);
 
             if (contractIds.Count == 0)
@@ -280,7 +280,7 @@ Answer:
                 .Select(e => new { e.ContractId, e.ChunkIndex, e.ChunkText })
                 .ToListAsync();
 
-            _logger.LogInformation("⏱️ Fetched {Count} chunks in {Ms}ms",
+            _logger.LogInformation("Fetched {Count} chunks in {Ms}ms",
                 rawChunks.Count, sw.ElapsedMilliseconds);
             sw.Restart();
 
@@ -326,7 +326,7 @@ Answer:
 
             sb.AppendLine("=== DOCUMENT EXCERPTS END ===");
 
-            _logger.LogInformation("📦 Context built: {Chunks} chunks, {Chars} chars",
+            _logger.LogInformation("Context built: {Chunks} chunks, {Chars} chars",
                 totalTaken, totalChars);
 
             if (totalTaken == 0)
@@ -350,7 +350,7 @@ Answer:
 
             try
             {
-                _logger.LogInformation("🤖 Calling LLM for summary generation");
+                _logger.LogInformation("Calling LLM for summary generation");
                 sw.Restart();
 
                 var result = await _generationClient.GenerateAsync(
@@ -358,24 +358,24 @@ Answer:
                     systemPrompt: systemPrompt
                 );
 
-                _logger.LogInformation("⏱️ Summary generation took {Ms}ms, length: {Len}",
+                _logger.LogInformation("Summary generation took {Ms}ms, length: {Len}",
                     sw.ElapsedMilliseconds, result?.Length ?? 0);
 
                 return result;
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogError(ex, "⏱️ Summary TIMEOUT after {Ms}ms", sw.ElapsedMilliseconds);
-                return "⚠️ Summary generation timed out (100 seconds).";
+                _logger.LogError(ex, "Summary TIMEOUT after {Ms}ms", sw.ElapsedMilliseconds);
+                return "Summary generation timed out (100 seconds).";
             }
             catch (OperationCanceledException ex)
             {
-                _logger.LogError(ex, "⏱️ Summary CANCELED after {Ms}ms", sw.ElapsedMilliseconds);
-                return "⚠️ Summary generation was canceled (100 seconds).";
+                _logger.LogError(ex, "Summary CANCELED after {Ms}ms", sw.ElapsedMilliseconds);
+                return "Summary generation was canceled (100 seconds).";
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Summary generation failed after {Ms}ms: {Type}",
+                _logger.LogError(ex, "Summary generation failed after {Ms}ms: {Type}",
                     sw.ElapsedMilliseconds, ex.GetType().Name);
                 return "I couldn't generate the summary due to an internal issue. Please try again.";
             }

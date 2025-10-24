@@ -7,7 +7,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Embeddings
     {
         public string BaseUrl { get; set; } = "http://localhost:11434";
         public string Model { get; set; } = "nomic-embed-text:latest";
-        public string GenerationModel { get; set; } = "qwen3:4b";
+        public string GenerationModel { get; set; } = "llama3.2";
         public int VectorDimension { get; set; } = 768;
     }
 
