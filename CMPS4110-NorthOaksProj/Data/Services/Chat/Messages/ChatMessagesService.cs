@@ -7,23 +7,24 @@ using CMPS4110_NorthOaksProj.Data.Services.QDrant;
 using CMPS4110_NorthOaksProj.Models.Chat;
 using Microsoft.EntityFrameworkCore;
 using NorthOaks.Shared.Model.Chat;
-using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
+
+
 namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 {
-    public class ChatMessagesService : EntityBaseRepository<ChatMessage>, IChatMessagesService
+    public class ChatMessagesService : EntityBaseRepository<ChatMessage>,IChatMessagesService
     {
-        // Summary intent detection (incl. common typos)
+        // Summary intent detection 
         private static readonly Regex SummaryRegex = new(
             @"\b(summarize|summary|summarise|summarzie|summery|tl;dr|tldr|short\s+version|condense|brief\s+me|give\s+me\s+a\s+summary)\b",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-        // --- SPEED TUNING CONSTANTS (kept tight to stay under 100s) ---
-        private const int MAX_EXCERPTS_TOTAL = 40;     // total chunks across all docs
+        // optimization constants for 100 second LLM timeout
+        private const int MAX_EXCERPTS_TOTAL = 40;     // limits total chunks across all docs
         private const int MAX_EXCERPTS_PER_DOC = 30;     // per-doc cap
-        private const int MAX_CONTEXT_CHARS = 9000;   // ~6–7k tokens model-dependent
+        private const int MAX_CONTEXT_CHARS = 9000;   // ~6–7k tokens per model
         private const int MIN_CHUNK_LEN = 20;     // skip crumbs
 
         private readonly DataContext _context;
@@ -193,14 +194,7 @@ Answer:
                 _logger.LogInformation("Successfully generated response for message {MessageId}", entity.Id);
                 return MapToDto(entity);
             }
-            catch (TaskCanceledException ex)
-            {
-                _logger.LogError(ex, "TIMEOUT after {Ms}ms at: {StackTrace}",
-                    sw.ElapsedMilliseconds, ex.StackTrace);
-                entity.Response = "The request was canceled due to timeout (100 seconds).";
-                await _context.SaveChangesAsync();
-                return MapToDto(entity);
-            }
+           
             catch (OperationCanceledException ex)
             {
                 _logger.LogError(ex, "OPERATION CANCELED after {Ms}ms at: {StackTrace}",
@@ -245,19 +239,17 @@ Answer:
             Timestamp = entity.Timestamp
         };
 
-        // ===== intent detection =====
+        // intent detection
         private static bool IsSummaryIntent(string? text)
         {
             if (string.IsNullOrWhiteSpace(text)) return false;
             return SummaryRegex.IsMatch(text);
         }
 
-        // ===== FAST summary handler (EF, but hard-capped for speed) =====
+        // summary handler
         private async Task<string> HandleSummaryAsync(int sessionId, string userMessage)
         {
-            var sw = System.Diagnostics.Stopwatch.StartNew();
-
-            // 1) Contracts attached to this session
+            //  contracts linked to session
             var contractIds = await _context.ChatSessionContracts
                 .AsNoTracking()
                 .Where(x => x.ChatSessionId == sessionId)
@@ -271,18 +263,17 @@ Answer:
             if (contractIds.Count == 0)
                 return "I don't see any document linked to this chat to summarize.";
 
-            // 2) Pull ordered chunks
+            //  pulls text chunks with limits
             var rawChunks = await _context.ContractEmbeddings
                 .AsNoTracking()
                 .Where(e => contractIds.Contains(e.ContractId))
                 .OrderBy(e => e.ContractId)
                 .ThenBy(e => e.ChunkIndex)
+                .Take(MAX_EXCERPTS_TOTAL)
                 .Select(e => new { e.ContractId, e.ChunkIndex, e.ChunkText })
                 .ToListAsync();
 
-            _logger.LogInformation("Fetched {Count} chunks in {Ms}ms",
-                rawChunks.Count, sw.ElapsedMilliseconds);
-            sw.Restart();
+           
 
             if (rawChunks.Count == 0)
                 return "No text was found to summarize for the linked document(s).";
@@ -305,21 +296,19 @@ Answer:
                     var text = (c.ChunkText ?? string.Empty).Trim();
                     if (text.Length < MIN_CHUNK_LEN) continue;
 
-                    if (totalChars + text.Length + 64 > MAX_CONTEXT_CHARS)
-                    {
-                        totalTaken = MAX_EXCERPTS_TOTAL;
-                        break;
-                    }
+                    if (totalChars + text.Length + 64 > MAX_CONTEXT_CHARS) break;
 
-                    sb.AppendLine($"--- Document #{g.Key} | Chunk {c.ChunkIndex} ---");
-                    sb.AppendLine(text);
-                    sb.AppendLine();
+                    sb.Append("--- Document #").Append(g.Key)
+                      .Append(" | Chunk ")
+                      .Append(c.ChunkIndex)
+                      .AppendLine(" ---")
+                      .AppendLine(text)
+                      .AppendLine();
 
                     takenForThisDoc++;
                     totalTaken++;
                     totalChars += text.Length;
 
-                    if (totalTaken >= MAX_EXCERPTS_TOTAL) break;
                 }
                 if (totalTaken >= MAX_EXCERPTS_TOTAL) break;
             }
@@ -332,12 +321,12 @@ Answer:
             if (totalTaken == 0)
                 return "I couldn't extract enough readable text to summarize.";
 
+            // System + user prompt
             var systemPrompt = "Summarize briefly and faithfully. Use ONLY the provided text. Keep it under 200 words. Do not invent facts.";
             var userPrompt = new StringBuilder(2048);
             userPrompt.AppendLine("Summarize the following text clearly and briefly.");
             userPrompt.AppendLine("Focus on the main points, important facts, names, and numbers.");
             userPrompt.AppendLine("Use concise paragraphs.");
-            userPrompt.AppendLine("Keep the total summary under 200 words.");
             userPrompt.AppendLine();
             userPrompt.AppendLine("=== DOCUMENT START ===");
             userPrompt.AppendLine(sb.ToString());
@@ -348,35 +337,28 @@ Answer:
             userPrompt.AppendLine();
             userPrompt.AppendLine("Return only the final summary text — no introductions or headings.");
 
+            //   LLM call 
             try
             {
                 _logger.LogInformation("Calling LLM for summary generation");
-                sw.Restart();
+              
 
                 var result = await _generationClient.GenerateAsync(
                     prompt: userPrompt.ToString(),
                     systemPrompt: systemPrompt
                 );
 
-                _logger.LogInformation("Summary generation took {Ms}ms, length: {Len}",
-                    sw.ElapsedMilliseconds, result?.Length ?? 0);
+              
 
                 return result;
             }
-            catch (TaskCanceledException ex)
+            catch (OperationCanceledException)
             {
-                _logger.LogError(ex, "Summary TIMEOUT after {Ms}ms", sw.ElapsedMilliseconds);
-                return "Summary generation timed out (100 seconds).";
-            }
-            catch (OperationCanceledException ex)
-            {
-                _logger.LogError(ex, "Summary CANCELED after {Ms}ms", sw.ElapsedMilliseconds);
-                return "Summary generation was canceled (100 seconds).";
+                return "Exception: The request was canceled due to the configured HttpClient.Timeout of 100 seconds elapsing.";
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Summary generation failed after {Ms}ms: {Type}",
-                    sw.ElapsedMilliseconds, ex.GetType().Name);
+               
                 return "I couldn't generate the summary due to an internal issue. Please try again.";
             }
         }

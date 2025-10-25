@@ -78,8 +78,6 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                         _logger.LogError(ex, "Error embedding chunk {Index} for contract {ContractId}", i, contractId);
                     }
                 }
-
-                //  Commit once
                 if (toInsert.Count > 0)
                 {
                     _context.ContractEmbeddings.AddRange(toInsert);
@@ -95,6 +93,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                 _logger.LogError(ex, " Failed to process document for contract {ContractId}", contractId);
                 throw;
             }
+
         }
 
         //  Extract text or OCR fallback
@@ -181,7 +180,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                     {
                         ChunkText = chunkText,
                         ChunkIndex = globalIndex++,
-                        SectionTitle = sectionTitle 
+                        SectionTitle = sectionTitle
                     });
                 }
             }
@@ -203,6 +202,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
             {
                 if (current.Length + sentence.Length > maxLen)
                 {
+                    // Add current chunk
                     chunks.Add(current.ToString().Trim());
                     current.Clear();
 
@@ -223,13 +223,14 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
 
             return chunks;
         }
-    }
 
-   
-    internal class ContractChunk
-    {
-        public string ChunkText { get; set; } = "";
-        public int ChunkIndex { get; set; }
-        public string? SectionTitle { get; set; }
+
+
+        internal class ContractChunk
+        {
+            public string ChunkText { get; set; } = "";
+            public int ChunkIndex { get; set; }
+            public string? SectionTitle { get; set; }
+        }
     }
-}
+    }
