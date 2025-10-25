@@ -1221,8 +1221,7 @@ html, body {
         opacity: 0.5;
     }
 
-    40% {
-        transform: scale(1);
-        opacity: 1;
+    .btn.rounded-circle.text-white[style*="#003768"]:hover {
+        background-color: #ba8e0b !important;
+        transform: scale(1.05);
     }
-}
