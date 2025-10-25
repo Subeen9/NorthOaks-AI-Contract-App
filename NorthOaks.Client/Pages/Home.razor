@@ -1,6 +1,7 @@
 ﻿@page "/home"
 @using NorthOaks.Shared.Model.Contracts
 @using System.Linq
+@using System.Text.Json
 @inject HttpClient Http
 @inject IJSRuntime JS
 @using Microsoft.AspNetCore.Authorization
@@ -29,11 +30,23 @@
                 </NavLink>
             </nav>
 
-            <!-- SORT + PAGE SIZE PANEL (view moved to header) -->
+            <!-- SORT + PIN + PAGE SIZE -->
             <div class="sb-panel">
                 <div class="sb-sec-title">Sort</div>
 
-                <div class="sb-radios">
+                <!-- Pin switches (grouped for spacing) -->
+                <div class="pin-group">
+                    <label class="sb-switch">
+                        <input type="checkbox" @bind="pinFirst" />
+                        <span>Pinned first</span>
+                    </label>
+                    <label class="sb-switch">
+                        <input type="checkbox" @bind="pinOnly" @bind:after="OnPinOnlyChanged" />
+                        <span>Pinned only</span>
+                    </label>
+                </div>
+
+                <div class="sb-radios mt-1">
                     <label class="sb-radio">
                         <input type="radio" name="sort" value="uploaded_desc"
                                checked="@("uploaded_desc" == sortKey)"
@@ -106,7 +119,7 @@
                                @bind="searchTerm" @bind:after="() => currentPage = 1" />
                     </div>
 
-                    <!-- VIEW TOGGLE BACK IN HEADER -->
+                    <!-- View toggle in header -->
                     <div class="btn-group view-toggle" role="group" aria-label="View mode">
                         <button type="button" class="btn @(isGridView ? "active" : null)" @onclick="() => toggleView(true)" title="Grid view">
                             <i class="bi bi-grid"></i>
@@ -128,22 +141,43 @@
             }
             else
             {
+                // filter by search
                 var filtered = contracts
                 .Where(c => string.IsNullOrEmpty(searchTerm)
                 || CleanFileName(c.FileName).Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
                 || (c.UploadedBy ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
-                // apply sort (client-side)
-                filtered = sortKey switch
+                // filter pinned-only if requested
+                if (pinOnly)
+                    filtered = filtered.Where(c => IsPinned(c.Id)).ToList();
+
+                // secondary key for normal sort
+                Func<ContractReadDto, object> key = sortKey switch
                 {
-                    "uploaded_asc" => filtered.OrderBy(c => c.UploadDate).ToList(),
-                    "name_asc" => filtered.OrderBy(c => CleanFileName(c.FileName), StringComparer.OrdinalIgnoreCase).ToList(),
-                    "name_desc" => filtered.OrderByDescending(c => CleanFileName(c.FileName), StringComparer.OrdinalIgnoreCase).ToList(),
-                    "uploader_asc" => filtered.OrderBy(c => c.UploadedBy ?? string.Empty, StringComparer.OrdinalIgnoreCase).ToList(),
-                    "uploader_desc" => filtered.OrderByDescending(c => c.UploadedBy ?? string.Empty, StringComparer.OrdinalIgnoreCase).ToList(),
-                    _ => filtered.OrderByDescending(c => c.UploadDate).ToList() // uploaded_desc (Newest)
+                    "uploaded_asc" => c => c.UploadDate,
+                    "name_asc" => c => CleanFileName(c.FileName),
+                    "name_desc" => c => CleanFileName(c.FileName),
+                    "uploader_asc" => c => c.UploadedBy ?? string.Empty,
+                    "uploader_desc" => c => c.UploadedBy ?? string.Empty,
+                    _ => c => c.UploadDate
                 };
+                bool asc = sortKey is "uploaded_asc" or "name_asc" or "uploader_asc";
+
+                IEnumerable<ContractReadDto> q = filtered;
+
+                // if pinFirst: primary sort = pinned desc, then chosen key
+                if (pinFirst)
+                {
+                    var ordered = q.OrderByDescending(c => IsPinned(c.Id));
+                    q = asc ? ordered.ThenBy(key) : ordered.ThenByDescending(key);
+                }
+                else
+                {
+                    q = asc ? q.OrderBy(key) : q.OrderByDescending(key);
+                }
+
+                filtered = q.ToList();
 
                 var totalPages = (int)Math.Ceiling(filtered.Count / (double)pageSize);
                 var page = filtered.Skip((currentPage - 1) * pageSize).Take(pageSize).ToList();
@@ -162,7 +196,9 @@
                                                   UploadedBy="@(c.UploadedBy ?? "Unknown")"
                                                   UploadDate="@c.UploadDate"
                                                   UserId="@c.UserId"
-                                                  onDelete="DeleteContract" />
+                                                  OnDelete="DeleteContract"
+                                                  IsPinned="IsPinned(c.Id)"
+                                                  OnTogglePin="() => TogglePin(c.Id)" />
                                 </div>
                             </div>
                         }
@@ -173,12 +209,13 @@
                     <div class="list-group">
                         @foreach (var c in page)
                         {
-                            <div class="contract-row mb-2">
+                            <div class="contract-row mb-2 position-relative">
                                 <ContractList Id="@c.Id"
                                               FileName="@CleanFileName(c.FileName)"
                                               UploadDate="@c.UploadDate"
                                               UploadedBy="@c.UploadedBy"
                                               OnDelete="DeleteContract" />
+                                <!-- If you also want pins in list rows, create a list component variant with the pin control -->
                             </div>
                         }
                     </div>
@@ -221,23 +258,55 @@
     private int currentPage = 1;
     private int pageSize = 9;
 
-    // sort key (client-side)
-    private string sortKey = "uploaded_desc"; // default = Newest
+    private string sortKey = "uploaded_desc";
+    private HashSet<int> pinned = new();
+    private bool pinFirst = false;
+    private bool pinOnly = false;
+
+    const string PinStorageKey = "pinnedContracts";
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
             contracts = await Http.GetFromJsonAsync<List<ContractReadDto>>("/api/contracts") ?? new();
+            await LoadPinsAsync();
         }
-        catch (Exception ex)
+        catch (Exception ex) { error = $"Failed to load contracts: {ex.Message}"; }
+        finally { isLoading = false; }
+    }
+
+    private async Task LoadPinsAsync()
+    {
+        try
         {
-            error = $"Failed to load contracts: {ex.Message}";
+            var json = await JS.InvokeAsync<string>("localStorage.getItem", PinStorageKey);
+            if (!string.IsNullOrWhiteSpace(json))
+            {
+                var ids = JsonSerializer.Deserialize<HashSet<int>>(json);
+                pinned = ids ?? new HashSet<int>();
+            }
         }
-        finally
+        catch { pinned = new(); }
+    }
+
+    private async Task SavePinsAsync()
+    {
+        try
         {
-            isLoading = false;
+            var json = JsonSerializer.Serialize(pinned);
+            await JS.InvokeVoidAsync("localStorage.setItem", PinStorageKey, json);
         }
+        catch { }
+    }
+
+    private bool IsPinned(int id) => pinned.Contains(id);
+
+    private async Task TogglePin(int id)
+    {
+        if (!pinned.Add(id)) pinned.Remove(id);
+        await SavePinsAsync();
+        StateHasChanged();
     }
 
     private async Task DeleteContract(int id)
@@ -249,6 +318,8 @@
         if (res.IsSuccessStatusCode)
         {
             contracts.RemoveAll(c => c.Id == id);
+            pinned.Remove(id);
+            await SavePinsAsync();
             ToastService.Notify(new(ToastType.Success, "Contract Deleted Successfully"));
             StateHasChanged();
         }
@@ -291,10 +362,19 @@
         StateHasChanged();
     }
 
+    private void OnPinOnlyChanged()
+    {
+        if (pinOnly) pinFirst = true;
+        currentPage = 1;
+        StateHasChanged();
+    }
+
     private void ResetSidebar()
     {
         sortKey = "uploaded_desc";
         pageSize = 9;
+        pinFirst = false;
+        pinOnly = false;
         currentPage = 1;
         StateHasChanged();
     }

@@ -939,3 +939,86 @@ a, .btn-link {
         background: #fff6e3;
         border-color: #f0e0b4;
     }
+
+/* === Pin button inside card (bottom-right) === */
+/* Space out the two pin toggles from the radios */
+.pin-group {
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+    border-bottom: 1px dashed var(--stroke);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* Keep the pin visible/contrasty over gold hover state */
+.pin-btn {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    z-index: 5;
+    width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
+    line-height: 0 !important;
+    border: 1px solid var(--stroke);
+    border-radius: 10px;
+    background: #fff;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-sm);
+    transition: transform .12s ease, background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+    .pin-btn i {
+        font-size: 16px;
+        pointer-events: none;
+    }
+
+    .pin-btn:hover:not(.pinned) {
+        background: #ffffff;
+        color: #9a6b00;
+        border-color: #f0e0b4;
+        transform: translateY(-1px);
+    }
+
+.contract-card:hover .pin-btn:not(.pinned) {
+    background: rgba(255,255,255,.96);
+    color: #7a5600;
+    border-color: #f0e0b4;
+    box-shadow: var(--shadow-md);
+}
+
+.pin-btn:active {
+    transform: scale(.96);
+    box-shadow: 0 4px 10px rgba(0,0,0,.08);
+}
+
+.pin-btn.pinned {
+    background: var(--brand-gold);
+    border-color: var(--brand-gold);
+    color: #fff;
+}
+
+    .pin-btn.pinned i {
+        transform: rotate(-18deg);
+        transition: transform .15s ease;
+    }
+/* keep the pin visible when the card turns gold */
+.contract-card.contract-hover:hover .pin-btn {
+    background: rgba(255,255,255,.96) !important;
+    border-color: #f0e0b4 !important;
+    box-shadow: var(--shadow-md);
+}
+
+    /* force pin icon color on hovered card (beats the global i { color:#fff !important }) */
+    .contract-card.contract-hover:hover .pin-btn i {
+        color: #7a5600 !important; /* dark gold = visible on white chip */
+    }
+
+/* on hover of the chip itself (card not required) */
+.pin-btn:hover:not(.pinned) i {
+    color: #9a6b00 !important;
+}
