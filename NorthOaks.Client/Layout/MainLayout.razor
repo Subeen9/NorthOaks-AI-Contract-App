@@ -157,7 +157,7 @@
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"❌ Initialization failed: {ex.Message}");
+            Console.Error.WriteLine($" Initialization failed: {ex.Message}");
             ToastService.Notify(new(ToastType.Danger, "Failed to initialize notifications."));
         }
     }
