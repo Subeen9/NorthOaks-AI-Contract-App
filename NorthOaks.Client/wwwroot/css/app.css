@@ -1022,3 +1022,167 @@ a, .btn-link {
 .pin-btn:hover:not(.pinned) i {
     color: #9a6b00 !important;
 }
+
+/* ===== Auth (Login) ===== */
+/* ===== Auth Page Background (Figma Style) ===== */
+/* =========================
+   AUTH (Login) — Full-bleed Figma style
+   ========================= */
+
+/* Make sure there's no default page gutter */
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+/* Fill the entire viewport with the gradient background */
+.auth-page {
+    position: fixed; /* locks it to viewport */
+    inset: 0; /* top/right/bottom/left = 0 */
+    display: grid;
+    place-items: center;
+    overflow: auto; /* allow card to scroll if super small screen */
+    /* Core backdrop like your Figma shot */
+    background: radial-gradient(1200px 800px at 20% 15%, rgba(0, 55, 104, 0.9), rgba(12, 24, 40, 1) 70%), radial-gradient(900px 700px at 92% 90%, rgba(186, 142, 11, 0.25), rgba(12, 24, 40, 0) 70%);
+    background-color: #0c1828; /* fallback base */
+    background-attachment: fixed;
+}
+
+/* Glassy card */
+.auth-card {
+    position: relative;
+    width: 100%;
+    max-width: 440px;
+    border-radius: 18px;
+    padding: 28px 26px;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255,255,255,0.6);
+    transition: transform .18s ease, box-shadow .18s ease;
+}
+
+    .auth-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 22px 48px rgba(0,0,0,.28);
+    }
+
+/* Title & subtitle */
+.auth-title {
+    margin: 6px 0 2px;
+    color: #003768;
+    font-weight: 800;
+    letter-spacing: .2px;
+    text-align: center;
+}
+
+.auth-sub {
+    margin: 0 0 12px;
+    color: #6b7280;
+    font-size: .95rem;
+    text-align: center;
+}
+
+/* Inputs */
+.auth-label {
+    color: #003768;
+    font-weight: 600;
+}
+
+.auth-input {
+    height: 44px;
+    border-radius: 10px;
+    border: 1px solid #e6ebf3;
+    box-shadow: none;
+    transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+
+    .auth-input:focus {
+        border-color: #003768;
+        box-shadow: 0 0 0 3px rgba(0, 55, 104, .15);
+        background-color: #fff;
+    }
+
+/* Trailing eye icon inside the input */
+.auth-field {
+    position: relative;
+}
+
+.auth-eye {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 30px;
+    width: 34px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: #f7f9fc;
+    color: #003768;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    box-shadow: none;
+    transition: background .15s ease, border-color .15s ease, transform .1s ease, opacity .15s ease;
+    z-index: 2; /* stay above input */
+}
+
+    .auth-eye:hover {
+        background: #fff6e3; /* slight gold hint on hover */
+        border-color: #f0e0b4;
+        transform: translateY(-50%) scale(1.03);
+    }
+
+    .auth-eye i {
+        font-size: 16px;
+        line-height: 1;
+    }
+
+/* Links */
+.auth-link {
+    color: #003768;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+    .auth-link:hover {
+        color: #ba8e0b;
+        text-decoration: underline;
+    }
+
+/* CTA button in a clean blue→gold sweep */
+.auth-cta {
+    height: 44px;
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: .2px;
+    background: linear-gradient(90deg, #003768 0%, #ba8e0b 100%);
+    box-shadow: 0 6px 14px rgba(0, 55, 104, .25);
+    transition: filter .2s ease, transform .12s ease, box-shadow .2s ease;
+}
+
+    .auth-cta:hover:not(:disabled) {
+        filter: brightness(1.06);
+        transform: translateY(-1px);
+        box-shadow: 0 10px 18px rgba(0, 55, 104, .28);
+    }
+
+    .auth-cta:disabled {
+        opacity: .6;
+        cursor: not-allowed;
+    }
+
+/* Footer note */
+.auth-foot {
+    color: #6b7280;
+}
+
+/* Logo polish */
+.auth-logo {
+    border-radius: 12px;
+    display: inline-block;
+    box-shadow: 0 4px 14px rgba(0,0,0,.15);
+}
