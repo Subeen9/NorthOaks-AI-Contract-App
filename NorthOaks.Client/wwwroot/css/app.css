@@ -1,18 +1,35 @@
-﻿html, body {
+﻿/* =========================================================
+   GLOBAL / BASE
+========================================================= */
+:root {
+    /* brand & ui tokens */
+    --brand-blue: #003768;
+    --brand-gold: #ba8e0b;
+    --ink: #0f172a;
+    --muted: #6b7280;
+    --card-bg: #ffffff;
+    --page: #f6f8fb; /* subtle professional wash */
+    --stroke: #e7ebf3;
+    --radius: 14px;
+    --shadow-sm: 0 4px 12px rgba(20,27,40,.06);
+    --shadow-md: 0 10px 18px rgba(20,27,40,.10);
+}
+
+html, body {
     height: 100%;
     margin: 0;
     padding: 0;
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-    overflow: hidden;
-}
-#app, .app, main {
-    height: 100%;
-    overflow: hidden;
-    margin: 0;
-    padding: 0;
+    overflow-x: hidden;
+    overflow-y: auto; /* allow scroll & avoid clipping */
+    background: var(--page);
 }
 
-h1:focus {
+#app, .app {
+    min-height: 100%;
+}
+
+h1:focus, h4:focus {
     outline: none;
 }
 
@@ -31,17 +48,12 @@ a, .btn-link {
 .btn-link.nav-link:focus,
 .form-control:focus,
 .form-check-input:focus {
-    box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+    box-shadow: 0 0 0 .1rem #fff, 0 0 0 .25rem #258cfb;
 }
 
 .content {
     padding: 0;
     margin: 0;
-}
-.contract-viewer-page ~ .content,
-body:has(.contract-viewer-page) .content {
-    padding: 0 !important;
-    margin: 0 !important;
 }
 
 .valid.modified:not([type=checkbox]) {
@@ -55,14 +67,15 @@ body:has(.contract-viewer-page) .content {
 .validation-message {
     color: red;
 }
+
 #blazor-error-ui {
     color-scheme: light only;
     background: lightyellow;
     bottom: 0;
-    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 -1px 2px rgba(0,0,0,.2);
     display: none;
     left: 0;
-    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    padding: .6rem 1.25rem .7rem 1.25rem;
     position: fixed;
     width: 100%;
     z-index: 1000;
@@ -71,9 +84,13 @@ body:has(.contract-viewer-page) .content {
     #blazor-error-ui .dismiss {
         cursor: pointer;
         position: absolute;
-        right: 0.75rem;
-        top: 0.5rem;
+        right: .75rem;
+        top: .5rem;
     }
+
+/* =========================================================
+   LOADING
+========================================================= */
 .loading-progress {
     position: relative;
     display: block;
@@ -85,27 +102,31 @@ body:has(.contract-viewer-page) .content {
     .loading-progress circle {
         fill: none;
         stroke: #e0e0e0;
-        stroke-width: 0.6rem;
+        stroke-width: .6rem;
         transform-origin: 50% 50%;
         transform: rotate(-90deg);
     }
 
         .loading-progress circle:last-child {
             stroke: #1b6ec2;
-            stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
-            transition: stroke-dasharray 0.05s ease-in-out;
+            stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * .8), 500%;
+            transition: stroke-dasharray .05s ease-in-out;
         }
 
 .loading-progress-text {
     position: absolute;
     text-align: center;
     font-weight: bold;
-    inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
+    inset: calc(20vh + 3.25rem) 0 auto .2rem;
 }
 
     .loading-progress-text:after {
         content: var(--blazor-load-percentage-text, "Loading");
     }
+
+/* =========================================================
+   CONTRACT VIEWER (kept)
+========================================================= */
 .contract-viewer-page {
     position: absolute;
     top: 65px;
@@ -145,24 +166,28 @@ body:has(.contract-viewer-page) .content {
     flex-direction: column;
     background: #fff;
     border-right: 1px solid #ddd;
-    overflow: hidden;
+    overflow-y: scroll; /* vertical scroll inside viewer */
+    overflow-x: hidden; /* keep it clean horizontally */
     min-width: 300px;
     min-height: 0;
 }
 
+/* make sure the viewer can grow; the container will scroll */
 .pdf-frame {
-    flex: 1 1 auto;
+    flex: 0 0 auto; /* let the content define height */
     width: 100%;
-    height: 100%;
     border: none;
     background: #fff;
     border-radius: 4px;
 }
+
+
+
 .resizer {
     width: 6px;
     background: #e9e9e9;
     cursor: ew-resize;
-    transition: background 0.2s ease;
+    transition: background .2s ease;
     flex-shrink: 0;
 }
 
@@ -180,6 +205,9 @@ body:has(.contract-viewer-page) .content {
         border-radius: 1px;
     }
 
+/* =========================================================
+   CHAT PANEL (kept)
+========================================================= */
 .chat-panel {
     width: 420px;
     min-width: 280px;
@@ -212,6 +240,7 @@ body:has(.contract-viewer-page) .content {
     flex-direction: column;
     scroll-behavior: smooth;
 }
+
 .message {
     margin-bottom: 12px;
     padding: 10px 14px;
@@ -221,7 +250,7 @@ body:has(.contract-viewer-page) .content {
     line-height: 1.4;
     font-size: 14px;
     position: relative;
-    animation: slideIn 0.2s ease;
+    animation: slideIn .2s ease;
 }
 
 @keyframes slideIn {
@@ -240,7 +269,7 @@ body:has(.contract-viewer-page) .content {
     display: block;
     font-size: 11px;
     margin-bottom: 4px;
-    opacity: 0.8;
+    opacity: .8;
     font-weight: 600;
 }
 
@@ -253,7 +282,7 @@ body:has(.contract-viewer-page) .content {
 }
 
     .user-message strong {
-        color: rgba(255,255,255,0.9);
+        color: rgba(255,255,255,.9);
     }
 
 .ai-message {
@@ -267,12 +296,13 @@ body:has(.contract-viewer-page) .content {
     .ai-message strong {
         color: #495057;
     }
+
 .chat-input {
     flex-shrink: 0;
     padding: 12px 16px;
     border-top: 1px solid #ddd;
     background: #fff;
-    box-shadow: 0 -2px 6px rgba(0,0,0,0.05);
+    box-shadow: 0 -2px 6px rgba(0,0,0,.05);
 }
 
 .input-wrapper {
@@ -297,7 +327,7 @@ body:has(.contract-viewer-page) .content {
 
     .chat-input-field:focus {
         border-color: #007bff;
-        box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+        box-shadow: 0 0 0 2px rgba(0,123,255,.25);
         outline: none;
     }
 
@@ -311,8 +341,8 @@ body:has(.contract-viewer-page) .content {
     display: flex;
     align-items: center;
     justify-content: center;
-    color: white;
-    transition: all 0.2s ease;
+    color: #fff;
+    transition: all .2s ease;
     cursor: pointer;
     margin-bottom: 2px;
 }
@@ -320,27 +350,31 @@ body:has(.contract-viewer-page) .content {
     .send-btn-inside:hover:not(:disabled) {
         background: #0056b3;
         transform: scale(1.05);
-        box-shadow: 0 2px 8px rgba(0,123,255,0.3);
+        box-shadow: 0 2px 8px rgba(0,123,255,.3);
     }
 
     .send-btn-inside:disabled {
         background: #ccc;
         cursor: not-allowed;
     }
+
+/* =========================================================
+   CONTRACT CARD HOVER (kept)
+========================================================= */
 .contract-hover {
-    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+    transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease, color .2s ease;
     cursor: pointer;
 }
 
 .contract-title {
-    color: #003768;
-    transition: color 0.18s ease;
+    color: var(--brand-blue);
+    transition: color .18s ease;
 }
 
 .contract-hover:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(0,0,0,0.1);
-    background-color: #ba8e0b !important;
+    box-shadow: 0 6px 15px rgba(0,0,0,.1);
+    background-color: var(--brand-gold) !important;
     color: #fff !important;
 }
 
@@ -352,24 +386,13 @@ body:has(.contract-viewer-page) .content {
     }
 
     .contract-hover:hover .bi-three-dots-vertical {
-        color: black !important;
-    }
-.pagination .page-link {
-    color: #ba8e0b;
-    border: 1px solid #003768;
-}
-
-    .pagination .page-link:hover {
-        background-color: #ba8e0b;
-        color: #003768;
+        color: #000 !important;
     }
 
-.pagination .active .page-link {
-    background-color: #ba8e0b;
-    color: white;
-    border-color: #003768;
-}
-@media (max-width: 768px) {
+/* =========================================================
+   RESPONSIVE (kept)
+========================================================= */
+@media (max-width:768px) {
     .viewer-wrapper {
         flex-direction: column;
     }
@@ -393,58 +416,15 @@ body:has(.contract-viewer-page) .content {
         border-top: 1px solid #ddd;
     }
 }
-.loading-message {
-    background: #e9ecef !important;
-    padding: 12px 16px !important;
-    min-width: 70px;
-    border-radius: 18px;
-    align-self: flex-start;
-}
 
-.loading-indicator {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.loading-dots {
-    display: flex;
-    gap: 4px;
-    align-items: center;
-}
-
-    .loading-dots span {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: #6c757d;
-        animation: chatBounce 1.4s infinite ease-in-out;
-    }
-
-        .loading-dots span:nth-child(1) {
-            animation-delay: -0.32s;
-        }
-
-        .loading-dots span:nth-child(2) {
-            animation-delay: -0.16s;
-        }
-
-@keyframes chatBounce {
-    0%, 80%, 100% {
-        transform: scale(0.8);
-        opacity: 0.5;
-    }
-
-    40% {
-        transform: scale(1.2);
-        opacity: 1;
-    }
-}
+/* =========================================================
+   HEADER BUTTON HOVERS (kept)
+========================================================= */
 .contracthub-button {
     display: flex;
     align-items: center;
     cursor: pointer;
-    transition: transform 0.15s ease, color 0.2s ease;
+    transition: transform .15s ease, color .2s ease;
 }
 
     .contracthub-button:hover {
@@ -452,39 +432,940 @@ body:has(.contract-viewer-page) .content {
     }
 
     .contracthub-button .logo-box {
-        transition: background 0.2s ease, transform 0.2s ease;
+        transition: background .2s ease, transform .2s ease;
     }
 
     .contracthub-button:hover .logo-box {
-        background: #ba8e0b !important;
+        background: var(--brand-gold) !important;
         transform: scale(1.05);
     }
 
     .contracthub-button:hover .logo-text {
-        color: #ba8e0b !important;
+        color: var(--brand-gold) !important;
     }
+
 .btn.text-white[style*="#003768"] {
-    transition: background-color 0.2s ease, transform 0.15s ease;
+    transition: background-color .2s ease, transform .15s ease;
 }
 
     .btn.text-white[style*="#003768"]:hover {
-        background-color: #ba8e0b !important;
+        background-color: var(--brand-gold) !important;
         transform: translateY(-1px);
     }
+
 .btn.btn-link.position-relative {
-    color: #003768;
-    transition: color 0.2s ease, transform 0.15s ease;
+    color: var(--brand-blue);
+    transition: color .2s ease, transform .15s ease;
 }
 
     .btn.btn-link.position-relative:hover {
-        color: #ba8e0b;
+        color: var(--brand-gold);
         transform: scale(1.1);
     }
+
 .btn.rounded-circle.text-white[style*="#003768"] {
-    transition: background-color 0.2s ease, transform 0.15s ease;
+    transition: background-color .2s ease, transform .15s ease;
 }
 
     .btn.rounded-circle.text-white[style*="#003768"]:hover {
-        background-color: #ba8e0b !important;
+        background-color: var(--brand-gold) !important;
         transform: scale(1.05);
     }
+
+/* =========================================================
+   HOME / LIBRARY – FIGMA STYLE
+========================================================= */
+
+/* ---- page shell ---- */
+
+/* utility to nuke bootstrap left padding on this page */
+.no-pad {
+    padding-left: 0 !important;
+    padding-right: 24px !important;
+    --bs-gutter-x: 0;
+}
+
+@media (max-width:576px) {
+    .no-pad {
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+    }
+}
+
+/* grid with left rail */
+.page-grid {
+    display: grid;
+    grid-template-columns: 252px 1fr;
+    gap: 20px;
+    min-height: 100vh; /* ensure full-height layout */
+    align-items: stretch;
+}
+
+/* main column divider */
+.page-main {
+    min-width: 0;
+    border-left: 1px solid #edf0f6;
+    padding-left: 22px;
+    padding-bottom: 16px; /* nice end spacing without big gap */
+    overflow: visible; /* let card shadows show */
+}
+
+/* ---- sidebar ---- */
+.app-sidebar {
+    background: #fff;
+    border: 1px solid var(--stroke);
+    border-radius: 14px;
+    box-shadow: var(--shadow-sm);
+    padding: 14px;
+    display: flex;
+    flex-direction: column;
+    height: 100%; /* fill to bottom */
+    margin-left: 0;
+    margin-bottom: 0;
+}
+
+.sb-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    margin-bottom: 10px;
+}
+
+.sb-logo {
+    font-size: 22px;
+}
+
+.sb-title {
+    font-weight: 700;
+    color: var(--brand-blue);
+}
+
+.sb-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+    margin-bottom: auto;
+}
+
+.sb-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 10px;
+    border-radius: 12px;
+    text-decoration: none;
+    color: #1f2937;
+    border: 1px solid transparent;
+    transition: background .15s ease, border-color .15s ease, transform .1s ease, color .15s ease;
+}
+
+    .sb-link i {
+        width: 30px;
+        height: 30px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+        background: #f3f5f8;
+        color: #6b7280;
+        font-size: 17px;
+    }
+
+    .sb-link:hover {
+        background: #fff6e3;
+        border-color: #f0e0b4;
+        transform: translateY(-1px);
+    }
+
+    .sb-link.active {
+        background: var(--brand-blue);
+        color: #fff;
+        border-color: var(--brand-blue);
+    }
+
+        .sb-link.active i {
+            background: rgba(255,255,255,.18);
+            color: #fff;
+        }
+
+.sb-footer {
+    display: flex;
+    gap: 10px;
+    margin-top: 16px;
+}
+
+.sb-mini {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1px solid var(--stroke);
+    color: #374151;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    .sb-mini:hover {
+        background: #f9fafb;
+    }
+
+.sb-panel {
+    margin-top: 12px;
+    padding: 12px;
+    border: 1px solid var(--stroke);
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: var(--shadow-sm);
+}
+
+.sb-sec-title {
+    font-weight: 700;
+    color: var(--brand-blue);
+    margin-bottom: 8px;
+    font-size: .95rem;
+}
+
+.sb-hr {
+    border: none;
+    border-top: 1px solid var(--stroke);
+    margin: 12px 0;
+}
+
+.sb-radios {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.sb-radio {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background .12s ease, transform .12s ease;
+}
+
+    .sb-radio:hover {
+        background: #fff6e3;
+        transform: translateY(-1px);
+    }
+
+    .sb-radio input[type="radio"] {
+        width: 16px;
+        height: 16px;
+        accent-color: var(--brand-blue);
+    }
+
+.sb-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.sb-btn {
+    border: 1px solid var(--stroke);
+    background: #fff;
+    color: #111827;
+    padding: .45rem .7rem;
+    border-radius: 10px;
+    transition: transform .12s ease, background-color .18s ease, border-color .18s ease;
+}
+
+    .sb-btn.active {
+        background: var(--brand-blue);
+        color: #fff;
+        border-color: var(--brand-blue);
+    }
+
+    .sb-btn:hover {
+        transform: translateY(-1px);
+    }
+
+.sb-select {
+    width: 100%;
+    height: 40px;
+    padding: 0 .75rem;
+    border: 1px solid var(--stroke);
+    border-radius: 10px;
+    background: #fff;
+    font-weight: 500;
+    outline: none;
+}
+
+    .sb-select:focus {
+        border-color: var(--brand-blue);
+        box-shadow: 0 0 0 3px rgba(0,55,104,.12);
+    }
+
+.sb-reset {
+    width: 100%;
+    border: 1px solid var(--stroke);
+    background: #f9fafb;
+    color: #111827;
+    border-radius: 10px;
+    padding: .45rem .7rem;
+}
+
+    .sb-reset:hover {
+        background: #fff6e3;
+        border-color: #f0e0b4;
+    }
+
+/* responsive: stack rail */
+@media (max-width:992px) {
+    .page-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .page-main {
+        border-left: none;
+        padding-left: 0;
+    }
+
+    .app-sidebar {
+        height: auto;
+    }
+}
+
+/* ---- header row ---- */
+.library-header {
+    gap: 16px;
+    margin-bottom: 20px !important;
+}
+
+.library-title {
+    color: var(--brand-blue) !important;
+    letter-spacing: .2px;
+}
+
+/* search pill */
+.search-pill {
+    width: 420px;
+    border-radius: 999px;
+    border: 1px solid var(--stroke);
+    padding-left: 42px !important;
+    background: #fff;
+    transition: border-color .18s ease, box-shadow .18s ease;
+}
+
+    .search-pill:focus {
+        border-color: var(--brand-blue);
+        box-shadow: 0 0 0 3px rgba(0,55,104,.12);
+        outline: none;
+    }
+
+.search-icon {
+    color: #a3a3a3;
+    font-size: 16px;
+}
+
+@media (min-width:1400px) {
+    .search-xl {
+        width: 540px !important;
+    }
+}
+
+/* view toggle */
+.view-toggle .btn {
+    border: 1px solid var(--stroke);
+    background: #fff;
+    color: #111827;
+    padding: .45rem .7rem;
+    border-radius: 10px;
+    transition: transform .12s ease, background-color .18s ease, border-color .18s ease;
+}
+
+    .view-toggle .btn + .btn {
+        margin-left: 6px;
+    }
+
+    .view-toggle .btn.active {
+        background: var(--brand-blue);
+        color: #fff;
+        border-color: var(--brand-blue);
+    }
+
+    .view-toggle .btn:hover {
+        transform: translateY(-1px);
+    }
+
+/* results hint */
+.results-hint {
+    color: var(--muted);
+    margin-top: -4px;
+    margin-bottom: 10px;
+    font-size: .95rem;
+}
+
+/* grid spacing */
+.home-grid {
+    row-gap: 22px;
+}
+
+/* ---- contract card look ---- */
+.contract-card {
+    border: 1px solid var(--stroke);
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease, color .18s ease;
+    min-height: 124px;
+}
+
+    .contract-card .card-body {
+        padding: 16px 18px;
+    }
+
+    .contract-card .card-menu {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        color: #9ca3af;
+    }
+
+.contract-title {
+    font-weight: 600;
+    color: var(--brand-blue);
+    margin-bottom: 6px;
+    line-height: 1.25;
+}
+
+.contract-meta {
+    color: #6b7280;
+    font-size: .9rem;
+}
+
+/* status pill */
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .2px;
+    border: 1px solid var(--stroke);
+    color: #374151;
+    background: #f9fafb;
+}
+
+/* hover to gold */
+.contract-card.contract-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    background: var(--brand-gold) !important;
+    color: #fff !important;
+}
+
+    .contract-card.contract-hover:hover .contract-title,
+    .contract-card.contract-hover:hover .contract-meta,
+    .contract-card.contract-hover:hover .file-icon {
+        color: #fff !important;
+    }
+
+    .contract-card.contract-hover:hover .card-menu {
+        color: #111 !important;
+    }
+
+/* normalize component-in-card (prevents “double card” look) */
+.home-card {
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+    .home-card > * {
+        margin: 0 !important;
+        border: 1px solid var(--stroke) !important;
+        border-radius: 16px !important;
+        background: #fff !important;
+        box-shadow: var(--shadow-sm) !important;
+        min-height: 168px;
+        overflow: hidden;
+        display: block;
+    }
+
+    .home-card > .card {
+        margin: 0 !important;
+        border: none !important;
+        border-radius: 16px !important;
+        box-shadow: none !important;
+        height: 100%;
+    }
+
+    .home-card:hover > * {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md) !important;
+    }
+
+    .home-card .card-body {
+        padding: 20px 22px !important;
+    }
+
+/* list-view rows */
+.list-group .contract-row {
+    border: 1px solid var(--stroke);
+    border-radius: 12px;
+    padding: 14px 16px;
+    background: #fff;
+    box-shadow: var(--shadow-sm);
+    transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+    .list-group .contract-row:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+        background: #fff5e0;
+    }
+
+/* pagination (brand) */
+.pagination .page-link {
+    color: var(--brand-blue);
+    border: 1px solid var(--brand-blue);
+}
+
+    .pagination .page-link:hover {
+        background: var(--brand-gold);
+        color: #fff;
+        border-color: var(--brand-gold);
+    }
+
+.pagination .active .page-link {
+    background: var(--brand-blue);
+    color: #fff;
+    border-color: var(--brand-blue);
+}
+
+
+/* === Pin button inside card (bottom-right) === */
+/* Space out the two pin toggles from the radios */
+.pin-group {
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+    border-bottom: 1px dashed var(--stroke);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* Keep the pin visible/contrasty over gold hover state */
+.pin-btn {
+    position: absolute;
+    right: 12px;
+    bottom: 12px;
+    z-index: 5;
+    width: 36px !important;
+    height: 36px !important;
+    padding: 0 !important;
+    line-height: 0 !important;
+    border: 1px solid var(--stroke);
+    border-radius: 10px;
+    background: #fff;
+    color: #6b7280;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-sm);
+    transition: transform .12s ease, background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+    .pin-btn i {
+        font-size: 16px;
+        pointer-events: none;
+    }
+
+    .pin-btn:hover:not(.pinned) {
+        background: #ffffff;
+        color: #9a6b00;
+        border-color: #f0e0b4;
+        transform: translateY(-1px);
+    }
+
+.contract-card:hover .pin-btn:not(.pinned) {
+    background: rgba(255,255,255,.96);
+    color: #7a5600;
+    border-color: #f0e0b4;
+    box-shadow: var(--shadow-md);
+}
+
+.pin-btn:active {
+    transform: scale(.96);
+    box-shadow: 0 4px 10px rgba(0,0,0,.08);
+}
+
+.pin-btn.pinned {
+    background: var(--brand-gold);
+    border-color: var(--brand-gold);
+    color: #fff;
+}
+
+    .pin-btn.pinned i {
+        transform: rotate(-18deg);
+        transition: transform .15s ease;
+    }
+/* keep the pin visible when the card turns gold */
+.contract-card.contract-hover:hover .pin-btn {
+    background: rgba(255,255,255,.96) !important;
+    border-color: #f0e0b4 !important;
+    box-shadow: var(--shadow-md);
+}
+
+    /* force pin icon color on hovered card (beats the global i { color:#fff !important }) */
+    .contract-card.contract-hover:hover .pin-btn i {
+        color: #7a5600 !important; /* dark gold = visible on white chip */
+    }
+
+/* on hover of the chip itself (card not required) */
+.pin-btn:hover:not(.pinned) i {
+    color: #9a6b00 !important;
+}
+
+/* ===== Auth (Login) ===== */
+
+html, body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+/* Fill the entire viewport with the gradient background */
+.auth-page {
+    position: fixed; /* locks it to viewport */
+    inset: 0; /* top/right/bottom/left = 0 */
+    display: grid;
+    place-items: center;
+    overflow: auto; /* allow card to scroll if super small screen */
+    /* Core backdrop like your Figma shot */
+    background: radial-gradient(1200px 800px at 20% 15%, rgba(0, 55, 104, 0.9), rgba(12, 24, 40, 1) 70%), radial-gradient(900px 700px at 92% 90%, rgba(186, 142, 11, 0.25), rgba(12, 24, 40, 0) 70%);
+    background-color: #0c1828; /* fallback base */
+    background-attachment: fixed;
+}
+
+/* Glassy card */
+.auth-card {
+    position: relative;
+    width: 100%;
+    max-width: 440px;
+    border-radius: 18px;
+    padding: 28px 26px;
+    background: rgba(255, 255, 255, 0.92);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
+    border: 1px solid rgba(255,255,255,0.6);
+    transition: transform .18s ease, box-shadow .18s ease;
+}
+
+    .auth-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 22px 48px rgba(0,0,0,.28);
+    }
+
+/* Title & subtitle */
+.auth-title {
+    margin: 6px 0 2px;
+    color: #003768;
+    font-weight: 800;
+    letter-spacing: .2px;
+    text-align: center;
+}
+
+.auth-sub {
+    margin: 0 0 12px;
+    color: #6b7280;
+    font-size: .95rem;
+    text-align: center;
+}
+
+/* Inputs */
+.auth-label {
+    color: #003768;
+    font-weight: 600;
+}
+
+.auth-input {
+    height: 44px;
+    border-radius: 10px;
+    border: 1px solid #e6ebf3;
+    box-shadow: none;
+    transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+
+    .auth-input:focus {
+        border-color: #003768;
+        box-shadow: 0 0 0 3px rgba(0, 55, 104, .15);
+        background-color: #fff;
+    }
+
+/* Trailing eye icon inside the input */
+.auth-field {
+    position: relative;
+}
+
+.auth-eye {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 30px;
+    width: 34px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: #f7f9fc;
+    color: #003768;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    box-shadow: none;
+    transition: background .15s ease, border-color .15s ease, transform .1s ease, opacity .15s ease;
+    z-index: 2; /* stay above input */
+}
+
+    .auth-eye:hover {
+        background: #fff6e3; /* slight gold hint on hover */
+        border-color: #f0e0b4;
+        transform: translateY(-50%) scale(1.03);
+    }
+
+    .auth-eye i {
+        font-size: 16px;
+        line-height: 1;
+    }
+
+/* Links */
+.auth-link {
+    color: #003768;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+    .auth-link:hover {
+        color: #ba8e0b;
+        text-decoration: underline;
+    }
+
+/* CTA button in a clean blue→gold sweep */
+.auth-cta {
+    height: 44px;
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: .2px;
+    background: linear-gradient(90deg, #003768 0%, #ba8e0b 100%);
+    box-shadow: 0 6px 14px rgba(0, 55, 104, .25);
+    transition: filter .2s ease, transform .12s ease, box-shadow .2s ease;
+}
+
+    .auth-cta:hover:not(:disabled) {
+        filter: brightness(1.06);
+        transform: translateY(-1px);
+        box-shadow: 0 10px 18px rgba(0, 55, 104, .28);
+    }
+
+    .auth-cta:disabled {
+        opacity: .6;
+        cursor: not-allowed;
+    }
+
+/* Footer note */
+.auth-foot {
+    color: #6b7280;
+}
+
+/* Logo polish */
+.auth-logo {
+    border-radius: 12px;
+    display: inline-block;
+    box-shadow: 0 4px 14px rgba(0,0,0,.15);
+}
+
+/* lodaing indicators for chat */
+
+/* loading indicators for chat */
+.loading-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 0;
+}
+
+.loading-dots {
+    display: flex;
+    gap: 6px;
+}
+
+    .loading-dots span {
+        width: 8px;
+        height: 8px;
+        background-color: #007bff;
+        border-radius: 50%;
+        animation: pulse 1.2s infinite ease-in-out;
+    }
+
+        .loading-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .loading-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+/* ✅ properly CLOSED keyframes */
+@keyframes pulse {
+    0%, 80%, 100% {
+        transform: scale(0);
+        opacity: 0.5;
+    }
+
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* (this rule got accidentally inserted inside @keyframes before) */
+.btn.rounded-circle.text-white[style*="#003768"]:hover {
+    background-color: #ba8e0b !important;
+    transform: scale(1.05);
+}
+
+
+/* wrapper for the bell button (so badge positions correctly) */
+.notif-wrap {
+    position: relative;
+}
+
+/* badge on the bell */
+.notif-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 5px;
+    border-radius: 9999px;
+    background: var(--brand-gold);
+    color: #fff;
+    font-size: 0.7rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 2px #fff;
+}
+
+/* dropdown panel */
+.dropdown-menu.notif-dropdown,
+.notif-dropdown { /* support both ways */
+    width: 22rem;
+    max-width: 90vw;
+    padding: 0;
+    margin-top: .5rem;
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,.08);
+    color: #1e293b;
+    overflow: hidden;
+    z-index: 1055;
+    writing-mode: horizontal-tb; /* force normal */
+    white-space: normal; /* allow wrapping */
+    word-break: normal;
+}
+
+/* header */
+.notif-header {
+    background: #f8fafc;
+    border-bottom: 1px solid #e2e8f0;
+    padding: .6rem .9rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.notif-header__title {
+    font-size: .9rem;
+    font-weight: 600;
+    color: var(--brand-blue);
+}
+
+.notif-header__action {
+    font-size: .8rem;
+    color: var(--brand-gold);
+    font-weight: 500;
+    cursor: pointer;
+}
+
+    .notif-header__action:hover {
+        color: #915f00;
+        text-decoration: underline;
+    }
+
+/* list area */
+.notification-list {
+    max-height: 330px;
+    overflow-y: auto;
+    background: #fff;
+}
+
+    .notification-list::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .notification-list::-webkit-scrollbar-thumb {
+        background: #d1d5db;
+        border-radius: 6px;
+    }
+
+/* items */
+.notification-item {
+    padding: .8rem 1rem;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background .2s ease, transform .2s ease;
+}
+
+    .notification-item:hover {
+        background: #f9fafb;
+        transform: translateX(2px);
+    }
+
+    .notification-item.unread {
+        background: #fff8e1;
+        border-left: 4px solid var(--brand-gold);
+    }
+
+/* text */
+.notification-item__msg {
+    line-height: 1.3;
+    color: #1e293b;
+}
+
+.notification-item__time {
+    font-size: .75rem;
+    color: #6b7280;
+    margin-top: .25rem;
+}
+
+/* animation */
+.notification-item.new {
+    animation: notif-fade-in .3s ease-out;
+}
+
+@keyframes notif-fade-in {
+    from {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
