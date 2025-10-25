@@ -3,145 +3,142 @@
 @inject HttpClient Http
 @inject IJSRuntime JS
 @using Microsoft.AspNetCore.Authorization
+@using Microsoft.AspNetCore.Components.Routing
 @attribute [Authorize]
 
-<div class="container-fluid px-4 mt-4 mb-4">
-    <!--  Title + Search + View Mode -->
-    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap">
-        <!-- Left: Title -->
-        <h4 class="fw-semibold mb-2 mb-md-0" style="color:#003768;">Contract Library</h4>
-
-        <!-- Right: Search + View Mode -->
-        <div class="d-flex align-items-center gap-3">
-            <!-- Search Bar -->
-            <div class="position-relative">
-                <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
-                <input type="text" class="form-control ps-5"
-                       placeholder="Search contracts..." style="width: 250px;"
-                       @bind="searchTerm" @bind:after="() => currentPage = 1" />
+<!-- NOTE: px-4 removed, no-pad added -->
+<div class="container-fluid mt-4 mb-4 page-with-sidebar no-pad">
+    <div class="page-grid">
+        <!-- Sidebar -->
+        <aside class="app-sidebar">
+            <div class="sb-brand">
+                <span class="sb-logo">🦁</span>
+                <span class="sb-title">ContractHub</span>
             </div>
 
-            <!-- View Mode Toggling -->
-            <div class="btn-group">
-                <button type="button" class="btn" style="@GetButtonStyle(true)"
-                        @onclick="() => toggleView(true)">
-                    <i class="bi bi-grid"></i>
-                </button>
-                <button type="button" class="btn" style="@GetButtonStyle(false)"
-                        @onclick="() => toggleView(false)">
-                    <i class="bi bi-list"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-   
-
-    @if (isLoading)
-    {
-        <p>Loading contracts…</p>
-    }
-    else if (!string.IsNullOrEmpty(error))
-    {
-        <div class="alert alert-danger">@error</div>
-    }
-   else
-{
-    var filteredContracts = contracts
-        .Where(c => string.IsNullOrEmpty(searchTerm)
-                 || CleanFileName(c.FileName).Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
-                 || (c.UploadedBy ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
-                 .OrderByDescending(c =>c.UploadDate)
-        .ToList();
-        var totalContracts = filteredContracts.Count;
-        var totalPages = (int)Math.Ceiling(totalContracts / (double)pageSize);
-        var pagedContracts = filteredContracts
-        .Skip((currentPage - 1) * pageSize)
-        .Take(pageSize)
-        .ToList();
-
-        <p style="color:#003768;">@filteredContracts.Count contracts found</p>
-    @if(isGridView){
-    <div class="row g-4">
-        @foreach (var c in pagedContracts)
-        {
-            <div class="col-md-4">
-                <ContractCard Id="@c.Id"
-                              FileName="@CleanFileName(c.FileName)"
-                              UploadedBy="@(c.UploadedBy ?? "Unknown")"
-                              UploadDate="@c.UploadDate"
-                              UserId="@c.UserId"
-                              onDelete="DeleteContract" />
-                              
-            </div>
-        }
-            </div>
-        }
-        else
-        {
-            <div class="list-group">
-                @foreach (var c in pagedContracts)
-                {
-                   <ContractList
-                       Id="@c.Id"
-                       FileName="@CleanFileName(c.FileName)"
-                       UploadDate="@c.UploadDate"
-                       UploadedBy="@c.UploadedBy"
-                       OnDelete="DeleteContract"/>
-                }
-            </div>
-        }
-        @if (totalPages > 1)
-        {
-            <nav class="mt-3">
-                <ul class="pagination justify-content-center">
-                    <!-- Previous Button -->
-                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
-                        <button class="page-link"
-                                style="color:#003768"
-                                @onclick="() => ChangePage(currentPage - 1)"
-                                disabled="@(currentPage == 1)">
-                            Previous
-                        </button>
-                    </li>
-
-                    <!-- Page Numbers -->
-                    @for (int i = 1; i <= totalPages; i++)
-
-                    {
-
-                        var pageNum = i; 
-
-                        <li class="page-item @(currentPage == pageNum ? "active" : "")">
-
-                            <button class="page-link"
-                                    style="@(currentPage == pageNum ? "background-color:#003768; color:white; border-color:#003768;" : "color:#003768")"
-                                    @onclick="() => ChangePage(pageNum)"
-                                    disabled="@(currentPage == pageNum)">
-
-                                @pageNum
-
-                            </button>
-
-                        </li>
-
-                    }
-
-                    <!-- Next Button -->
-                    <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
-                        <button class="page-link"
-                                style="color:#003768"
-                                @onclick="() => ChangePage(currentPage + 1)"
-                                disabled="@(currentPage == totalPages)">
-                            Next
-                        </button>
-                    </li>
-                </ul>
+            <nav class="sb-nav">
+                <NavLink href="/home" class="sb-link" Match="NavLinkMatch.All">
+                    <i class="bi bi-collection"></i><span>Library</span>
+                </NavLink>
+                <NavLink href="/upload" class="sb-link" Match="NavLinkMatch.Prefix">
+                    <i class="bi bi-upload"></i><span>Upload</span>
+                </NavLink>
+                <NavLink href="/settings" class="sb-link" Match="NavLinkMatch.Prefix">
+                    <i class="bi bi-gear"></i><span>Settings</span>
+                </NavLink>
             </nav>
-        }
 
-    }
- 
-    
+            <div class="sb-footer">
+                <a class="sb-mini" href="/help"><i class="bi bi-question-circle"></i></a>
+                <a class="sb-mini" href="/profile"><i class="bi bi-person"></i></a>
+            </div>
+        </aside>
+
+        <!-- Main -->
+        <main class="page-main">
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap library-header">
+                <h4 class="fw-semibold mb-2 mb-md-0 library-title">Contract Library</h4>
+
+                <div class="d-flex align-items-center gap-3">
+                    <div class="position-relative">
+                        <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 search-icon"></i>
+                        <input class="form-control ps-5 search-pill search-xl"
+                               placeholder="Search contracts..."
+                               @bind="searchTerm" @bind:after="() => currentPage = 1" />
+                    </div>
+
+                    <div class="btn-group view-toggle" role="group" aria-label="View mode">
+                        <button type="button" class="btn @(isGridView ? "active" : null)" @onclick="() => toggleView(true)" title="Grid view">
+                            <i class="bi bi-grid"></i>
+                        </button>
+                        <button type="button" class="btn @(!isGridView ? "active" : null)" @onclick="() => toggleView(false)" title="List view">
+                            <i class="bi bi-list"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            @if (isLoading)
+            {
+                <p>Loading contracts…</p>
+            }
+            else if (!string.IsNullOrEmpty(error))
+            {
+                <div class="alert alert-danger">@error</div>
+            }
+            else
+            {
+                var filtered = contracts
+                .Where(c => string.IsNullOrEmpty(searchTerm)
+                || CleanFileName(c.FileName).Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                || (c.UploadedBy ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(c => c.UploadDate)
+                .ToList();
+
+                var totalPages = (int)Math.Ceiling(filtered.Count / (double)pageSize);
+                var page = filtered.Skip((currentPage - 1) * pageSize).Take(pageSize).ToList();
+
+                <p class="results-hint">@filtered.Count contracts found</p>
+
+                @if (isGridView)
+                {
+                    <div class="row g-4 home-grid">
+                        @foreach (var c in page)
+                        {
+                            <div class="col-xxl-4 col-xl-4 col-lg-6">
+                                <div class="contract-card contract-hover position-relative home-card">
+                                    <ContractCard Id="@c.Id"
+                                                  FileName="@CleanFileName(c.FileName)"
+                                                  UploadedBy="@(c.UploadedBy ?? "Unknown")"
+                                                  UploadDate="@c.UploadDate"
+                                                  UserId="@c.UserId"
+                                                  onDelete="DeleteContract" />
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="list-group">
+                        @foreach (var c in page)
+                        {
+                            <div class="contract-row mb-2">
+                                <ContractList Id="@c.Id"
+                                              FileName="@CleanFileName(c.FileName)"
+                                              UploadDate="@c.UploadDate"
+                                              UploadedBy="@c.UploadedBy"
+                                              OnDelete="DeleteContract" />
+                            </div>
+                        }
+                    </div>
+                }
+
+                @if (totalPages > 1)
+                {
+                    <nav class="mt-3" aria-label="Contracts pagination">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(currentPage - 1)" disabled="@(currentPage == 1)">Previous</button>
+                            </li>
+
+                            @for (int i = 1; i <= totalPages; i++)
+                            {
+                                var n = i;
+                                <li class="page-item @(currentPage == n ? "active" : "")">
+                                    <button class="page-link" @onclick="() => ChangePage(n)" disabled="@(currentPage == n)">@n</button>
+                                </li>
+                            }
+
+                            <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
+                                <button class="page-link" @onclick="() => ChangePage(currentPage + 1)" disabled="@(currentPage == totalPages)">Next</button>
+                            </li>
+                        </ul>
+                    </nav>
+                }
+            }
+        </main>
+    </div>
 </div>
 
 @code {
@@ -151,95 +148,49 @@
     private string? error;
     private bool isGridView = true;
     private string searchTerm = "";
-    private string errorMessage;
     private int currentPage = 1;
     private int pageSize = 9;
 
     protected override async Task OnInitializedAsync()
     {
-        try
-        {
-            contracts = await Http.GetFromJsonAsync<List<ContractReadDto>>("/api/contracts")
-                        ?? new List<ContractReadDto>();
-        }
-        catch (Exception ex)
-        {
-            error = $"Failed to load contracts: {ex.Message}";
-        }
-        finally
-        {
-            isLoading = false;
-        }
+        try { contracts = await Http.GetFromJsonAsync<List<ContractReadDto>>("/api/contracts") ?? new(); }
+        catch (Exception ex) { error = $"Failed to load contracts: {ex.Message}"; }
+        finally { isLoading = false; }
     }
-    private async Task DeleteContract(int contractId)
+
+    private async Task DeleteContract(int id)
     {
-        errorMessage = "";
-        var confirmDelete = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to Delete");
-        if (!confirmDelete) return;
-        try
+        var ok = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to Delete");
+        if (!ok) return;
+        var res = await Http.DeleteAsync($"/api/Contracts/{id}");
+        if (res.IsSuccessStatusCode)
         {
-            var response = await Http.DeleteAsync($"/api/Contracts/{contractId}");
-            if (response.IsSuccessStatusCode)
-            {
-                contracts.RemoveAll(c=> c.Id == contractId);
-                ToastService.Notify(new(ToastType.Success, "Contract Deleted Successfully"));
-
-                StateHasChanged();
-            }
-            else
-            {
-                errorMessage = "Delete Failed";
-
-            }
+            contracts.RemoveAll(c => c.Id == id);
+            ToastService.Notify(new(ToastType.Success, "Contract Deleted Successfully"));
+            StateHasChanged();
         }
-        catch(Exception e)
-        {
-            errorMessage = $"Deletion Failed {e}";
-        }
-
     }
-    private void toggleView(bool grid)
 
+    private void toggleView(bool grid) => isGridView = grid;
+
+    private string CleanFileName(string s)
     {
-        isGridView = grid;
+        var i = s.IndexOf('_');
+        return (i >= 0 && i < s.Length - 1) ? s[(i + 1)..] : s;
     }
 
-    private string GetButtonStyle(bool isGrid)
-    {
-        if (isGrid == isGridView)
-        {
-            return "background-color:#003768; color:white; border:1px solid #003768;";
-        }
-        else
-        {
-            return "background-color:white; color:black; border:1px solid #6c757d;";
-        }
-    }
-
-    //to remove the GUID part
-    private string CleanFileName(string fileName)
-    {
-        var i = fileName.IndexOf('_');
-        return (i >= 0 && i < fileName.Length - 1)
-            ? fileName[(i + 1)..]
-            : fileName;
-    }
     private void ChangePage(int page)
     {
-        var filteredCount = contracts
-            .Where(c => string.IsNullOrEmpty(searchTerm)
-                     || CleanFileName(c.FileName).Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
-                     || (c.UploadedBy ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
-            .Count();
-
-        var totalPages = (int)Math.Ceiling(filteredCount / (double)pageSize);
+        var totalPages = (int)Math.Ceiling(
+            contracts.Where(c => string.IsNullOrEmpty(searchTerm)
+                              || CleanFileName(c.FileName).Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                              || (c.UploadedBy ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                     .Count() / (double)pageSize);
 
         if (page >= 1 && page <= totalPages && page != currentPage)
         {
             currentPage = page;
-            StateHasChanged(); 
+            StateHasChanged();
         }
     }
-
-
 }
