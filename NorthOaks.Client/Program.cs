@@ -21,7 +21,9 @@ builder.Services.AddScoped(sp =>
 
     var client = new HttpClient(handler)
     {
-        BaseAddress = new Uri(navigation.BaseUri)
+        BaseAddress = new Uri(navigation.BaseUri),
+        Timeout = TimeSpan.FromMinutes(10)
+
     };
 
     return client;
