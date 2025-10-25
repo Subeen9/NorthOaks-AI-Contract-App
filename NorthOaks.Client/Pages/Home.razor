@@ -1,5 +1,6 @@
 ﻿@page "/home"
 @using NorthOaks.Shared.Model.Contracts
+@using System.Linq
 @inject HttpClient Http
 @inject IJSRuntime JS
 @using Microsoft.AspNetCore.Authorization
@@ -28,6 +29,64 @@
                 </NavLink>
             </nav>
 
+            <!-- SORT + PAGE SIZE PANEL (view moved to header) -->
+            <div class="sb-panel">
+                <div class="sb-sec-title">Sort</div>
+
+                <div class="sb-radios">
+                    <label class="sb-radio">
+                        <input type="radio" name="sort" value="uploaded_desc"
+                               checked="@("uploaded_desc" == sortKey)"
+                               @onchange="OnSortChanged" />
+                        <span>Newest</span>
+                    </label>
+                    <label class="sb-radio">
+                        <input type="radio" name="sort" value="uploaded_asc"
+                               checked="@("uploaded_asc" == sortKey)"
+                               @onchange="OnSortChanged" />
+                        <span>Oldest</span>
+                    </label>
+                    <label class="sb-radio">
+                        <input type="radio" name="sort" value="name_asc"
+                               checked="@("name_asc" == sortKey)"
+                               @onchange="OnSortChanged" />
+                        <span>A–Z</span>
+                    </label>
+                    <label class="sb-radio">
+                        <input type="radio" name="sort" value="name_desc"
+                               checked="@("name_desc" == sortKey)"
+                               @onchange="OnSortChanged" />
+                        <span>Z–A</span>
+                    </label>
+                    <label class="sb-radio">
+                        <input type="radio" name="sort" value="uploader_asc"
+                               checked="@("uploader_asc" == sortKey)"
+                               @onchange="OnSortChanged" />
+                        <span>Uploader A–Z</span>
+                    </label>
+                    <label class="sb-radio">
+                        <input type="radio" name="sort" value="uploader_desc"
+                               checked="@("uploader_desc" == sortKey)"
+                               @onchange="OnSortChanged" />
+                        <span>Uploader Z–A</span>
+                    </label>
+                </div>
+
+                <hr class="sb-hr" />
+
+                <div class="sb-sec-title">Results per page</div>
+                <select class="sb-select"
+                        @bind="pageSize"
+                        @bind:after="OnPageSizeChanged">
+                    <option value="6">6</option>
+                    <option value="9">9</option>
+                    <option value="12">12</option>
+                    <option value="24">24</option>
+                </select>
+
+                <button class="btn sb-reset mt-2" @onclick="ResetSidebar">Reset</button>
+            </div>
+
             <div class="sb-footer">
                 <a class="sb-mini" href="/help"><i class="bi bi-question-circle"></i></a>
                 <a class="sb-mini" href="/profile"><i class="bi bi-person"></i></a>
@@ -47,6 +106,7 @@
                                @bind="searchTerm" @bind:after="() => currentPage = 1" />
                     </div>
 
+                    <!-- VIEW TOGGLE BACK IN HEADER -->
                     <div class="btn-group view-toggle" role="group" aria-label="View mode">
                         <button type="button" class="btn @(isGridView ? "active" : null)" @onclick="() => toggleView(true)" title="Grid view">
                             <i class="bi bi-grid"></i>
@@ -72,8 +132,18 @@
                 .Where(c => string.IsNullOrEmpty(searchTerm)
                 || CleanFileName(c.FileName).Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
                 || (c.UploadedBy ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(c => c.UploadDate)
                 .ToList();
+
+                // apply sort (client-side)
+                filtered = sortKey switch
+                {
+                    "uploaded_asc" => filtered.OrderBy(c => c.UploadDate).ToList(),
+                    "name_asc" => filtered.OrderBy(c => CleanFileName(c.FileName), StringComparer.OrdinalIgnoreCase).ToList(),
+                    "name_desc" => filtered.OrderByDescending(c => CleanFileName(c.FileName), StringComparer.OrdinalIgnoreCase).ToList(),
+                    "uploader_asc" => filtered.OrderBy(c => c.UploadedBy ?? string.Empty, StringComparer.OrdinalIgnoreCase).ToList(),
+                    "uploader_desc" => filtered.OrderByDescending(c => c.UploadedBy ?? string.Empty, StringComparer.OrdinalIgnoreCase).ToList(),
+                    _ => filtered.OrderByDescending(c => c.UploadDate).ToList() // uploaded_desc (Newest)
+                };
 
                 var totalPages = (int)Math.Ceiling(filtered.Count / (double)pageSize);
                 var page = filtered.Skip((currentPage - 1) * pageSize).Take(pageSize).ToList();
@@ -151,17 +221,30 @@
     private int currentPage = 1;
     private int pageSize = 9;
 
+    // sort key (client-side)
+    private string sortKey = "uploaded_desc"; // default = Newest
+
     protected override async Task OnInitializedAsync()
     {
-        try { contracts = await Http.GetFromJsonAsync<List<ContractReadDto>>("/api/contracts") ?? new(); }
-        catch (Exception ex) { error = $"Failed to load contracts: {ex.Message}"; }
-        finally { isLoading = false; }
+        try
+        {
+            contracts = await Http.GetFromJsonAsync<List<ContractReadDto>>("/api/contracts") ?? new();
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load contracts: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private async Task DeleteContract(int id)
     {
         var ok = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to Delete");
         if (!ok) return;
+
         var res = await Http.DeleteAsync($"/api/Contracts/{id}");
         if (res.IsSuccessStatusCode)
         {
@@ -181,16 +264,38 @@
 
     private void ChangePage(int page)
     {
-        var totalPages = (int)Math.Ceiling(
-            contracts.Where(c => string.IsNullOrEmpty(searchTerm)
+        var totalFiltered = contracts.Where(c => string.IsNullOrEmpty(searchTerm)
                               || CleanFileName(c.FileName).Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
                               || (c.UploadedBy ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
-                     .Count() / (double)pageSize);
+                     .Count();
+
+        var totalPages = (int)Math.Ceiling(totalFiltered / (double)pageSize);
 
         if (page >= 1 && page <= totalPages && page != currentPage)
         {
             currentPage = page;
             StateHasChanged();
         }
+    }
+
+    private void OnSortChanged(ChangeEventArgs e)
+    {
+        sortKey = e?.Value?.ToString() ?? "uploaded_desc";
+        currentPage = 1;
+        StateHasChanged();
+    }
+
+    private void OnPageSizeChanged()
+    {
+        currentPage = 1;
+        StateHasChanged();
+    }
+
+    private void ResetSidebar()
+    {
+        sortKey = "uploaded_desc";
+        pageSize = 9;
+        currentPage = 1;
+        StateHasChanged();
     }
 }
