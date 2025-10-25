@@ -99,7 +99,7 @@
                 (AuthProvider as CustomAuthStateProvider)?.NotifyUserAuthentication(token);
 
                 // Go to home page
-                Navigation.NavigateTo("/home");
+                Navigation.NavigateTo("/home", forceLoad: true);
             }
             else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
