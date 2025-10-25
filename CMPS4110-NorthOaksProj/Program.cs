@@ -150,14 +150,16 @@ builder.Services.AddHttpClient<OllamaEmbeddingClient>((sp, http) =>
 {
     var opts = sp.GetRequiredService<IOptions<OllamaOptions>>().Value;
     http.BaseAddress = new Uri(opts.BaseUrl);
+    http.Timeout = TimeSpan.FromMinutes(3);
 });
 
 
-// === Response Generation (Ollama Llama3.2) ===
+// === Response Generation ===
 builder.Services.AddHttpClient<OllamaGenerationClient>((sp, http) =>
 {
     var opts = sp.GetRequiredService<IOptions<OllamaOptions>>().Value;
     http.BaseAddress = new Uri(opts.BaseUrl);
+    http.Timeout = TimeSpan.FromMinutes(5);
 });
 
 builder.Services.AddScoped<IOllamaGenerationClient>(sp => sp.GetRequiredService<OllamaGenerationClient>());
