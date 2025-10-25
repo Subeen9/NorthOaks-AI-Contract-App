@@ -166,7 +166,7 @@ a, .btn-link {
     flex-direction: column;
     background: #fff;
     border-right: 1px solid #ddd;
-    overflow-y: auto; /* vertical scroll inside viewer */
+    overflow-y: scroll; /* vertical scroll inside viewer */
     overflow-x: hidden; /* keep it clean horizontally */
     min-width: 300px;
     min-height: 0;
