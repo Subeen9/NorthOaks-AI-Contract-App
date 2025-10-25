@@ -1,7 +1,18 @@
 ﻿@using Microsoft.AspNetCore.Components.Authorization
+@using NorthOaks.Client.Providers
+@using NorthOaks.Shared.Model.Notifications
+@using BlazorBootstrap
+@using System.Security.Claims
+
 @inherits LayoutComponentBase
+@implements IDisposable
+
 @inject AuthenticationStateProvider AuthProvider
+@inject NotificationProvider Notifications
 @inject IJSRuntime JS
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject ToastService ToastService
 
 <Toasts class="p-3" AutoHide="true" Delay="3000" Placement="ToastsPlacement.TopRight" />
 
@@ -9,34 +20,84 @@
     <main>
         <AuthorizeView>
             <Authorized>
-                <header class="border-bottom bg-white px-4 py-3">
+                <header class="border-bottom bg-white px-4 py-3 shadow-sm">
                     <div class="d-flex align-items-center justify-content-between">
 
-                        <div class="d-flex align-items-center contracthub-button" @onclick="NavigateToHome">
+                        <!-- Logo -->
+                        <div class="d-flex align-items-center contracthub-button" @onclick="NavigateToHome" style="cursor:pointer;">
                             <span class="fw-semibold fs-3 logo-text" style="color:#003768;">
-                                <img src="images/northoaks leaf.png" alt="ContractHub Logo" style="width:32px; height:32px; vertical-align:middle; margin-right:4px;" />
+                                <img src="images/northoaks leaf.png" alt="ContractHub Logo"
+                                     style="width:32px; height:32px; vertical-align:middle; margin-right:4px;" />
                                 NorthOaks Contract AI
                             </span>
                         </div>
 
-
-
+                        <!-- Right section -->
                         <div class="d-flex align-items-center gap-3">
-
-                            <button class="btn text-white" style="background: #003768" @onclick="NavigateToUpload">
+                            <!-- Upload -->
+                            <button class="btn text-white" style="background:#003768" @onclick="NavigateToUpload">
                                 <i class="bi bi-upload me-2"></i> Upload Contract
                             </button>
-                            <button class="btn btn-link position-relative">
-                                <i class="bi bi-bell fs-5"></i>
-                                <span class="position-absolute top-0 start-100 translate-middle p-1"></span>
-                            </button>
+
+                            <!-- Notifications -->
+                            <div class="dropdown">
+                                <button class="btn btn-link position-relative"
+                                        id="notificationMenu"
+                                        data-bs-toggle="dropdown"
+                                        aria-expanded="false"
+                                        @onclick="OnDropdownOpened">
+                                    <i class="bi bi-bell fs-5"></i>
+
+                                    @if (unreadCount > 0)
+                                    {
+                                        <span class="notif-badge">@unreadCount</span>
+                                    }
+                                </button>
+
+                                <div class="dropdown-menu dropdown-menu-end notif-dropdown p-0 shadow-sm border-0">
+                                    <div class="notif-header d-flex justify-content-between align-items-center px-3 py-2 border-bottom">
+                                        <span class="fw-semibold text-dark">Notifications</span>
+                                        <span class="notif-header__action @(unreadCount == 0 ? "text-muted opacity-50" : "text-primary")"
+                                              style="cursor:pointer;"
+                                              @onclick="ClearNotifications">
+                                            Mark all as read
+                                        </span>
+                                    </div>
+
+                                    <div class="notification-list">
+                                        @if (Notifications.Messages.Count == 0)
+                                        {
+                                            <div class="text-center text-muted py-3">
+                                                No new notifications
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            @foreach (var n in Notifications.Messages)
+                                            {
+                                                <div class="notification-item @(n.IsRead ? "" : "unread") px-3 py-2 border-bottom">
+                                                    <div class="notification-item__msg fw-medium">@n.Message</div>
+                                                    <div class="notification-item__time small text-muted">
+                                                        @n.CreatedAt.ToLocalTime().ToString("MMM dd, hh:mm tt")
+                                                    </div>
+                                                </div>
+                                            }
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+
+
+
+                            <!-- Profile -->
                             <div class="dropdown">
                                 <button class="btn rounded-circle text-white"
                                         type="button" id="userMenu" data-bs-toggle="dropdown" aria-expanded="false"
-                                        style="width: 40px; height: 40px; background: #003768">
+                                        style="width:40px; height:40px; background:#003768">
                                     @initials
                                 </button>
-                                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userMenu">
+
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="userMenu">
                                     <li>
                                         <button class="dropdown-item" @onclick="Logout">
                                             <i class="bi bi-box-arrow-right me-2"></i> Logout
@@ -48,7 +109,9 @@
                     </div>
                 </header>
             </Authorized>
+
             <NotAuthorized>
+                @Body
             </NotAuthorized>
         </AuthorizeView>
 
@@ -59,35 +122,61 @@
 </div>
 
 @code {
-    [Inject] private HttpClient Http { get; set; }
-    [Inject] private NavigationManager Navigation { get; set; }
-    [Inject] protected ToastService ToastService { get; set; } = default!;
     private string initials = "";
+    private int unreadCount = 0;
+    private string? currentUserId;
 
     private void NavigateToUpload() => Navigation.NavigateTo("/upload");
     private void NavigateToHome() => Navigation.NavigateTo("/home");
 
     protected override async Task OnInitializedAsync()
     {
-        var authState = await AuthProvider.GetAuthenticationStateAsync();
-        var user = authState.User;
+        try
+        {
+            var authState = await AuthProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
 
-        if (user?.Identity?.IsAuthenticated == true)
-        {
-            var firstName = user.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? "";
-            var lastName = user.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value ?? "";
-            initials = GetInitials(firstName, lastName);
+            if (user?.Identity?.IsAuthenticated == true)
+            {
+                currentUserId = user.Claims.FirstOrDefault(c => c.Type == "sub")?.Value
+                ?? user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
+                ?? string.Empty;
+
+                var firstName = user.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? "";
+                var lastName = user.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value ?? "";
+                initials = GetInitials(firstName, lastName);
+
+                await Notifications.InitializeAsync(currentUserId);
+                Notifications.OnCountChanged += UpdateUnreadCount;
+                unreadCount = Notifications.UnreadCount;
+            }
+            else
+            {
+                initials = "NA";
+            }
         }
-        else
+        catch (Exception ex)
         {
-            initials = "NA";
+            Console.Error.WriteLine($"❌ Initialization failed: {ex.Message}");
+            ToastService.Notify(new(ToastType.Danger, "Failed to initialize notifications."));
         }
+    }
+
+    private void UpdateUnreadCount()
+    {
+        unreadCount = Notifications.UnreadCount;
+        InvokeAsync(StateHasChanged);
+    }
+
+    private async void ClearNotifications()
+    {
+        await Notifications.ClearUnread();
     }
 
     private string GetInitials(string firstName, string lastName)
     {
-        string f = !string.IsNullOrEmpty(firstName) ? firstName[0].ToString().ToUpper() : "";
-        string l = !string.IsNullOrEmpty(lastName) ? lastName[0].ToString().ToUpper() : "";
+        var f = !string.IsNullOrEmpty(firstName) ? firstName[0].ToString().ToUpper() : "";
+        var l = !string.IsNullOrEmpty(lastName) ? lastName[0].ToString().ToUpper() : "";
         return f + l;
     }
 
@@ -97,6 +186,22 @@
         await JS.InvokeVoidAsync("localStorage.removeItem", "authToken");
         ((CustomAuthStateProvider)AuthProvider).NotifyUserLogout();
         ToastService.Notify(new(ToastType.Success, "Logout Successful"));
-        Navigation.NavigateTo("/");
+        Navigation.NavigateTo("/", forceLoad: true);
+    }
+    private async Task OnDropdownOpened()
+    {
+        // Automatically mark all as read when the dropdown is opened
+        if (Notifications.UnreadCount > 0)
+        {
+            await Notifications.ClearUnread();
+            unreadCount = 0;
+            StateHasChanged();
+        }
+    }
+
+
+    public void Dispose()
+    {
+        Notifications.OnCountChanged -= UpdateUnreadCount;
     }
 }

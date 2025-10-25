@@ -1,16 +1,18 @@
 ﻿@page "/"
 @using Microsoft.AspNetCore.Components.Authorization
-@using NorthOaks.Shared.Model.Users;
+@using NorthOaks.Shared.Model.Users
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthProvider
 @inject IJSRuntime JS
+@inject ToastService ToastService
 
-<div class="container d-flex justify-content-center align-items-center" style="min-height:100vh;">
-    <div class="card shadow p-4" style="max-width:400px; width:100%;">
+<div class="auth-page">
+    <div class="auth-card">
         <div class="text-center mb-3">
-            <img src="images/NorthOaks.jpg" alt="North Oaks Logo" width="100" height="100" class="rounded-circle mb-2" />
-            <h4 style="color:#003768;">Sign In</h4>
+            <img src="images/NorthOaks.jpg" alt="North Oaks Logo" width="72" height="72" class="mb-2 auth-logo" />
+            <h2 class="auth-title">Contract Management</h2>
+            <p class="auth-sub">Sign in to access your contract library</p>
         </div>
 
         <EditForm Model="@loginModel" OnValidSubmit="HandleValidSubmit">
@@ -18,52 +20,67 @@
             <ValidationSummary />
 
             <div class="mb-3">
-                <label for="username" class="form-label" style="color:#003768;">UserName</label>
-                <InputText id="username" @bind-Value="loginModel.UserName" class="form-control" />
+                <label for="username" class="form-label auth-label">Email or Username</label>
+                <InputText id="username" class="form-control auth-input" @bind-Value="loginModel.UserName" />
                 <ValidationMessage For="@(() => loginModel.UserName)" />
             </div>
 
             <div class="mb-3">
-                <label for="password" class="form-label" style="color:#003768;">Password</label>
-                <InputText id="password" @bind-Value="loginModel.Password" Type="password" class="form-control" />
+                <div class="d-flex justify-content-between align-items-center">
+                    <label for="password" class="form-label auth-label mb-0">Password</label>
+                    <a class="auth-link" href="/forgot-password">Forgot password?</a>
+                </div>
+
+                <!-- Password field with perfectly-centered eye toggle -->
+                <div class="auth-field">
+                    <InputText id="password"
+                               class="form-control auth-input pe-5"
+                               @bind-Value="loginModel.Password"
+                               Type="@(showPassword ? "text" : "password")" />
+                    <button type="button"
+                            class="btn btn-sm auth-eye"
+                            @onclick="ToggleShowPassword"
+                            aria-label="Toggle password visibility">
+                        <i class="bi @(showPassword ? "bi-eye-slash" : "bi-eye")"></i>
+                    </button>
+                </div>
+
                 <ValidationMessage For="@(() => loginModel.Password)" />
             </div>
 
-            <button type="submit" class="btn btn-primary w-100"
-                    style="background: #003768" disabled ="@isLoading">
+            <button type="submit" class="btn auth-cta w-100" disabled="@isLoading" aria-busy="@isLoading">
                 @if (isLoading)
                 {
-                    <span class="spinner-border spinner-border-sm me-2"></span>
-                    <text>Signing In...</text>
-                    
-
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <span>Signing in...</span>
                 }
                 else
                 {
-                   <text>Sign In</text>
+                    <span>Sign In</span>
                 }
-                    </button>
+            </button>
         </EditForm>
 
-        <div class="d-flex justify-content-between mt-3">
-            <a href="/forgot-password">Register</a>
-            <a href="/forgot-password">Forgot password?</a>
-        </div>
+        <p class="auth-foot text-center mt-3">
+            Don't have an account?
+            <a class="auth-link" href="/register">Contact your admin</a>
+        </p>
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
-            <div class="alert alert-danger mt-2">@errorMessage</div>
+            <div class="alert alert-danger mt-3 mb-0">@errorMessage</div>
         }
     </div>
 </div>
 
 @code {
-    [Inject] protected ToastService ToastService { get; set; } = default!;
-
-
-    private LoginDto loginModel = new LoginDto();
-    private string errorMessage;
+    // Initialize to avoid nullability complaints and mixed content errors
+    private LoginDto loginModel = new() { UserName = "", Password = "" };
+    private string? errorMessage;
     private bool isLoading = false;
+    private bool showPassword = false;
+
+    private void ToggleShowPassword() => showPassword = !showPassword;
 
     private async Task HandleValidSubmit()
     {
@@ -78,25 +95,21 @@
             {
                 var token = await response.Content.ReadAsStringAsync();
 
-                // Save token in localStorage
                 await JS.InvokeVoidAsync("localStorage.setItem", "authToken", token);
-
-                // Notify provider
-                ((CustomAuthStateProvider)AuthProvider).NotifyUserAuthentication(token);
-                ToastService.Notify(new(ToastType.Success, $"User Successfully Logged In"));
+                (AuthProvider as CustomAuthStateProvider)?.NotifyUserAuthentication(token);
 
                 // Go to home page
-                Navigation.NavigateTo("/home");
+                Navigation.NavigateTo("/home", forceLoad: true);
             }
             else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
             {
                 errorMessage = "Invalid username or password.";
-                ToastService.Notify(new(ToastType.Danger, $"Login Failed. Invalid Credentials"));
+                ToastService.Notify(new(ToastType.Danger, "Login Failed. Invalid Credentials"));
             }
             else
             {
                 errorMessage = "Login failed. Please try again.";
-                ToastService.Notify(new(ToastType.Danger, $"Error Occured"));
+                ToastService.Notify(new(ToastType.Danger, "An unexpected error occurred"));
             }
         }
         catch (Exception ex)
@@ -108,5 +121,4 @@
             isLoading = false;
         }
     }
-
 }
