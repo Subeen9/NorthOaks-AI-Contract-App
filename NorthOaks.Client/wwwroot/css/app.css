@@ -1,10 +1,14 @@
-﻿html, body {
+﻿/* =========================
+   Global / base (kept)
+========================= */
+html, body {
     height: 100%;
     margin: 0;
     padding: 0;
     font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
     overflow: hidden;
 }
+
 #app, .app, main {
     height: 100%;
     overflow: hidden;
@@ -38,6 +42,7 @@ a, .btn-link {
     padding: 0;
     margin: 0;
 }
+
 .contract-viewer-page ~ .content,
 body:has(.contract-viewer-page) .content {
     padding: 0 !important;
@@ -55,6 +60,7 @@ body:has(.contract-viewer-page) .content {
 .validation-message {
     color: red;
 }
+
 #blazor-error-ui {
     color-scheme: light only;
     background: lightyellow;
@@ -74,6 +80,10 @@ body:has(.contract-viewer-page) .content {
         right: 0.75rem;
         top: 0.5rem;
     }
+
+/* =========================
+   Loading (kept)
+========================= */
 .loading-progress {
     position: relative;
     display: block;
@@ -106,6 +116,10 @@ body:has(.contract-viewer-page) .content {
     .loading-progress-text:after {
         content: var(--blazor-load-percentage-text, "Loading");
     }
+
+/* =========================
+   Contract viewer (kept)
+========================= */
 .contract-viewer-page {
     position: absolute;
     top: 65px;
@@ -158,6 +172,7 @@ body:has(.contract-viewer-page) .content {
     background: #fff;
     border-radius: 4px;
 }
+
 .resizer {
     width: 6px;
     background: #e9e9e9;
@@ -180,6 +195,9 @@ body:has(.contract-viewer-page) .content {
         border-radius: 1px;
     }
 
+/* =========================
+   Chat panel (kept)
+========================= */
 .chat-panel {
     width: 420px;
     min-width: 280px;
@@ -212,6 +230,7 @@ body:has(.contract-viewer-page) .content {
     flex-direction: column;
     scroll-behavior: smooth;
 }
+
 .message {
     margin-bottom: 12px;
     padding: 10px 14px;
@@ -267,6 +286,7 @@ body:has(.contract-viewer-page) .content {
     .ai-message strong {
         color: #495057;
     }
+
 .chat-input {
     flex-shrink: 0;
     padding: 12px 16px;
@@ -327,6 +347,10 @@ body:has(.contract-viewer-page) .content {
         background: #ccc;
         cursor: not-allowed;
     }
+
+/* =========================
+   Existing Contract hover (kept)
+========================= */
 .contract-hover {
     transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease;
     cursor: pointer;
@@ -354,21 +378,10 @@ body:has(.contract-viewer-page) .content {
     .contract-hover:hover .bi-three-dots-vertical {
         color: black !important;
     }
-.pagination .page-link {
-    color: #ba8e0b;
-    border: 1px solid #003768;
-}
 
-    .pagination .page-link:hover {
-        background-color: #ba8e0b;
-        color: #003768;
-    }
-
-.pagination .active .page-link {
-    background-color: #ba8e0b;
-    color: white;
-    border-color: #003768;
-}
+/* =========================
+   Responsive bits (kept)
+========================= */
 @media (max-width: 768px) {
     .viewer-wrapper {
         flex-direction: column;
@@ -393,6 +406,10 @@ body:has(.contract-viewer-page) .content {
         border-top: 1px solid #ddd;
     }
 }
+
+/* =========================
+   Loading message (kept)
+========================= */
 .loading-message {
     background: #e9ecef !important;
     padding: 12px 16px !important;
@@ -440,6 +457,10 @@ body:has(.contract-viewer-page) .content {
         opacity: 1;
     }
 }
+
+/* =========================
+   Header buttons (kept)
+========================= */
 .contracthub-button {
     display: flex;
     align-items: center;
@@ -463,6 +484,7 @@ body:has(.contract-viewer-page) .content {
     .contracthub-button:hover .logo-text {
         color: #ba8e0b !important;
     }
+
 .btn.text-white[style*="#003768"] {
     transition: background-color 0.2s ease, transform 0.15s ease;
 }
@@ -471,6 +493,7 @@ body:has(.contract-viewer-page) .content {
         background-color: #ba8e0b !important;
         transform: translateY(-1px);
     }
+
 .btn.btn-link.position-relative {
     color: #003768;
     transition: color 0.2s ease, transform 0.15s ease;
@@ -480,6 +503,7 @@ body:has(.contract-viewer-page) .content {
         color: #ba8e0b;
         transform: scale(1.1);
     }
+
 .btn.rounded-circle.text-white[style*="#003768"] {
     transition: background-color 0.2s ease, transform 0.15s ease;
 }
@@ -488,3 +512,205 @@ body:has(.contract-viewer-page) .content {
         background-color: #ba8e0b !important;
         transform: scale(1.05);
     }
+
+/* ===================================================================== */
+/* ======================= New Figma-style pieces ======================= */
+/* ===================================================================== */
+
+/* Tokens + subtle page background */
+:root {
+    --brand-blue: #003768;
+    --brand-gold: #ba8e0b;
+    --ink: #0f172a;
+    --muted: #6b7280;
+    --card-bg: #ffffff;
+    --page: #f7f7f9;
+    --stroke: #e5e7eb;
+    --radius: 14px;
+    --shadow-sm: 0 4px 12px rgba(0,0,0,.06);
+    --shadow-md: 0 10px 18px rgba(0,0,0,.10);
+}
+
+body {
+    background: var(--page);
+}
+
+/* Contract Library header: spacing + title color */
+.container-fluid.px-4.mt-4.mb-4 {
+    padding-left: 32px !important;
+    padding-right: 32px !important;
+    margin-top: 24px !important;
+    margin-bottom: 32px !important;
+}
+
+.library-header {
+    gap: 16px;
+    margin-bottom: 20px !important;
+}
+
+.library-title {
+    color: var(--brand-blue) !important;
+    letter-spacing: .2px;
+}
+
+/* Search pill + icon */
+.search-pill {
+    width: 280px;
+    border-radius: 999px;
+    border: 1px solid var(--stroke);
+    padding-left: 42px !important;
+    background: #fff;
+    transition: border-color .18s ease, box-shadow .18s ease;
+}
+
+    .search-pill:focus {
+        border-color: var(--brand-blue);
+        box-shadow: 0 0 0 3px rgba(0,55,104,.12);
+        outline: none;
+    }
+
+.search-icon {
+    color: #a3a3a3;
+    font-size: 16px;
+}
+
+/* View toggle */
+.view-toggle .btn {
+    border: 1px solid var(--stroke);
+    background: #fff;
+    color: #111827;
+    padding: .45rem .7rem;
+    border-radius: 10px;
+    transition: transform .12s ease, background-color .18s ease, border-color .18s ease;
+}
+
+    .view-toggle .btn + .btn {
+        margin-left: 6px;
+    }
+
+    .view-toggle .btn.active {
+        background: var(--brand-blue);
+        color: #fff;
+        border-color: var(--brand-blue);
+    }
+
+    .view-toggle .btn:hover {
+        transform: translateY(-1px);
+    }
+
+/* Results hint */
+.results-hint {
+    color: var(--muted);
+    margin-top: -4px;
+    margin-bottom: 10px;
+    font-size: .95rem;
+}
+
+/* Grid spacing */
+.row.g-4 {
+    row-gap: 22px;
+}
+
+/* Contract card (attach to ContractCard root) */
+.contract-card {
+    border: 1px solid var(--stroke);
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease, color .18s ease;
+    min-height: 124px;
+}
+
+    .contract-card .card-body {
+        padding: 16px 18px;
+    }
+
+    .contract-card .card-menu {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        color: #9ca3af;
+    }
+
+.contract-title {
+    font-weight: 600;
+    color: var(--brand-blue);
+    margin-bottom: 6px;
+    line-height: 1.25;
+}
+
+.contract-meta {
+    color: #6b7280;
+    font-size: .9rem;
+}
+
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 999px;
+    padding: 4px 10px;
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .2px;
+    border: 1px solid var(--stroke);
+    color: #374151;
+    background: #f9fafb;
+}
+
+/* Card hover to gold */
+.contract-card.contract-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    background: var(--brand-gold) !important;
+    color: #fff !important;
+}
+
+    .contract-card.contract-hover:hover .contract-title,
+    .contract-card.contract-hover:hover .contract-meta,
+    .contract-card.contract-hover:hover .file-icon {
+        color: #fff !important;
+    }
+
+    .contract-card.contract-hover:hover .card-menu {
+        color: #111 !important;
+    }
+
+/* NEW pagination (replaces old styles) */
+.pagination .page-link {
+    color: var(--brand-blue);
+    border: 1px solid var(--brand-blue);
+}
+
+    .pagination .page-link:hover {
+        background: var(--brand-gold);
+        color: #fff;
+        border-color: var(--brand-gold);
+    }
+
+.pagination .active .page-link {
+    background: var(--brand-blue);
+    color: #fff;
+    border-color: var(--brand-blue);
+}
+
+/* List view row */
+.list-group .contract-row {
+    border: 1px solid var(--stroke);
+    border-radius: 12px;
+    padding: 14px 16px;
+    background: #fff;
+    box-shadow: var(--shadow-sm);
+    transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+    .list-group .contract-row:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+        background: #fff5e0;
+    }
+
+/* Minor utility */
+h4:focus {
+    outline: none;
+}
