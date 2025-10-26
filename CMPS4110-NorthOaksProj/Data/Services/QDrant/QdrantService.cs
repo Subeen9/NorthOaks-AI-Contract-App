@@ -99,7 +99,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services
             }
         }
 
-        public async Task<Guid> InsertVectorAsync(float[] embedding, int contractId, int chunkIndex, string chunkText)
+        public async Task<Guid> InsertVectorAsync(float[] embedding, int contractId, int chunkIndex, string chunkText, int pageNumber)
         {
             try
             {
@@ -115,6 +115,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                         ["contract_id"] = contractId,
                         ["chunk_index"] = chunkIndex,
                         ["chunk_text"] = chunkText,
+                        ["page_number"] = pageNumber,
                         ["created_at"] = DateTime.UtcNow.ToString("O")
                     }
                 };
@@ -152,7 +153,10 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                     ChunkIndex = (int)point.Payload["chunk_index"].IntegerValue,
                     ChunkText = point.Payload.ContainsKey("chunk_text")
                   ? point.Payload["chunk_text"].StringValue
-                  : string.Empty
+                  : string.Empty,
+                    PageNumber = point.Payload.ContainsKey("page_number")  // ← RETRIEVE PAGE NUMBER
+                ? (int)point.Payload["page_number"].IntegerValue
+                : 1
                 }).ToList();
             }
             catch (Exception ex)
