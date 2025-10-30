@@ -10,11 +10,9 @@ using NorthOaks.Shared.Model.Chat;
 using System.Text;
 using System.Text.RegularExpressions;
 
-
-
 namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 {
-    public class ChatMessagesService : EntityBaseRepository<ChatMessage>,IChatMessagesService
+    public class ChatMessagesService : EntityBaseRepository<ChatMessage>, IChatMessagesService
     {
         // Summary intent detection 
         private static readonly Regex SummaryRegex = new(
@@ -22,10 +20,10 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
         // optimization constants for 100 second LLM timeout
-        private const int MAX_EXCERPTS_TOTAL = 40;     // limits total chunks across all docs
-        private const int MAX_EXCERPTS_PER_DOC = 30;     // per-doc cap
-        private const int MAX_CONTEXT_CHARS = 9000;   // ~6–7k tokens per model
-        private const int MIN_CHUNK_LEN = 20;     // skip crumbs
+        private const int MAX_EXCERPTS_TOTAL = 40;
+        private const int MAX_EXCERPTS_PER_DOC = 30;
+        private const int MAX_CONTEXT_CHARS = 9000;
+        private const int MIN_CHUNK_LEN = 20;
 
         private readonly DataContext _context;
         private readonly MessageEmbeddingService _messageEmbeddings;
@@ -67,23 +65,18 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                 })
                 .ToListAsync();
         }
+
         private string CleanGeneratedResponse(string text)
         {
             if (string.IsNullOrWhiteSpace(text))
                 return text;
 
-            // Remove clause/chunk references like "Clause8: Chunk1"
             text = Regex.Replace(text, @"Clause\d+: Chunk\d+", "", RegexOptions.IgnoreCase);
-
-            // Remove excessive symbols like *, +, etc. at the start of lines
             text = Regex.Replace(text, @"^[\*\+\-]\s*", "", RegexOptions.Multiline);
-
-            // Normalize whitespace
             text = Regex.Replace(text, @"\s{2,}", " ").Trim();
 
             return text;
         }
-
 
         public async Task<ChatMessageDto?> Create(CreateChatMessageDto dto)
         {
@@ -113,7 +106,6 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     entity.Response = summaryResponse;
                     await _context.SaveChangesAsync();
                     return MapToDto(entity);
-                }
 
                 // ===== RAG path =====
                 _logger.LogInformation("Starting RAG pipeline for: {Message}", dto.Message);
@@ -192,9 +184,21 @@ Answer:
 
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Successfully generated response for message {MessageId}", entity.Id);
-                return MapToDto(entity);
+
+                
+                var responseDto = MapToDto(entity);
+                responseDto.Sources = results.Select(r => new ChatMessageSourceDto
+                {
+                    ContractId = r.ContractId,
+                    ChunkText = r.ChunkText,
+                    ChunkIndex = r.ChunkIndex,
+                    PageNumber = r.PageNumber,
+                    SimilarityScore = (double)r.Score
+                }).ToList();
+
+                _logger.LogInformation("Returning {Count} sources with response", responseDto.Sources.Count);
+                return responseDto;
             }
-           
             catch (OperationCanceledException ex)
             {
                 _logger.LogError(ex, "OPERATION CANCELED after {Ms}ms at: {StackTrace}",
@@ -221,7 +225,6 @@ Answer:
             }
         }
 
-
         public async Task<bool> Delete(int id)
         {
             var msg = await GetByIdAsync(id);
@@ -236,20 +239,18 @@ Answer:
             SessionId = entity.SessionId,
             Message = entity.Message,
             Response = entity.Response,
-            Timestamp = entity.Timestamp
+            Timestamp = entity.Timestamp,
+            Sources = new List<ChatMessageSourceDto>() 
         };
 
-        // intent detection
         private static bool IsSummaryIntent(string? text)
         {
             if (string.IsNullOrWhiteSpace(text)) return false;
             return SummaryRegex.IsMatch(text);
         }
 
-        // summary handler
         private async Task<string> HandleSummaryAsync(int sessionId, string userMessage)
         {
-            //  contracts linked to session
             var contractIds = await _context.ChatSessionContracts
                 .AsNoTracking()
                 .Where(x => x.ChatSessionId == sessionId)
@@ -263,7 +264,6 @@ Answer:
             if (contractIds.Count == 0)
                 return "I don't see any document linked to this chat to summarize.";
 
-            //  pulls text chunks with limits
             var rawChunks = await _context.ContractEmbeddings
                 .AsNoTracking()
                 .Where(e => contractIds.Contains(e.ContractId))
@@ -273,12 +273,9 @@ Answer:
                 .Select(e => new { e.ContractId, e.ChunkIndex, e.ChunkText })
                 .ToListAsync();
 
-           
-
             if (rawChunks.Count == 0)
                 return "No text was found to summarize for the linked document(s).";
 
-            // 3) Build context
             var sb = new StringBuilder(MAX_CONTEXT_CHARS + 512);
             var totalChars = 0;
             var totalTaken = 0;
@@ -308,7 +305,6 @@ Answer:
                     takenForThisDoc++;
                     totalTaken++;
                     totalChars += text.Length;
-
                 }
                 if (totalTaken >= MAX_EXCERPTS_TOTAL) break;
             }
@@ -321,7 +317,6 @@ Answer:
             if (totalTaken == 0)
                 return "I couldn't extract enough readable text to summarize.";
 
-            // System + user prompt
             var systemPrompt = "Summarize briefly and faithfully. Use ONLY the provided text. Keep it under 200 words. Do not invent facts.";
             var userPrompt = new StringBuilder(2048);
             userPrompt.AppendLine("Summarize the following text clearly and briefly.");
@@ -337,18 +332,14 @@ Answer:
             userPrompt.AppendLine();
             userPrompt.AppendLine("Return only the final summary text — no introductions or headings.");
 
-            //   LLM call 
             try
             {
                 _logger.LogInformation("Calling LLM for summary generation");
-              
 
                 var result = await _generationClient.GenerateAsync(
                     prompt: userPrompt.ToString(),
                     systemPrompt: systemPrompt
                 );
-
-              
 
                 return result;
             }
@@ -358,11 +349,8 @@ Answer:
             }
             catch (Exception ex)
             {
-               
                 return "I couldn't generate the summary due to an internal issue. Please try again.";
             }
         }
     }
-    }
-
-
+}
