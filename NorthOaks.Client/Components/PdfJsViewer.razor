@@ -1,0 +1,51 @@
+﻿@inject IJSRuntime JS
+
+<div class="pdf-viewer-container" style="width: 100%; height: 100%; position: relative;">
+    <iframe id="pdfViewer"
+            class="@Class"
+            src="@ViewerUrl"
+            style="width: 100%; height: 100%; border: none;">
+    </iframe>
+</div>
+
+@code {
+    [Parameter] public string Url { get; set; } = "";
+    [Parameter] public string Class { get; set; } = "";
+    [Parameter] public EventCallback OnDocumentLoaded { get; set; }
+    [Parameter] public EventCallback<int> OnPageChanged { get; set; }
+
+    private string ViewerUrl => string.IsNullOrEmpty(Url)
+        ? ""
+        : $"/pdfjs/web/viewer.html?file={Uri.EscapeDataString(Url)}";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && !string.IsNullOrEmpty(Url))
+        {
+            try
+            {
+                await Task.Delay(500);
+
+                await JS.InvokeVoidAsync("initPdfViewer");
+
+                await OnDocumentLoaded.InvokeAsync();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error initializing PDF viewer: {ex.Message}");
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task HandleDocumentLoaded()
+    {
+        await OnDocumentLoaded.InvokeAsync();
+    }
+
+    [JSInvokable]
+    public async Task HandlePageChanged(int pageNumber)
+    {
+        await OnPageChanged.InvokeAsync(pageNumber);
+    }
+}
