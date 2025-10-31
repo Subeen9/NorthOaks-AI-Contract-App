@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 using CMPS4110_NorthOaksProj.Data.Services.QDrant;
 using CMPS4110_NorthOaksProj.Models.Contracts;
 using UglyToad.PdfPig;

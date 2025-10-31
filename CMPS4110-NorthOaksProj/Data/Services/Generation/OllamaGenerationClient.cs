@@ -1,7 +1,8 @@
-﻿using System.Net.Http.Json;
-using System.Text.Json;
+﻿using CMPS4110_NorthOaksProj.Data.Services.Embeddings;
 using Microsoft.Extensions.Options;
-using CMPS4110_NorthOaksProj.Data.Services.Embeddings;
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
 
 namespace CMPS4110_NorthOaksProj.Data.Services.Generation
 {
@@ -46,53 +47,77 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Generation
 
 
         public async Task<string> GenerateAsync(
-            string prompt,
-            string? systemPrompt = null,
-            CancellationToken ct = default)
+       string prompt,
+       string? systemPrompt = null,
+       CancellationToken ct = default)
         {
             if (string.IsNullOrWhiteSpace(prompt))
                 throw new ArgumentException("Prompt cannot be empty", nameof(prompt));
 
-            // build request
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+
             var request = new GenerateRequest
             {
                 model = _model,
                 prompt = prompt,
                 system = systemPrompt,
-                stream = false,
+                stream = true,   // IMPORTANT: streaming enabled
                 options = new GenerateOptions
                 {
-                    temperature = 0.7,
-                    num_predict = 500
+                    temperature = 0.6,
+                    num_predict = 400
                 }
             };
+
             try
             {
-                _logger.LogDebug("Sending generation request to Ollama with model: {Model}", _model);
+                _logger.LogInformation("Starting generation: model={Model}", _model);
 
-                // make HTTP call
                 using var response = await _http.PostAsJsonAsync("/api/generate", request, ct);
+                _logger.LogInformation("Request completed in {Ms}ms, status: {Status}",
+                    sw.ElapsedMilliseconds, response.StatusCode);
+
                 response.EnsureSuccessStatusCode();
 
-                // deserialize response
-                var result = await response.Content.ReadFromJsonAsync<GenerateResponse>(cancellationToken: ct)
-                    ?? throw new InvalidOperationException("Empty generation response from Ollama");
+                using var stream = await response.Content.ReadAsStreamAsync(ct);
+                using var reader = new StreamReader(stream);
 
-                _logger.LogDebug("Received response from Ollama: {ResponseLength} characters", result.response.Length);
+                var sb = new StringBuilder();
 
-                return result.response;
+                while (!reader.EndOfStream)
+                {
+                    var line = await reader.ReadLineAsync();
+                    if (string.IsNullOrWhiteSpace(line))
+                        continue;
+
+                    try
+                    {
+                        var chunk = JsonSerializer.Deserialize<GenerateResponse>(line);
+
+                        if (!string.IsNullOrWhiteSpace(chunk?.response))
+                            sb.Append(chunk.response);
+
+                        if (chunk?.done == true)
+                            break;
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to parse chunk: {Line}", line);
+                    }
+                }
+
+                var finalText = sb.ToString();
+                _logger.LogInformation("Generation final: {Len} chars in {Ms}ms",
+                    finalText.Length, sw.ElapsedMilliseconds);
+
+                return finalText;
             }
-            catch (HttpRequestException ex)
+            catch (Exception ex) when (ex is TaskCanceledException or HttpRequestException)
             {
-                _logger.LogError(ex, "HTTP error calling Ollama generation API");
-                throw new InvalidOperationException("Failed to connect to Ollama. Make sure Ollama is running and the model is available.", ex);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error generating text with Ollama");
+                _logger.LogError(ex, "Generation failed after {Ms}ms", sw.ElapsedMilliseconds);
                 throw;
             }
         }
-    
+
     }
 }
