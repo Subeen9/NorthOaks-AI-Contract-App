@@ -111,9 +111,9 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                 // ===== RAG path =====
                 _logger.LogInformation("Starting RAG pipeline for: {Message}", dto.Message);
 
-                var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
-                _logger.LogInformation("Message embedding took {Ms}ms", sw.ElapsedMilliseconds);
-                sw.Restart();
+                    var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
+                    _logger.LogInformation("Message embedding took {Ms}ms", sw.ElapsedMilliseconds);
+                    sw.Restart();
 
                 // Get contracts linked to this session and restrict the vector search to them
                 var contractIds = await _context.ChatSessionContracts
@@ -142,28 +142,28 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     sw.ElapsedMilliseconds, results.Count);
                 sw.Restart();
 
-                if (results.Count == 0)
-                {
-                    entity.Response = "I'm sorry, I couldn't find any relevant information to answer your question.";
-                    await _context.SaveChangesAsync();
-                    return MapToDto(entity);
-                }
+                    if (results.Count == 0)
+                    {
+                        entity.Response = "I'm sorry, I couldn't find any relevant information to answer your question.";
+                        await _context.SaveChangesAsync();
+                        return MapToDto(entity);
+                    }
 
-                // Deduplicate overlapping chunks
-                var dedupedTexts = ContextBuilder.DeduplicateChunks(results.Select(r => r.ChunkText).ToList());
-                var filteredResults = results
-                    .Where(r => dedupedTexts.Contains(r.ChunkText))
-                    .Take(12)
-                    .ToList();
+                    // Deduplicate overlapping chunks
+                    var dedupedTexts = ContextBuilder.DeduplicateChunks(results.Select(r => r.ChunkText).ToList());
+                    var filteredResults = results
+                        .Where(r => dedupedTexts.Contains(r.ChunkText))
+                        .Take(12)
+                        .ToList();
 
-                _logger.LogInformation("Deduplication: {Original} → {Filtered} chunks",
-                    results.Count, filteredResults.Count);
+                    _logger.LogInformation("Deduplication: {Original} → {Filtered} chunks",
+                        results.Count, filteredResults.Count);
 
-                // Build structured clause context
-                var contextText = ContextBuilder.BuildStructuredContext(filteredResults);
-                _logger.LogInformation("Context built: {Length} characters", contextText.Length);
+                    // Build structured clause context
+                    var contextText = ContextBuilder.BuildStructuredContext(filteredResults);
+                    _logger.LogInformation("Context built: {Length} characters", contextText.Length);
 
-                var systemPrompt = @"
+                    var systemPrompt = @"
 You are a professional contract analysis assistant.
 Use only the clauses provided in the context to answer the question.
 Do NOT include internal labels, clause numbers, chunk identifiers, or any metadata in the output.
@@ -172,7 +172,7 @@ If the answer cannot be found, reply exactly: 'Not found in contract.'
 Avoid using jargon or technical references unrelated to the user question.
 ";
 
-                var userPrompt = $@"
+                    var userPrompt = $@"
 Context:
 {contextText}
 
@@ -182,25 +182,28 @@ User question:
 Answer:
 ";
 
-                _logger.LogInformation("Calling LLM generation (model: {Model})", "llama3.2");
-                _logger.LogInformation("Prompt size: system={SystemLen}chars, user={UserLen}chars",
-                    systemPrompt.Length, userPrompt.Length);
+                    _logger.LogInformation("Calling LLM generation (model: {Model})", "llama3.2");
+                    _logger.LogInformation("Prompt size: system={SystemLen}chars, user={UserLen}chars",
+                        systemPrompt.Length, userPrompt.Length);
 
-                sw.Restart();
-                var rawresponse = await _generationClient.GenerateAsync(userPrompt, systemPrompt);
-                var generatedResponse = CleanGeneratedResponse(rawresponse);
-                _logger.LogInformation("LLM generation took {Ms}ms, response length: {Len}",
-                    sw.ElapsedMilliseconds, generatedResponse?.Length ?? 0);
+                    sw.Restart();
+                    var rawresponse = await _generationClient.GenerateAsync(
+                        userPrompt,
+                        systemPrompt
+                    );
+                    var generatedResponse = CleanGeneratedResponse(rawresponse);
+                    _logger.LogInformation("LLM generation took {Ms}ms, response length: {Len}",
+                        sw.ElapsedMilliseconds, generatedResponse?.Length ?? 0);
 
-                if (string.IsNullOrWhiteSpace(generatedResponse))
-                {
-                    _logger.LogWarning("Empty response from LLM!");
-                    entity.Response = "The model returned an empty response. Please try rephrasing your question.";
-                }
-                else
-                {
-                    entity.Response = generatedResponse;
-                }
+                    if (string.IsNullOrWhiteSpace(generatedResponse))
+                    {
+                        _logger.LogWarning("Empty response from LLM!");
+                        entity.Response = "The model returned an empty response. Please try rephrasing your question.";
+                    }
+                    else
+                    {
+                        entity.Response = generatedResponse;
+                    }
 
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Successfully generated response for message {MessageId}", entity.Id);
@@ -244,7 +247,7 @@ Answer:
             Message = entity.Message,
             Response = entity.Response,
             Timestamp = entity.Timestamp,
-            Sources = new List<ChatMessageSourceDto>() 
+            Sources = new List<ChatMessageSourceDto>()
         };
 
         private static bool IsSummaryIntent(string? text)
