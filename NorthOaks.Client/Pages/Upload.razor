@@ -7,6 +7,7 @@
 @inject NavigationManager Navigation
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
+@using Microsoft.AspNetCore.SignalR.Client
 
 
 <h3 class="text-center mb-4"> Upload PDF Documents</h3>
@@ -60,10 +61,18 @@
             @if (isProcessing)
             {
                 <div class="text-center my-4">
-                    <Spinner Type="SpinnerType.Grow" Color="SpinnerColor.Primary" />
-                    <p class="mt-2">Processing your document... please wait</p>
+                    <p>@processingMessage</p>
+
+                    <Progress Class="mt-3 mb-3">
+                        <ProgressBar Type="ProgressType.StripedAndAnimated"
+                                     Color="ProgressColor.Info"
+                                     Width="@processingProgress">
+                            @processingProgress%
+                        </ProgressBar>
+                    </Progress>
                 </div>
             }
+
 
         </div>
      
@@ -83,6 +92,9 @@
     private bool isProcessing = false;
     private bool isUploading = false;
     private string processingMessage = "";
+    private HubConnection? hubConnection;
+    private int processingProgress = 0;
+
 
     // Getting the User Info
     protected override async Task OnInitializedAsync()
@@ -93,6 +105,39 @@
         {
             userId = user.FindFirst("uid").Value;
         }
+
+        hubConnection = new HubConnectionBuilder()
+            .WithUrl(Navigation.ToAbsoluteUri("/processingHub"))
+            .WithAutomaticReconnect()
+            .Build();
+
+        hubConnection.On<string, int>("ProcessingUpdate", (msg, progress) =>
+        {
+            processingMessage = msg;
+            processingProgress = progress;
+
+            if (progress >= 0 && progress < 100)
+                isProcessing = true;
+
+            if (progress == 100)
+            {
+                isProcessing = false;
+                ToastService.Notify(new(ToastType.Success, "Document processed!"));
+                Navigation.NavigateTo("/home");
+            }
+
+            if (progress < 0)
+            {
+                isProcessing = false;
+                ToastService.Notify(new(ToastType.Danger, msg));
+            }
+
+            InvokeAsync(StateHasChanged);
+        });
+
+        await hubConnection.StartAsync();
+        await hubConnection.InvokeAsync("JoinProcessingGroup", userId);
+
     }
 
     private void HandleFileSelected(InputFileChangeEventArgs e)
@@ -175,16 +220,11 @@
 
                     var uploadedContract = await response.Content.ReadFromJsonAsync<ContractStatus>();
 
-                    // Simulate the processing
-                    await Task.Delay(400);
-
-                    isProcessing = false;
-                    statusMessage = "Upload successful!";
                     uploadedDocuments.Add(selectedFile.Name);
                     uploadProgress = 100;
 
                     ToastService.Notify(new(ToastType.Success, $"Upload Successful"));
-                    Navigation.NavigateTo("/home");
+                    //Navigation.NavigateTo("/home");
                 }
                 else
                 {
@@ -210,6 +250,13 @@
             await JSRuntime.InvokeVoidAsync("initDragDrop");
         }
     }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection != null)
+            await hubConnection.DisposeAsync();
+    }
+
 
 }
 
