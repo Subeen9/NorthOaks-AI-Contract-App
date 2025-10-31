@@ -106,6 +106,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     entity.Response = summaryResponse;
                     await _context.SaveChangesAsync();
                     return MapToDto(entity);
+                }
 
                 // ===== RAG path =====
                 _logger.LogInformation("Starting RAG pipeline for: {Message}", dto.Message);
@@ -114,7 +115,29 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                 _logger.LogInformation("Message embedding took {Ms}ms", sw.ElapsedMilliseconds);
                 sw.Restart();
 
-                var results = await _qdrantService.SearchSimilarAsync(vector, limit: 20, scoreThreshold: 0.15f);
+                // Get contracts linked to this session and restrict the vector search to them
+                var contractIds = await _context.ChatSessionContracts
+                    .AsNoTracking()
+                    .Where(x => x.ChatSessionId == dto.SessionId)
+                    .Select(x => x.ContractId)
+                    .Distinct()
+                    .ToListAsync();
+
+                if (contractIds.Count == 0)
+                {
+                    entity.Response = "I don't see any document linked to this chat to search.";
+                    await _context.SaveChangesAsync();
+                    return MapToDto(entity);
+                }
+
+                // ✅ Updated call to new QdrantService with contract filter support
+                var results = await _qdrantService.SearchSimilarAsync(
+                    vector,
+                    limit: 20,
+                    scoreThreshold: 0.15f,
+                    contractIds: contractIds
+                );
+
                 _logger.LogInformation("Vector search took {Ms}ms, found {Count} results",
                     sw.ElapsedMilliseconds, results.Count);
                 sw.Restart();
@@ -164,10 +187,7 @@ Answer:
                     systemPrompt.Length, userPrompt.Length);
 
                 sw.Restart();
-                var rawresponse = await _generationClient.GenerateAsync(
-                    userPrompt,
-                    systemPrompt
-                );
+                var rawresponse = await _generationClient.GenerateAsync(userPrompt, systemPrompt);
                 var generatedResponse = CleanGeneratedResponse(rawresponse);
                 _logger.LogInformation("LLM generation took {Ms}ms, response length: {Len}",
                     sw.ElapsedMilliseconds, generatedResponse?.Length ?? 0);
@@ -185,45 +205,29 @@ Answer:
                 await _context.SaveChangesAsync();
                 _logger.LogInformation("Successfully generated response for message {MessageId}", entity.Id);
 
-                
                 var responseDto = MapToDto(entity);
                 responseDto.Sources = results.Select(r => new ChatMessageSourceDto
                 {
                     ContractId = r.ContractId,
                     ChunkText = r.ChunkText,
                     ChunkIndex = r.ChunkIndex,
-                    PageNumber = r.PageNumber,
+                    PageNumber = r.PageNumber, 
                     SimilarityScore = (double)r.Score
                 }).ToList();
 
                 _logger.LogInformation("Returning {Count} sources with response", responseDto.Sources.Count);
                 return responseDto;
             }
-            catch (OperationCanceledException ex)
-            {
-                _logger.LogError(ex, "OPERATION CANCELED after {Ms}ms at: {StackTrace}",
-                    sw.ElapsedMilliseconds, ex.StackTrace);
-                entity.Response = "The request was canceled due to timeout (100 seconds).";
-                await _context.SaveChangesAsync();
-                return MapToDto(entity);
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogError(ex, "HTTP ERROR: {Message}, StatusCode: {StatusCode}",
-                    ex.Message, ex.StatusCode);
-                entity.Response = $"Connection error: {ex.Message}. Is Ollama running?";
-                await _context.SaveChangesAsync();
-                return MapToDto(entity);
-            }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "UNEXPECTED ERROR after {Ms}ms: {ExceptionType} - {Message}",
-                    sw.ElapsedMilliseconds, ex.GetType().Name, ex.Message);
-                entity.Response = $"Error: {ex.Message}";
+                _logger.LogError(ex, "Error in Create()");
+                entity.Response = "An unexpected error occurred while processing your message.";
                 await _context.SaveChangesAsync();
                 return MapToDto(entity);
             }
         }
+
+
 
         public async Task<bool> Delete(int id)
         {
