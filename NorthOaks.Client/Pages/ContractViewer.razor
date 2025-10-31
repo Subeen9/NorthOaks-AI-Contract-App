@@ -166,7 +166,7 @@
             }
             else
             {
-                
+
                 var sessionResponse = await Http.PostAsJsonAsync("/api/chatsessions",
                     new CreateChatSessionDto { ContractIds = new List<int> { id } });
 
@@ -190,19 +190,37 @@
 
             else
             {
-                var msgs = await Http.GetFromJsonAsync<List<ChatMessageDto>>($"/api/chatmessages/session/{currentSessionId}");
-                if (msgs != null && msgs.Any())
+                var rawMessages = await Http.GetFromJsonAsync<List<ChatMessageDto>>($"/api/chatmessages/session/{currentSessionId}");
+                if (rawMessages != null && rawMessages.Any())
                 {
-                    messages = msgs.Select(m => new Message
-                    {
-                        Text = m.Response ?? string.Empty,
-                        IsUser = false, 
-                        Sources = m.Sources ?? new List<ChatMessageSourceDto>()
-                    }).ToList();
+                    messages = new List<Message>();
 
-                 
+                    foreach (var m in rawMessages)
+                    {
+                        // user message first
+                        if (!string.IsNullOrWhiteSpace(m.Message))
+                        {
+                            messages.Add(new Message
+                                {
+                                    Text = m.Message,
+                                    IsUser = true
+                                });
+                        }
+
+                        // add AI response
+                        if (!string.IsNullOrWhiteSpace(m.Response))
+                        {
+                            messages.Add(new Message
+                                {
+                                    Text = m.Response,
+                                    IsUser = false,
+                                    Sources = m.Sources ?? new List<ChatMessageSourceDto>()
+                                });
+                        }
+                    }
                 }
             }
+
         }
         catch (Exception ex)
         {
