@@ -99,7 +99,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services
             }
         }
 
-        public async Task<Guid> InsertVectorAsync(float[] embedding, int contractId, int chunkIndex, string chunkText)
+        public async Task<Guid> InsertVectorAsync(float[] embedding, int contractId, int chunkIndex, string chunkText, int pageNumber)
 
         {
             try
@@ -116,7 +116,8 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                         ["contract_id"] = contractId,
                         ["chunk_index"] = chunkIndex,
                         ["chunk_text"] = chunkText,
-                        ["created_at"] = DateTime.UtcNow.ToString("O")
+                        ["created_at"] = DateTime.UtcNow.ToString("O"),
+                        ["page_number"] = pageNumber 
                     }
                 };
 
