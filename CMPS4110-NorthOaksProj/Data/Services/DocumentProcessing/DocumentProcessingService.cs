@@ -53,7 +53,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                 {
                     try
                     {
-                        var pointId = await _qdrantService.InsertVectorAsync(vectors[i], contractId, i, chunks[i]);
+                        var pointId = await _qdrantService.InsertVectorAsync(vectors[i], contractId, i, chunks[i], -1);
 
                         toInsert.Add(new ContractEmbedding
                         {
