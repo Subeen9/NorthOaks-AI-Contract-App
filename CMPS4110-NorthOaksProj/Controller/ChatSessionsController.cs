@@ -55,10 +55,34 @@ namespace CMPS4110_NorthOaksProj.Controller
             };
         }
 
-      
+
         [HttpPost]
         public async Task<ActionResult<ChatSessionDto>> Create(CreateChatSessionDto dto)
         {
+            // If client provides contracts, try to find an existing session for this user that already references any of those contracts.
+            if (dto.ContractIds is { Count: > 0 })
+            {
+                var existing = await _db.ChatSessions
+                    .Include(s => s.Messages)
+                    .Include(s => s.SessionContracts)
+                    .Where(s => s.UserId == dto.UserId)
+                    .FirstOrDefaultAsync(s => s.SessionContracts.Any(sc => dto.ContractIds.Contains(sc.ContractId)));
+
+                if (existing != null)
+                {
+                    // Return the existing session (so messages remain)
+                    var existingDto = new ChatSessionDto
+                    {
+                        Id = existing.Id,
+                        UserId = existing.UserId,
+                        CreatedDate = existing.CreatedDate,
+                        MessageCount = existing.Messages.Count,
+                        ContractIds = existing.SessionContracts.Select(sc => sc.ContractId).ToList()
+                    };
+                    return Ok(existingDto);
+                }
+            }
+
             var entity = new ChatSession { UserId = dto.UserId };
             _db.ChatSessions.Add(entity);
 
@@ -88,7 +112,8 @@ namespace CMPS4110_NorthOaksProj.Controller
             return CreatedAtAction(nameof(Get), new { id = entity.Id }, result);
         }
 
-       
+
+
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
