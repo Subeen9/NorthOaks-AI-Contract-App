@@ -100,6 +100,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services
         }
 
         public async Task<Guid> InsertVectorAsync(float[] embedding, int contractId, int chunkIndex, string chunkText, int pageNumber)
+
         {
             try
             {
@@ -115,8 +116,8 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                         ["contract_id"] = contractId,
                         ["chunk_index"] = chunkIndex,
                         ["chunk_text"] = chunkText,
-                        ["page_number"] = pageNumber,
-                        ["created_at"] = DateTime.UtcNow.ToString("O")
+                        ["created_at"] = DateTime.UtcNow.ToString("O"),
+                        ["page_number"] = pageNumber 
                     }
                 };
 
@@ -132,31 +133,52 @@ namespace CMPS4110_NorthOaksProj.Data.Services
             }
         }
 
-        public async Task<List<VectorSearchResult>> SearchSimilarAsync(float[] queryEmbedding, int limit = 20, float scoreThreshold = 0.15f)
+        public async Task<List<VectorSearchResult>> SearchSimilarAsync(float[] queryEmbedding, int limit = 20, float scoreThreshold = 0.15f, IEnumerable<int>? contractIds = null)
+
         {
             try
             {
                 await EnsureInitializedAsync();
 
+                Filter? payloadFilter = null;
+
+                if (contractIds != null)
+                {
+                    var ids = contractIds as IList<int> ?? contractIds.ToList();
+                    if (ids.Count > 0)
+                    {
+                        payloadFilter = new Filter();
+                        // OR any of the contract ids
+                        foreach (var id in ids)
+                        {
+                            payloadFilter.Should.Add(new Condition
+                            {
+                                Field = new FieldCondition
+                                {
+                                    Key = "contract_id",
+                                    Match = new Match { Integer = id }
+                                }
+                            });
+                        }
+                    }
+                }
+
                 var searchResult = await _client.SearchAsync(
                     collectionName: CollectionName,
                     vector: queryEmbedding,
                     limit: (ulong)limit,
-                    scoreThreshold: scoreThreshold
+                    scoreThreshold: scoreThreshold,
+                    filter: payloadFilter
                 );
 
                 return searchResult.Select(point => new VectorSearchResult
                 {
                     PointId = Guid.Parse(point.Id.Uuid),
                     Score = point.Score,
-                    ContractId = (int)point.Payload["contract_id"].IntegerValue,
-                    ChunkIndex = (int)point.Payload["chunk_index"].IntegerValue,
-                    ChunkText = point.Payload.ContainsKey("chunk_text")
-                  ? point.Payload["chunk_text"].StringValue
-                  : string.Empty,
-                    PageNumber = point.Payload.ContainsKey("page_number")  // ← RETRIEVE PAGE NUMBER
-                ? (int)point.Payload["page_number"].IntegerValue
-                : 1
+                    ContractId = point.Payload.ContainsKey("contract_id") ? (int)point.Payload["contract_id"].IntegerValue : 0,
+                    ChunkIndex = point.Payload.ContainsKey("chunk_index") ? (int)point.Payload["chunk_index"].IntegerValue : 0,
+                    ChunkText = point.Payload.ContainsKey("chunk_text") ? point.Payload["chunk_text"].StringValue : string.Empty,
+                    PageNumber = point.Payload.ContainsKey("page_number") ? (int)point.Payload["page_number"].IntegerValue : 0
                 }).ToList();
             }
             catch (Exception ex)
@@ -165,6 +187,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                 throw;
             }
         }
+        
 
         public async Task DeleteVectorsByContractAsync(int contractId)
         {
