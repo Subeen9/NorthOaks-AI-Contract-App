@@ -17,7 +17,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Notifications
         }
 
         // Note: This method is no longer used by the controller,
-        
+
         // The ContractsController has its own save logic.
         public async Task SaveNotificationAsync(string message, int triggeredByUserId)
         {
@@ -65,5 +65,17 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Notifications
 
             await _context.SaveChangesAsync();
         }
+        public async Task<List<Notification>> GetAllAsync(int userId)
+        {
+            return await _context.Notifications
+                .Where(n => n.TargetUserId == userId)
+                .OrderByDescending(n => n.CreatedAt)
+                .ToListAsync();
+
+        }
+
     }
+
 }
+    
+    

@@ -18,6 +18,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Identity.Web.UI;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models; // Added for Swagger configuration
+using NorthOaks.Server.Services;
 using System.Text;
 
 
@@ -90,6 +91,8 @@ builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();     
 builder.Services.AddHostedService<TaskRunner>();
 builder.Services.AddScoped<IContractsService, ContractsService>();
 builder.Services.AddScoped<NotificationService>();
+builder.Services.AddHostedService<NotificationCleanupService>();
+
 builder.Services.AddScoped<IChatMessagesService, ChatMessagesService>();
 builder.Services.AddScoped<IQdrantService, QdrantService>();
 builder.Services.AddScoped<IDocumentProcessingService, DocumentProcessingService>();

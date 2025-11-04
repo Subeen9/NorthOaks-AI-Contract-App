@@ -59,7 +59,7 @@
                                         <span class="fw-semibold text-dark">Notifications</span>
                                         <span class="notif-header__action @(unreadCount == 0 ? "text-muted opacity-50" : "text-primary")"
                                               style="cursor:pointer;"
-                                              @onclick="ClearNotifications">
+                                              @onclick="MarkAllAsReadAsync">
                                             Mark all as read
                                         </span>
                                     </div>
@@ -86,6 +86,7 @@
                                     </div>
                                 </div>
                             </div>
+
 
 
 
@@ -168,10 +169,13 @@
         InvokeAsync(StateHasChanged);
     }
 
-    private async void ClearNotifications()
+    private async Task MarkAllAsReadAsync()
     {
         await Notifications.ClearUnread();
+        unreadCount = 0;
+        StateHasChanged();
     }
+
 
     private string GetInitials(string firstName, string lastName)
     {

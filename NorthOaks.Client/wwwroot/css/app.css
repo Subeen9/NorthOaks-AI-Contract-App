@@ -1533,6 +1533,17 @@ clear-highlights-btn {
         background: #fff8e1;
         border-left: 4px solid var(--brand-gold);
     }
+    .notification-item.unread {
+        background: #fff8e1;
+        border-left: 4px solid var(--brand-gold);
+    }
+
+    .notification-item:not(.unread) {
+        opacity: 0.6;
+        background: #fff;
+        border-left: 4px solid transparent;
+    }
+
 
 .notification-item__msg {
     line-height: 1.3;
