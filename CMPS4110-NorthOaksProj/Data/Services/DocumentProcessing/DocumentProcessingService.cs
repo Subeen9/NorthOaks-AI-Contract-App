@@ -1,13 +1,16 @@
 using System.Text.RegularExpressions;
-using CMPS4110_NorthOaksProj.Data.Services.QDrant;
-using CMPS4110_NorthOaksProj.Models.Contracts;
-using UglyToad.PdfPig;
-using Tesseract;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Formats.Png;
 using CMPS4110_NorthOaksProj.Data.Services.Embeddings;
+using CMPS4110_NorthOaksProj.Data.Services.QDrant;
+using CMPS4110_NorthOaksProj.Hubs;
+using CMPS4110_NorthOaksProj.Models.Contracts;
+using Microsoft.AspNetCore.SignalR;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.PixelFormats;
+using Tesseract;
+using UglyToad.PdfPig;
 using Page = UglyToad.PdfPig.Content.Page;
+
 
 namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
 {
@@ -17,28 +20,44 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
         private readonly DataContext _context;
         private readonly ILogger<DocumentProcessingService> _logger;
         private readonly IEmbeddingClient _embeddings;
+        private readonly IHubContext<ProcessingHub> _hubContext;
 
         public DocumentProcessingService(
             IQdrantService qdrantService,
             DataContext context,
             ILogger<DocumentProcessingService> logger,
-            IEmbeddingClient embeddings)
+            IEmbeddingClient embeddings,
+            IHubContext<ProcessingHub> hubContext)
         {
             _qdrantService = qdrantService;
             _context = context;
             _logger = logger;
             _embeddings = embeddings;
+            _hubContext = hubContext;
         }
 
         public async Task ProcessDocumentAsync(int contractId, string filePath, Func<int, string, Task>? progressCallback = null, CancellationToken cancellationToken = default)
         {
             try
             {
-                progressCallback = progressCallback ?? (async (p, m) => { await Task.CompletedTask; });
+                progressCallback = progressCallback ?? (async (p, m) =>
+                {
+                    try
+                    {
+                        await _hubContext.Clients.Group($"contract-{contractId}")
+                            .SendAsync("ReceiveProcessingProgress", p, m);
 
-                await progressCallback(5, "Starting document processing...");
+                        _logger.LogInformation("Progress: {Progress}% - {Message}", p, m);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to send progress update for contract {ContractId}", contractId);
+                    }
+                });
 
-                await progressCallback(10, "Extracting text from PDF...");
+                await progressCallback(5, "Processing document...");
+
+                await progressCallback(10, "Reading PDF...");
                 var pageTexts = ExtractTextWithPages(filePath);
                 if (cancellationToken.IsCancellationRequested) return;
 
@@ -49,7 +68,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                     return;
                 }
 
-                await progressCallback(30, "Chunking text...");
+                await progressCallback(30, "Analyzing content...");
                 var chunks = ChunkTextWithPages(pageTexts);
                 if (cancellationToken.IsCancellationRequested) return;
 
@@ -60,7 +79,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                     return;
                 }
 
-                await progressCallback(40, $"Generating embeddings for {chunks.Count} chunks...");
+                await progressCallback(40, "Processing document...");
                 var chunkTexts = chunks.Select(c => c.ChunkText).ToList();
                 var vectors = await _embeddings.EmbedBatchAsync(chunkTexts);
                 if (cancellationToken.IsCancellationRequested) return;
@@ -98,7 +117,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                     }
 
                     var pct = 45 + (int)((double)(i + 1) / chunks.Count * 50);
-                    await progressCallback(Math.Min(pct, 95), $"Processed chunk {i + 1} / {chunks.Count}");
+                    await progressCallback(Math.Min(pct, 95), "Processing document...");
                 }
 
                 if (cancellationToken.IsCancellationRequested)
@@ -109,19 +128,21 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
 
                 if (toInsert.Count > 0)
                 {
-                    await progressCallback(96, "Saving embeddings to database...");
+                    await progressCallback(96, "Finalizing...");
                     _context.ContractEmbeddings.AddRange(toInsert);
                     await _context.SaveChangesAsync(cancellationToken);
                 }
 
-                await progressCallback(100, "Processing complete.");
+                await progressCallback(100, "Complete!");
                 _logger.LogInformation(
-                    "✅ Processed document for contract {ContractId} with {ChunkCount} chunks",
+                    " Processed document for contract {ContractId} with {ChunkCount} chunks",
                     contractId, toInsert.Count);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Failed to process document for contract {ContractId}", contractId);
+                _logger.LogError(ex, " Failed to process document for contract {ContractId}", contractId);
+                await _hubContext.Clients.Group($"contract-{contractId}")
+                .SendAsync("ReceiveProcessingProgress", -1, $"Error: {ex.Message}");
                 throw;
             }
         }
