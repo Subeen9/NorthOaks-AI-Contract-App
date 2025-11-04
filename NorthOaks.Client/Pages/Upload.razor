@@ -7,6 +7,8 @@
 @inject NavigationManager Navigation
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
+@using Microsoft.AspNetCore.SignalR.Client
+@implements IAsyncDisposable
 
 
 <h3 class="text-center mb-4"> Upload PDF Documents</h3>
@@ -59,10 +61,13 @@
             }
             @if (isProcessing)
             {
-                <div class="text-center my-4">
-                    <Spinner Type="SpinnerType.Grow" Color="SpinnerColor.Primary" />
-                    <p class="mt-2">Processing your document... please wait</p>
-                </div>
+                <Progress Class="mt-3 mb-3">
+                    <ProgressBar Type="ProgressType.StripedAndAnimated"
+                                 Color="ProgressColor.Primary"
+                                 Width="@uploadProgress">
+                    </ProgressBar>
+                </Progress>
+                <p class="text-center mt-2"><strong>@uploadProgress%</strong> - @processingMessage</p>
             }
 
         </div>
@@ -83,6 +88,7 @@
     private bool isProcessing = false;
     private bool isUploading = false;
     private string processingMessage = "";
+    private HubConnection? hubConnection;
 
     // Getting the User Info
     protected override async Task OnInitializedAsync()
@@ -93,6 +99,33 @@
         {
             userId = user.FindFirst("uid").Value;
         }
+
+        hubConnection = new HubConnectionBuilder()
+        .WithUrl(Navigation.ToAbsoluteUri("/processingHub"))
+        .WithAutomaticReconnect()
+        .Build();
+
+        hubConnection.On<int, string>("ReceiveProcessingProgress", (progress, message) =>
+        {
+            uploadProgress = progress;
+            processingMessage = message;
+
+            if (progress == 100)
+            {
+                isProcessing = false;
+                ToastService.Notify(new(ToastType.Success, "Document processed successfully!"));
+                Navigation.NavigateTo("/home");
+            }
+            else if (progress == -1)
+            {
+                isProcessing = false;
+                ToastService.Notify(new(ToastType.Danger, "Processing failed!"));
+            }
+
+            InvokeAsync(StateHasChanged);
+        });
+
+        await hubConnection.StartAsync();
     }
 
     private void HandleFileSelected(InputFileChangeEventArgs e)
@@ -170,21 +203,20 @@
                 if (response.IsSuccessStatusCode)
                 {
 
-                    isProcessing = true;
-                    statusMessage = "Upload complete, processing...";
-
                     var uploadedContract = await response.Content.ReadFromJsonAsync<ContractStatus>();
 
-                    // Simulate the processing
-                    await Task.Delay(400);
+                  
+                    if (uploadedContract != null && hubConnection?.State == HubConnectionState.Connected)
+                    {
+                        await hubConnection.SendAsync("JoinContractProcessing", uploadedContract.Id);
+                    }
 
-                    isProcessing = false;
-                    statusMessage = "Upload successful!";
+                    isProcessing = true;
+                    uploadProgress = 0;
+                    statusMessage = "Upload complete, processing...";
                     uploadedDocuments.Add(selectedFile.Name);
-                    uploadProgress = 100;
 
                     ToastService.Notify(new(ToastType.Success, $"Upload Successful"));
-                    Navigation.NavigateTo("/home");
                 }
                 else
                 {
@@ -208,6 +240,14 @@
         {
             await Task.Delay(30);
             await JSRuntime.InvokeVoidAsync("initDragDrop");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (hubConnection is not null)
+        {
+            await hubConnection.DisposeAsync();
         }
     }
 

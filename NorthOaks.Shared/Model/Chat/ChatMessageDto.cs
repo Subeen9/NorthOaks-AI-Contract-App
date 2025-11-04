@@ -9,5 +9,7 @@ namespace NorthOaks.Shared.Model.Chat
         public string Message { get; set; } = string.Empty;
         public string? Response { get; set; }
         public DateTime Timestamp { get; set; }
+        public List<ChatMessageSourceDto> Sources { get; set; } = new List<ChatMessageSourceDto>();
+
     }
 }

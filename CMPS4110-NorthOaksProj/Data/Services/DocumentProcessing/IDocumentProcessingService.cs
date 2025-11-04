@@ -2,6 +2,6 @@
 {
     public interface IDocumentProcessingService
     {
-        Task ProcessDocumentAsync(int contractId, string filePath);
+        Task ProcessDocumentAsync(int contractId, string filePath, Func<int, string, Task>? progressCallback = null, CancellationToken cancellationToken = default);
     }
 }
