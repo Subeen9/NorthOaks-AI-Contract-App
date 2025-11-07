@@ -163,7 +163,17 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     var contextText = ContextBuilder.BuildStructuredContext(filteredResults);
                     _logger.LogInformation("Context built: {Length} characters", contextText.Length);
 
-                    var systemPrompt = @"
+                var systemPrompt = contractIds.Count > 1
+                    ? @"
+You are a professional contract analysis assistant comparing multiple contracts.
+When answering questions about differences or comparisons:
+- Clearly identify which contract each piece of information comes from
+- Highlight key differences in terms, obligations, dates, and conditions
+- Point out clauses present in one contract but missing in others
+- Use phrases like 'Contract A specifies... while Contract B states...'
+Use only the clauses provided in the context.
+Provide clear, professional, human-readable responses."
+                    : @"
 You are a professional contract analysis assistant.
 Use only the clauses provided in the context to answer the question.
 Do NOT include internal labels, clause numbers, chunk identifiers, or any metadata in the output.
@@ -172,7 +182,7 @@ If the answer cannot be found, reply exactly: 'Not found in contract.'
 Avoid using jargon or technical references unrelated to the user question.
 ";
 
-                    var userPrompt = $@"
+                var userPrompt = $@"
 Context:
 {contextText}
 
