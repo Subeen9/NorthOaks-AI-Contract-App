@@ -250,6 +250,7 @@
 
 @code {
     [Inject] protected ToastService ToastService { get; set; } = default!;
+    [Inject] protected NavigationManager Navigation { get; set; } = default!;
     private List<ContractReadDto> contracts = new();
     private bool isLoading = true;
     private string? error;
@@ -262,6 +263,9 @@
     private HashSet<int> pinned = new();
     private bool pinFirst = false;
     private bool pinOnly = false;
+
+    private bool isMultiSelectMode = false;
+    private HashSet<int> selectedForComparison = new();
 
     const string PinStorageKey = "pinnedContracts";
 
@@ -378,4 +382,23 @@
         currentPage = 1;
         StateHasChanged();
     }
+    private void HandleCardClick(int contractId)
+    {
+        if (isMultiSelectMode)
+        {
+            if (selectedForComparison.Contains(contractId))
+                selectedForComparison.Remove(contractId);
+            else if (selectedForComparison.Count < 3)
+                selectedForComparison.Add(contractId);
+            else
+                ToastService.Notify(new(ToastType.Warning, "Maximum 3 contracts can be compared"));
+        }
+        else
+        {
+            Navigation.NavigateTo($"/contract/{contractId}");
+        }
+    }
+
+
+
 }
