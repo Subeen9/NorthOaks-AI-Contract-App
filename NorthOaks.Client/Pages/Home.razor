@@ -112,6 +112,22 @@
                 <h4 class="fw-semibold mb-2 mb-md-0 library-title">Contract Library</h4>
 
                 <div class="d-flex align-items-center gap-3">
+                    @if (selectedForComparison.Count > 0)
+                    {
+                        <button class="btn btn-success" @onclick="OpenComparisonChat">
+                            <i class="bi bi-chat-dots"></i> Compare (@selectedForComparison.Count)
+                        </button>
+                        <button class="btn btn-outline-secondary" @onclick="ClearSelection">
+                            <i class="bi bi-x-circle"></i> Clear
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-outline-primary" @onclick="() => isMultiSelectMode = !isMultiSelectMode">
+                            <i class="bi bi-files"></i>
+                            @(isMultiSelectMode ? "Exit Multi-Select" : "Compare Contracts")
+                        </button>
+                    }
                     <div class="position-relative">
                         <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 search-icon"></i>
                         <input class="form-control ps-5 search-pill search-xl"
@@ -399,6 +415,47 @@
         }
     }
 
+    private async Task OpenComparisonChat()
+    {
+        if (selectedForComparison.Count < 2)
+        {
+            ToastService.Notify(new(ToastType.Warning, "Please select at least 2 contracts"));
+            return;
+        }
 
+        var createSessionDto = new
+        {
+            ContractIds = selectedForComparison.ToList()
+        };
+
+        try
+        {
+            var response = await Http.PostAsJsonAsync("/api/chatsessions", createSessionDto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var session = await response.Content.ReadFromJsonAsync<ChatSessionDto>();
+                if (session != null)
+                {
+                    Navigation.NavigateTo($"/compare-chat/{session.Id}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.Notify(new(ToastType.Danger, $"Error: {ex.Message}"));
+        }
+    }
+
+    private void ClearSelection()
+    {
+        selectedForComparison.Clear();
+        isMultiSelectMode = false;
+    }
+
+    public class ChatSessionDto
+    {
+        public int Id { get; set; }
+    }
 
 }
