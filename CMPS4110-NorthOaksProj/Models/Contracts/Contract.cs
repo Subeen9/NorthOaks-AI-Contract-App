@@ -28,6 +28,7 @@ namespace CMPS4110_NorthOaksProj.Models.Contracts
         public DateTime? DeletedAt { get; set; }
         public bool IsProcessed { get; set; } = false;
         public string? ProcessingStatus { get; set; }
+        public bool IsPublic { get; set; } = false;
 
 
         [NotMapped]

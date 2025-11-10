@@ -59,8 +59,8 @@ namespace CMPS4110_NorthOaksProj.Controllers
 
             Console.WriteLine($"[DEBUG BACKEND] currentUserName = {currentUserName}");
 
-
-
+            var currentUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.UserName.ToLower() == currentUserName);
 
             // Notify uploader (progress bar)
             await _hubContext.Clients.Group(currentUserName).SendAsync("ProcessingUpdate", new
@@ -73,7 +73,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
             var contract = await _contractsService.UploadContract(dto, _env.WebRootPath);
             taskQueue.QueueContractProcessing(contract.Id, _env.WebRootPath, currentUserName, _hubContext);
 
-            var savedContract = await _contractsService.GetByIdWithUser(contract.Id);
+            var savedContract = await _contractsService.GetByIdWithUser(contract.Id, currentUser.Id);
             var uploadedBy = savedContract?.User != null
                 ? $"{savedContract.User.FirstName} {savedContract.User.LastName}"
                 : "Unknown User";
@@ -124,10 +124,6 @@ namespace CMPS4110_NorthOaksProj.Controllers
         [HttpDelete("{id:int}")]
         public async Task<ActionResult> Delete(int id)
         {
-            var contractToDel = await _contractsService.GetByIdWithUser(id);
-            if (contractToDel == null) return NotFound("Contract not found.");
-
-            var fileName = contractToDel.FileName;
             var currentUserName =
              User.FindFirstValue("preferred_username") ??
               User.FindFirstValue("unique_name") ??
@@ -135,6 +131,13 @@ namespace CMPS4110_NorthOaksProj.Controllers
               User.FindFirstValue("sub") ??
             User.Identity?.Name ??
             "unknown_user";
+            var currentUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.UserName.ToLower() == currentUserName);
+
+            var contractToDel = await _contractsService.GetByIdWithUser(id, currentUser.Id);
+            if (contractToDel == null) return NotFound("Contract not found.");
+
+            var fileName = contractToDel.FileName;
 
             Console.WriteLine($"[DEBUG BACKEND] currentUserName = {currentUserName}");
 
@@ -194,15 +197,25 @@ namespace CMPS4110_NorthOaksProj.Controllers
         [HttpGet("{id:int}")]
         public async Task<ActionResult<ContractReadDto>> GetById(int id)
         {
-            var contract = await _contractsService.GetByIdWithUser(id);
-            if (contract == null) return NotFound();
+            var currentUserName = User.Identity?.Name?.ToLower() ?? "unknown_user";
+            var currentUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.UserName.ToLower() == currentUserName);
+            if (currentUser == null) return Unauthorized();
+
+            var contract = await _contractsService.GetByIdWithUser(id, currentUser.Id);
+            if (contract == null) return Forbid();
             return Ok(ToReadDto(contract));
         }
 
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ContractReadDto>>> GetAll()
         {
-            var contracts = await _contractsService.GetAllWithUser();
+            var currentUserName = User.Identity?.Name?.ToLower() ?? "unknown_user";
+            var currentUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.UserName.ToLower() == currentUserName);
+            if (currentUser == null) return Unauthorized();
+
+            var contracts = await _contractsService.GetAllWithUser(currentUser.Id);
             return Ok(contracts.Select(ToReadDto));
         }
 
@@ -220,5 +233,25 @@ namespace CMPS4110_NorthOaksProj.Controllers
                 FileUrl = $"/UploadedContracts/{contract.FileName}"
             };
         }
+
+        [HttpPut("{id:int}/visibility")]
+        public async Task<ActionResult> SetVisibility(int id, [FromQuery] bool isPublic)
+        {
+            var currentUserName = User.Identity?.Name?.ToLower() ?? "unknown_user";
+            var currentUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.UserName.ToLower() == currentUserName); if (currentUser == null) return Unauthorized();
+
+            var contract = await _context.Contracts.FindAsync(id);
+            if (contract == null) return NotFound();
+
+            if (contract.UserId != currentUser.Id)
+                return Forbid("You cannot change visibility for someone else’s contract.");
+
+            contract.IsPublic = isPublic;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = $"Visibility set to {(isPublic ? "public" : "private")}" });
+        }
+
     }
 }

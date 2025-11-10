@@ -9,8 +9,8 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Contracts
         Task<bool> DeleteContract(int id, string rootPath);
 
        
-        Task<IEnumerable<Contract>> GetAllWithUser();
-        Task<Contract?> GetByIdWithUser(int id);
+        Task<IEnumerable<Contract>> GetAllWithUser(int currentUserId);
+        Task<Contract?> GetByIdWithUser(int id, int currentUserId);
         Task ProcessContractAsync(int contractId, string rootPath, CancellationToken token, Func<int, string, Task>? progressCallback = null);
     }
 }

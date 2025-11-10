@@ -11,6 +11,8 @@ namespace CMPS4110_NorthOaksProj.Models.Contracts
         public int UserId { get; set; }
         public string? UploadedBy { get; set; }
         public string FileUrl { get; set; }
+        public bool IsPublic { get; set; } = false;
+
     }
 
 

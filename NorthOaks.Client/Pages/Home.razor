@@ -196,6 +196,7 @@
                                                   UploadedBy="@(c.UploadedBy ?? "Unknown")"
                                                   UploadDate="@c.UploadDate"
                                                   UserId="@c.UserId"
+                                                  IsPublic="@c.IsPublic"
                                                   OnDelete="DeleteContract"
                                                   IsPinned="IsPinned(c.Id)"
                                                   OnTogglePin="() => TogglePin(c.Id)" />
@@ -304,7 +305,13 @@
             contracts = await Http.GetFromJsonAsync<List<ContractReadDto>>("/api/contracts") ?? new();
             await LoadPinsAsync();
         }
-        catch (Exception ex) { error = $"Failed to load contracts: {ex.Message}"; }
+        catch (HttpRequestException ex)
+        {
+            if (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+                error = "Session expired. Please log in again.";
+            else
+                error = $"Failed to load contracts: {ex.Message}";
+        }
         finally { isLoading = false; }
     }
 
@@ -350,7 +357,7 @@
 
     private async Task ConfirmDelete()
     {
-        var res = await Http.DeleteAsync($"/api/Contracts/{pendingDeleteId}");
+        var res = await Http.DeleteAsync($"/api/contracts/{pendingDeleteId}");
         if (res.IsSuccessStatusCode)
         {
             contracts.RemoveAll(c => c.Id == pendingDeleteId);

@@ -36,74 +36,62 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
             _hubContext = hubContext;
         }
 
-        // signature changed to accept cancellation token + progress callback
         public async Task ProcessDocumentAsync(int contractId, string filePath, Func<int, string, Task>? progressCallback = null, CancellationToken cancellationToken = default)
         {
             try
             {
-                progressCallback = progressCallback ?? (async (p, m) => { await Task.CompletedTask; });
+                progressCallback ??= async (p, m) =>
+                {
+                    try
+                    {
+                        await _hubContext.Clients.Group($"contract-{contractId}")
+                            .SendAsync("ReceiveProcessingProgress", p, m);
+                        _logger.LogInformation("Progress: {Progress}% - {Message}", p, m);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to send progress update for contract {ContractId}", contractId);
+                    }
+                };
 
-                // Start
                 await progressCallback(5, "Starting document processing...");
 
-                // Extract text
-                await progressCallback(10, "Extracting text from PDF...");
-                var text = ExtractText(filePath);
+                await progressCallback(10, "Reading PDF...");
+                var pageTexts = ExtractTextWithPages(filePath);
                 if (cancellationToken.IsCancellationRequested) return;
 
-                // Chunk text
-                await progressCallback(30, "Chunking text...");
-                var chunks = ChunkText(text);
-                if (cancellationToken.IsCancellationRequested) return;
-
-                if (chunks.Count == 0)
+                if (pageTexts.Count == 0)
                 {
-                    _logger.LogWarning("No chunks produced for contract {ContractId}", contractId);
                     await progressCallback(100, "No text found.");
                     return;
                 }
 
-                // Get embeddings in batch
-                await progressCallback(40, $"Generating embeddings for {chunks.Count} chunks...");
-                var vectors = await _embeddings.EmbedBatchAsync(chunks);
+                await progressCallback(30, "Chunking text...");
+                var chunks = ChunkTextWithPages(pageTexts);
                 if (cancellationToken.IsCancellationRequested) return;
 
-                // Prepare DB rows and upsert to Qdrant
+                var chunkTexts = chunks.Select(c => c.ChunkText).ToList();
+                await progressCallback(40, $"Generating embeddings for {chunks.Count} chunks...");
+                var vectors = await _embeddings.EmbedBatchAsync(chunkTexts);
+                vectors = EmbeddingUtils.NormalizeBatch(vectors);
+                EmbeddingUtils.PrintNormStats(vectors);
+
                 var toInsert = new List<ContractEmbedding>(chunks.Count);
-                for (var i = 0; i < chunks.Count; i++)
+                for (int i = 0; i < chunks.Count; i++)
                 {
-                    if (cancellationToken.IsCancellationRequested) break;
-
-                    try
+                    var pointId = await _qdrantService.InsertVectorAsync(vectors[i], contractId, chunks[i].ChunkIndex, chunks[i].ChunkText, chunks[i].PageNumber);
+                    toInsert.Add(new ContractEmbedding
                     {
-                        // Insert vector, you already have an InsertVectorAsync returning point id
-                        var pointId = await _qdrantService.InsertVectorAsync(vectors[i], contractId, i, chunks[i], -1);
+                        ContractId = contractId,
+                        ChunkText = chunks[i].ChunkText,
+                        ChunkIndex = chunks[i].ChunkIndex,
+                        QdrantPointId = pointId
+                    });
 
-                        toInsert.Add(new ContractEmbedding
-                        {
-                            ContractId = contractId,
-                            ChunkText = chunks[i].ChunkText,
-                            ChunkIndex = chunks[i].ChunkIndex,
-                            QdrantPointId = pointId
-                        });
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error embedding chunk {Index} for contract {ContractId}", i, contractId);
-                    }
-
-                    // progress: map chunk index to percentage between 45 and 95
-                    var pct = 45 + (int)((double)(i + 1) / chunks.Count * 50); // 45..95
+                    var pct = 45 + (int)((double)(i + 1) / chunks.Count * 50);
                     await progressCallback(Math.Min(pct, 95), $"Processed chunk {i + 1} / {chunks.Count}");
                 }
 
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    await progressCallback(-1, "Processing cancelled.");
-                    return;
-                }
-
-                // Commit DB rows once
                 if (toInsert.Count > 0)
                 {
                     await progressCallback(96, "Saving embeddings to database...");
@@ -112,14 +100,13 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                 }
 
                 await progressCallback(100, "Processing complete.");
-                _logger.LogInformation(
-                    " Processed document for contract {ContractId} with {ChunkCount} chunks",
-                    contractId, toInsert.Count);
+                _logger.LogInformation("Processed document for contract {ContractId} with {ChunkCount} chunks", contractId, toInsert.Count);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to process document for contract {ContractId}", contractId);
-                // bubble up so caller can send error notifications if needed
+                await _hubContext.Clients.Group($"contract-{contractId}")
+                    .SendAsync("ReceiveProcessingProgress", -1, $"Error: {ex.Message}");
                 throw;
             }
         }
