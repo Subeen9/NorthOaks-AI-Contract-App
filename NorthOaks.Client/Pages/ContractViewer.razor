@@ -156,20 +156,71 @@
                 return;
             }
 
-            Console.WriteLine($"Contract loaded: {contract.FileUrl}");
-
-            var sessionResponse = await Http.PostAsJsonAsync("/api/chatsessions",
-                new CreateChatSessionDto { ContractIds = new List<int> { id } });
-
-            if (sessionResponse.IsSuccessStatusCode)
+            // try to reuse session id stored in localStorage
+            var storageKey = $"session_{id}";
+            var stored = await JS.InvokeAsync<string>("localStorage.getItem", storageKey);
+            if (!string.IsNullOrWhiteSpace(stored) && int.TryParse(stored, out var parsedId))
             {
-                var session = await sessionResponse.Content.ReadFromJsonAsync<ChatSessionDto>();
-                if (session != null)
+                currentSessionId = parsedId;
+                Console.WriteLine($"Found stored session id {currentSessionId} for contract {id}");
+            }
+            else
+            {
+
+                var sessionResponse = await Http.PostAsJsonAsync("/api/chatsessions",
+                    new CreateChatSessionDto { ContractIds = new List<int> { id } });
+
+                if (sessionResponse.IsSuccessStatusCode)
                 {
-                    currentSessionId = session.Id;
-                    Console.WriteLine($"Chat session created: {currentSessionId}");
+                    var session = await sessionResponse.Content.ReadFromJsonAsync<ChatSessionDto>();
+                    if (session != null)
+                    {
+                        currentSessionId = session.Id;
+                        // persist in localStorage to reuse when navigating back
+                        await JS.InvokeVoidAsync("localStorage.setItem", storageKey, currentSessionId.ToString());
+                        Console.WriteLine($"Chat session created/returned: {currentSessionId}");
+                    }
                 }
             }
+            if (currentSessionId == 0)
+            {
+                messages.Add(new Message { Text = "Failed to create chat session. Please reload the page.", IsUser = false });
+                return;
+            }
+
+            else
+            {
+                var rawMessages = await Http.GetFromJsonAsync<List<ChatMessageDto>>($"/api/chatmessages/session/{currentSessionId}");
+                if (rawMessages != null && rawMessages.Any())
+                {
+                    messages = new List<Message>();
+
+                    foreach (var m in rawMessages)
+                    {
+                        // user message first
+                        if (!string.IsNullOrWhiteSpace(m.Message))
+                        {
+                            messages.Add(new Message
+                                {
+                                    Text = m.Message,
+                                    IsUser = true
+                                });
+                        }
+
+                        // add AI response
+                        if (!string.IsNullOrWhiteSpace(m.Response))
+                        {
+                            messages.Add(new Message
+                                {
+                                    Text = m.Response,
+                                    IsUser = false,
+                                    Sources = m.Sources ?? new List<ChatMessageSourceDto>()
+                                });
+                        }
+                    }
+                }
+            }
+
         }
         catch (Exception ex)
         {
