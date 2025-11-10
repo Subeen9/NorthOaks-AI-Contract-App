@@ -215,13 +215,9 @@
                 if (response.IsSuccessStatusCode)
                 {
 
-                    isProcessing = true;
-                    statusMessage = "Upload complete, processing...";
-
                     var uploadedContract = await response.Content.ReadFromJsonAsync<ContractStatus>();
 
                     uploadedDocuments.Add(selectedFile.Name);
-                    uploadProgress = 100;
 
                     ToastService.Notify(new(ToastType.Success, $"Upload Successful"));
                     //Navigation.NavigateTo("/home");

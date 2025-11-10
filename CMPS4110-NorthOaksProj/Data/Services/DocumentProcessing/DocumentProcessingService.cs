@@ -1,13 +1,16 @@
 using System.Text.RegularExpressions;
-using CMPS4110_NorthOaksProj.Data.Services.QDrant;
-using CMPS4110_NorthOaksProj.Models.Contracts;
-using UglyToad.PdfPig;
-using Tesseract;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
-using SixLabors.ImageSharp.Formats.Png;
 using CMPS4110_NorthOaksProj.Data.Services.Embeddings;
+using CMPS4110_NorthOaksProj.Data.Services.QDrant;
+using CMPS4110_NorthOaksProj.Hubs;
+using CMPS4110_NorthOaksProj.Models.Contracts;
+using Microsoft.AspNetCore.SignalR;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.PixelFormats;
+using Tesseract;
+using UglyToad.PdfPig;
 using Page = UglyToad.PdfPig.Content.Page;
+
 
 namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
 {
@@ -17,17 +20,20 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
         private readonly DataContext _context;
         private readonly ILogger<DocumentProcessingService> _logger;
         private readonly IEmbeddingClient _embeddings;
+        private readonly IHubContext<ProcessingHub> _hubContext;
 
         public DocumentProcessingService(
             IQdrantService qdrantService,
             DataContext context,
             ILogger<DocumentProcessingService> logger,
-            IEmbeddingClient embeddings)
+            IEmbeddingClient embeddings,
+            IHubContext<ProcessingHub> hubContext)
         {
             _qdrantService = qdrantService;
             _context = context;
             _logger = logger;
             _embeddings = embeddings;
+            _hubContext = hubContext;
         }
 
         // signature changed to accept cancellation token + progress callback
@@ -76,14 +82,14 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                         toInsert.Add(new ContractEmbedding
                         {
                             ContractId = contractId,
-                            ChunkText = chunks[i],
-                            ChunkIndex = i,
+                            ChunkText = chunks[i].ChunkText,
+                            ChunkIndex = chunks[i].ChunkIndex,
                             QdrantPointId = pointId
                         });
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Error processing chunk {Index} for contract {ContractId}", i, contractId);
+                        _logger.LogError(ex, "Error embedding chunk {Index} for contract {ContractId}", i, contractId);
                     }
 
                     // progress: map chunk index to percentage between 45 and 95
@@ -107,7 +113,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
 
                 await progressCallback(100, "Processing complete.");
                 _logger.LogInformation(
-                    "Successfully processed document for contract {ContractId} with {ChunkCount} chunks",
+                    " Processed document for contract {ContractId} with {ChunkCount} chunks",
                     contractId, toInsert.Count);
             }
             catch (Exception ex)
@@ -118,51 +124,41 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
             }
         }
 
-        private string ExtractText(string filePath)
+        private List<PageText> ExtractTextWithPages(string filePath)
         {
             try
             {
                 using var doc = PdfDocument.Open(filePath);
-                using var engine = new TesseractEngine(@"./tessdata", "eng", EngineMode.Default);
-                engine.DefaultPageSegMode = PageSegMode.Auto;
+                var pageTexts = new List<PageText>();
 
-                var sb = new System.Text.StringBuilder();
-
-                foreach (Page page in doc.GetPages())
+                foreach (var page in doc.GetPages())
                 {
-                    string pageText = page.Text?.Trim();
-                    if (!string.IsNullOrWhiteSpace(pageText))
+                    string text = page.Text;
+
+                    if (string.IsNullOrWhiteSpace(text))
                     {
-                        sb.AppendLine(pageText);
-                    } 
-
-                    var images = page.GetImages().ToList();
-
-                    if (images.Count > 0)
-                    {
-                        _logger.LogInformation("Running OCR on {Count} images for page {PageNumber}", images.Count, page.Number);
-
-                        using var ms = new MemoryStream();
-                        foreach (var img in images)
+                        var images = page.GetImages().ToList();
+                        if (images.Any())
                         {
-                            using var image = Image.Load<Rgba32>(img.RawBytes);
-                            ms.SetLength(0);
-                            image.Save(ms, new PngEncoder());
-                            ms.Position = 0;
-                            ms.Seek(0, SeekOrigin.Begin);
-                            using var pix = Pix.LoadFromMemory(ms.ToArray());
-                            using var pageOcr = engine.Process(pix);
-                            var cleanText = Regex.Replace(pageOcr.GetText(), @"\s+", " ").Trim();
-                            if (!string.IsNullOrWhiteSpace(cleanText))
-                                sb.AppendLine(cleanText);
+                            _logger.LogInformation(
+                                "Page {PageNum} has no text layer but has {ImageCount} image(s), performing OCR",
+                                page.Number, images.Count);
+                            text = OcrPage(page);
                         }
                     }
-                }
-                var result = sb.ToString().Trim();
-                if (string.IsNullOrWhiteSpace(result))
-                    _logger.LogWarning("No readable text or OCR output found in {FilePath}", filePath);
 
-                return result;
+                    if (!string.IsNullOrWhiteSpace(text))
+                    {
+                        pageTexts.Add(new PageText
+                        {
+                            PageNumber = page.Number,
+                            Text = text
+                        });
+                    }
+                }
+
+                _logger.LogInformation("Extracted text from {PageCount} pages", pageTexts.Count);
+                return pageTexts;
             }
             catch (Exception ex)
             {
@@ -171,48 +167,154 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
             }
         }
 
-        private List<string> ChunkText(string text, int maxSize = 600, int overlap = 100)
+        private string OcrPage(Page page)
         {
-            if (string.IsNullOrWhiteSpace(text))
-                return new List<string>();
+            try
+            {
+                var sb = new System.Text.StringBuilder();
+                using var engine = new TesseractEngine(@"./tessdata", "eng", EngineMode.Default);
 
-            var sentences = Regex.Split(text, @"(?<=[.!?])\s+")
-                .Where(s => !string.IsNullOrWhiteSpace(s))
-                .ToList();
+                var images = page.GetImages().ToList();
+                foreach (var img in images)
+                {
+                    try
+                    {
+                        byte[] imageBytes;
+                        if (img.TryGetPng(out var pngBytes))
+                        {
+                            imageBytes = pngBytes;
+                        }
+                        else
+                        {
+                            imageBytes = img.RawBytes.ToArray();
+                        }
+
+                        using var image = Image.Load<Rgba32>(imageBytes);
+                        using var ms = new MemoryStream();
+                        image.Save(ms, new PngEncoder());
+                        ms.Seek(0, SeekOrigin.Begin);
+
+                        using var pix = Pix.LoadFromMemory(ms.ToArray());
+                        using var pageOcr = engine.Process(pix);
+                        var ocrText = pageOcr.GetText();
+
+                        if (!string.IsNullOrWhiteSpace(ocrText))
+                        {
+                            sb.AppendLine(ocrText);
+                        }
+                    }
+                    catch (Exception imgEx)
+                    {
+                        _logger.LogWarning(imgEx, "Failed to process individual image, continuing with next");
+                    }
+                }
+
+                return sb.ToString();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "OCR failed for page");
+                return string.Empty;
+            }
+        }
+
+        private string NormalizeText(string input)
+        {
+            input = input.ToLowerInvariant();
+            input = Regex.Replace(input, @"page\s*\d+", "", RegexOptions.IgnoreCase);
+            input = Regex.Replace(input, @"confidential", "", RegexOptions.IgnoreCase);
+            input = Regex.Replace(input, @"\s{2,}", " ");
+            return input.Trim();
+        }
+
+        private List<ContractChunk> ChunkTextWithPages(
+            List<PageText> pageTexts,
+            int minLen = 300,
+            int maxLen = 800,
+            double overlapRatio = 0.15)
+        {
+            var allChunks = new List<ContractChunk>();
+            int globalIndex = 0;
+
+            foreach (var pageText in pageTexts)
+            {
+                var normalizedText = NormalizeText(pageText.Text);
+
+                if (string.IsNullOrWhiteSpace(normalizedText))
+                    continue;
+
+                var sections = Regex.Split(normalizedText, @"(?=^\d+\.\s*[A-Z])", RegexOptions.Multiline)
+                                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                                    .ToList();
+
+                foreach (var sectionText in sections)
+                {
+                    var match = Regex.Match(sectionText, @"^\d+\.\s*([A-Za-z\s]+)");
+                    string sectionTitle = match.Success ? match.Groups[1].Value.Trim() : "General";
+
+                    var adaptiveChunks = AdaptiveChunkSection(sectionText, minLen, maxLen, overlapRatio);
+
+                    foreach (var chunkText in adaptiveChunks)
+                    {
+                        allChunks.Add(new ContractChunk
+                        {
+                            ChunkText = chunkText,
+                            ChunkIndex = globalIndex++,
+                            SectionTitle = sectionTitle,
+                            PageNumber = pageText.PageNumber
+                        });
+                    }
+                }
+            }
+
+            return allChunks;
+        }
+
+        private List<string> AdaptiveChunkSection(string section, int minLen, int maxLen, double overlapRatio)
+        {
+            var sentences = Regex.Split(section, @"(?<=[.!?])\s+")
+                                 .Where(s => !string.IsNullOrWhiteSpace(s))
+                                 .ToList();
 
             var chunks = new List<string>();
             var current = new System.Text.StringBuilder();
 
             foreach (var sentence in sentences)
             {
-                var sentenceWithSpace = sentence + " ";
-
-                if (current.Length + sentenceWithSpace.Length > maxSize && current.Length > 0)
+                if (current.Length + sentence.Length > maxLen)
                 {
-                    // save current chunk
-                    var chunk = current.ToString().Trim();
-                    chunks.Add(chunk);
-
-                    // get overlap tail
-                    var overlapText = chunk.Length > overlap
-                        ? chunk.Substring(chunk.Length - overlap)
-                        : chunk;
-
-                    // start new chunk with overlap
+                    chunks.Add(current.ToString().Trim());
                     current.Clear();
-                    current.Append(overlapText);
+
+                    var prev = chunks.Last();
+                    int overlapLen = (int)(prev.Length * overlapRatio);
+                    string overlapText = prev.Length > overlapLen
+                        ? prev.Substring(prev.Length - overlapLen)
+                        : prev;
+                    current.Append(overlapText).Append(" ");
                 }
 
-                current.Append(sentenceWithSpace);
+                current.Append(sentence).Append(" ");
             }
 
             if (current.Length > 0)
-            {
                 chunks.Add(current.ToString().Trim());
-            }
 
             return chunks;
         }
 
+        internal class ContractChunk
+        {
+            public string ChunkText { get; set; } = "";
+            public int ChunkIndex { get; set; }
+            public string? SectionTitle { get; set; }
+            public int PageNumber { get; set; }
+        }
+
+        internal class PageText
+        {
+            public int PageNumber { get; set; }
+            public string Text { get; set; } = "";
+        }
     }
 }
