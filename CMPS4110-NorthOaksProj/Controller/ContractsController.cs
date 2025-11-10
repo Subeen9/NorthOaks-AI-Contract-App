@@ -230,7 +230,8 @@ namespace CMPS4110_NorthOaksProj.Controllers
                 UploadedBy = contract.User != null
                     ? $"{contract.User.FirstName} {contract.User.LastName}"
                     : null,
-                FileUrl = $"/UploadedContracts/{contract.FileName}"
+                FileUrl = $"/UploadedContracts/{contract.FileName}",
+                IsPublic = contract.IsPublic
             };
         }
 
@@ -249,6 +250,12 @@ namespace CMPS4110_NorthOaksProj.Controllers
 
             contract.IsPublic = isPublic;
             await _context.SaveChangesAsync();
+            await _notificationHub.Clients.All.SendAsync("ContractVisibilityChanged", new
+            {
+                ContractId = contract.Id,
+                isPublic = contract.IsPublic
+            });
+
 
             return Ok(new { message = $"Visibility set to {(isPublic ? "public" : "private")}" });
         }

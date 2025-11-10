@@ -1,15 +1,31 @@
 ﻿@inject NavigationManager Navigation
 
 <div class="card shadow-sm mb-3 h-100 contract-hover position-relative"
-     style="border-radius: 14px; overflow: hidden;"
+     style="border-radius:14px; overflow:hidden;"
      @onclick="@(() => Navigation.NavigateTo($"/contract/{Id}"))">
 
-    <!-- Three-dots menu -->
-    <button class="btn btn-sm btn-light position-absolute top-0 end-0 m-2 p-1"
-            @onclick:stopPropagation="true"
-            @onclick="OpenDelete">
-        <i class="bi bi-three-dots-vertical" style="color:black"></i>
-    </button>
+    <!-- Options dropdown -->
+    <div class="dropdown position-absolute top-0 end-0 m-2">
+        <button class="btn btn-sm btn-light p-1" type="button" id="dropdownMenuButton-@Id"
+                data-bs-toggle="dropdown" aria-expanded="false" @onclick:stopPropagation="true">
+            <i class="bi bi-three-dots-vertical" style="color:black"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm"
+            aria-labelledby="dropdownMenuButton-@Id"
+            style="border-radius: 8px; font-size: 0.9rem;">
+            <li>
+                <button class="dropdown-item text-danger" @onclick:stopPropagation="true" @onclick="OpenDelete">
+                    <i class="bi bi-trash me-2"></i> Delete Contract
+                </button>
+            </li>
+            <li>
+                <button class="dropdown-item" @onclick:stopPropagation="true" @onclick="ToggleVisibility">
+                    <i class="bi @(IsPublic ? "bi-lock-fill" : "bi-globe-americas") me-2"></i>
+                    @(IsPublic ? "Make Private" : "Make Public")
+                </button>
+            </li>
+        </ul>
+    </div>
 
     <!-- Pin button -->
     <button type="button"
@@ -44,6 +60,9 @@
     [Parameter] public DateTime UploadDate { get; set; }
     [Parameter] public EventCallback<int> OnDelete { get; set; }
     [Parameter] public bool IsPublic { get; set; }
+
+    [Parameter] public EventCallback<int> OnToggleVisibility { get; set; }
+
     [Parameter] public bool IsPinned { get; set; }
     [Parameter] public EventCallback OnTogglePin { get; set; }
 
@@ -52,4 +71,11 @@
         if (OnDelete.HasDelegate)
             await OnDelete.InvokeAsync(Id);
     }
+
+    private async Task ToggleVisibility()
+    {
+        if (OnToggleVisibility.HasDelegate)
+            await OnToggleVisibility.InvokeAsync(Id);
+    }
 }
+

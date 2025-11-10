@@ -6,6 +6,8 @@
 @inject IJSRuntime JS
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.SignalR.Client;
+@inject NavigationManager Navigation
 @attribute [Authorize]
 
 <!-- NOTE: px-4 removed, no-pad added -->
@@ -199,7 +201,8 @@
                                                   IsPublic="@c.IsPublic"
                                                   OnDelete="DeleteContract"
                                                   IsPinned="IsPinned(c.Id)"
-                                                  OnTogglePin="() => TogglePin(c.Id)" />
+                                                  OnTogglePin="() => TogglePin(c.Id)"
+                                                  OnToggleVisibility="ToggleVisibility"/>
                                 </div>
                             </div>
                         }
@@ -297,22 +300,47 @@
 
 
     const string PinStorageKey = "pinnedContracts";
+    private HubConnection? _hubConnection;
+
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            // Load contracts and pins first
             contracts = await Http.GetFromJsonAsync<List<ContractReadDto>>("/api/contracts") ?? new();
             await LoadPinsAsync();
+
+            // Initialize SignalR connection
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/hubs/notification"), options =>
+                {
+                    options.AccessTokenProvider = async () =>
+                        await JS.InvokeAsync<string>("localStorage.getItem", "authToken");
+                })
+                .WithAutomaticReconnect()
+                .Build();
+
+            _hubConnection.On<int, bool>("ContractVisibilityChanged", (id, isPublic) =>
+            {
+                var c = contracts.FirstOrDefault(c => c.Id == id);
+                if (c != null)
+                {
+                    c.IsPublic = isPublic;
+                    InvokeAsync(StateHasChanged);
+                }
+            });
+
+            await _hubConnection.StartAsync();
         }
-        catch (HttpRequestException ex)
+        catch (Exception ex)
         {
-            if (ex.StatusCode == System.Net.HttpStatusCode.Unauthorized)
-                error = "Session expired. Please log in again.";
-            else
-                error = $"Failed to load contracts: {ex.Message}";
+            Console.WriteLine($"[SignalR ERROR] {ex.Message}");
         }
-        finally { isLoading = false; }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private async Task LoadPinsAsync()
@@ -436,4 +464,26 @@
         currentPage = 1;
         StateHasChanged();
     }
+
+    private async Task ToggleVisibility(int id)
+    {
+        var contract = contracts.FirstOrDefault(c => c.Id == id);
+        if (contract == null) return;
+
+        var newVisibility = !contract.IsPublic;
+        var res = await Http.PutAsync($"/api/contracts/{id}/visibility?isPublic={newVisibility}", null);
+
+        if (res.IsSuccessStatusCode)
+        {
+            contract.IsPublic = newVisibility;
+            ToastService.Notify(new(ToastType.Info,
+                newVisibility ? "Contract is now Public" : "Contract is now Private"));
+            StateHasChanged();
+        }
+        else
+        {
+            ToastService.Notify(new(ToastType.Danger, "Failed to update visibility"));
+        }
+    }
+
 }
