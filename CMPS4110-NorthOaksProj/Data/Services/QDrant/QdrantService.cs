@@ -1,4 +1,6 @@
-﻿using CMPS4110_NorthOaksProj.Data.Services.QDrant;
+﻿using CMPS4110_NorthOaksProj.Data.Services.Embeddings;
+using CMPS4110_NorthOaksProj.Data.Services.QDrant;
+using Microsoft.Extensions.Options;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
 
@@ -9,11 +11,13 @@ namespace CMPS4110_NorthOaksProj.Data.Services
         private readonly QdrantClient _client;
         private readonly ILogger<QdrantService> _logger;
         private const string CollectionName = "contract_embeddings";
+        private readonly int _vectorDimension;
         private bool _initialized = false;
 
-        public QdrantService(IConfiguration configuration, ILogger<QdrantService> logger)
+        public QdrantService(IConfiguration configuration, ILogger<QdrantService> logger, IOptions<OllamaOptions> ollamaOptions)
         {
             _logger = logger;
+            _vectorDimension = ollamaOptions.Value.VectorDimension;
 
             // Gets the connection string
             var qdrantConnectionString = configuration.GetConnectionString("Qdrant") ?? "http://localhost:6333";
@@ -76,7 +80,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services
 
                     var vectorParams = new VectorParams
                     {
-                        Size = 384,
+                        Size = (ulong)_vectorDimension,
                         Distance = Distance.Cosine
                     };
 
@@ -95,7 +99,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services
             }
         }
 
-        public async Task<Guid> InsertVectorAsync(float[] embedding, int contractId, int chunkIndex, string chunkText)
+        public async Task<Guid> InsertVectorAsync(float[] embedding, int contractId, int chunkIndex, string chunkText, int pageNumber)
         {
             try
             {
@@ -111,6 +115,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                         ["contract_id"] = contractId,
                         ["chunk_index"] = chunkIndex,
                         ["chunk_text"] = chunkText,
+                        ["page_number"] = pageNumber,
                         ["created_at"] = DateTime.UtcNow.ToString("O")
                     }
                 };
@@ -127,7 +132,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services
             }
         }
 
-        public async Task<List<VectorSearchResult>> SearchSimilarAsync(float[] queryEmbedding, int limit = 10, float scoreThreshold = 0.5f)
+        public async Task<List<VectorSearchResult>> SearchSimilarAsync(float[] queryEmbedding, int limit = 20, float scoreThreshold = 0.15f)
         {
             try
             {
@@ -148,7 +153,10 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                     ChunkIndex = (int)point.Payload["chunk_index"].IntegerValue,
                     ChunkText = point.Payload.ContainsKey("chunk_text")
                   ? point.Payload["chunk_text"].StringValue
-                  : string.Empty
+                  : string.Empty,
+                    PageNumber = point.Payload.ContainsKey("page_number")  // ← RETRIEVE PAGE NUMBER
+                ? (int)point.Payload["page_number"].IntegerValue
+                : 1
                 }).ToList();
             }
             catch (Exception ex)

@@ -8,5 +8,6 @@
             public int ChunkIndex { get; set; }
 
             public string ChunkText { get; set; } // Added property for chunk text
+            public int PageNumber { get; set; }  // ← ADD THIS
     }
 }

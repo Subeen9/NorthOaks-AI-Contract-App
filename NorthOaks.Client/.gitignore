@@ -67,6 +67,7 @@ Generated/
 *.vspscc
 *_i.asm
 *_p.asm
+wwwroot/pdfjs/
 
 
 ..

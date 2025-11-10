@@ -11,5 +11,6 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Contracts
        
         Task<IEnumerable<Contract>> GetAllWithUser();
         Task<Contract?> GetByIdWithUser(int id);
+        Task ProcessContractAsync(int contractId, string rootPath, CancellationToken token);
     }
 }

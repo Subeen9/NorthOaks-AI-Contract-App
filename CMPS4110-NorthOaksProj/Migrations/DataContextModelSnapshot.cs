@@ -161,6 +161,32 @@ namespace CMPS4110_NorthOaksProj.Migrations
                     b.ToTable("ContractEmbeddings");
                 });
 
+            modelBuilder.Entity("CMPS4110_NorthOaksProj.Models.Notifications.Notification", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsRead")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Message")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("TargetUserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Notifications");
+                });
+
             modelBuilder.Entity("CMPS4110_NorthOaksProj.Models.Users.User", b =>
                 {
                     b.Property<int>("Id")

@@ -98,7 +98,7 @@
                 await JS.InvokeVoidAsync("localStorage.setItem", "authToken", token);
                 (AuthProvider as CustomAuthStateProvider)?.NotifyUserAuthentication(token);
 
-                ToastService.Notify(new(ToastType.Success, "User Successfully Logged In"));
+                // Go to home page
                 Navigation.NavigateTo("/home", forceLoad: true);
             }
             else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
