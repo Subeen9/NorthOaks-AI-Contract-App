@@ -1591,3 +1591,11 @@ clear-highlights-btn {
 .contract-hover:hover .visibility-badge {
     opacity: 1;
 }
+
+/* =========================================================
+   FIX: Preserve dropdown icon colors inside menu
+========================================================= */
+.contract-hover .dropdown-menu i {
+    color: inherit !important; /* resets forced white */
+}
+
