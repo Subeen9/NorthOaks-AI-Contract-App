@@ -244,6 +244,34 @@
                     </nav>
                 }
             }
+
+            @if (showDeleteModal)
+            {
+                <div class="modal-backdrop fade show"></div>
+
+                <div class="modal fade show d-block" tabindex="-1">
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+
+                            <div class="modal-header">
+                                <h5 class="modal-title text-danger">Delete Contract?</h5>
+                                <button type="button" class="btn-close" @onclick="CancelDelete"></button>
+                            </div>
+
+                            <div class="modal-body">
+                                <p>Are you sure you want to permanently delete this file?</p>
+                            </div>
+
+                            <div class="modal-footer">
+                                <button class="btn btn-secondary" @onclick="CancelDelete">Cancel</button>
+                                <button class="btn btn-danger" @onclick="ConfirmDelete">Delete</button>
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+            }
+
         </main>
     </div>
 </div>
@@ -262,6 +290,10 @@
     private HashSet<int> pinned = new();
     private bool pinFirst = false;
     private bool pinOnly = false;
+
+    private bool showDeleteModal = false;
+    private int pendingDeleteId;
+
 
     const string PinStorageKey = "pinnedContracts";
 
@@ -311,19 +343,38 @@
 
     private async Task DeleteContract(int id)
     {
-        var ok = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to Delete");
-        if (!ok) return;
+        pendingDeleteId = id;
+        showDeleteModal = true;
+        await JS.InvokeVoidAsync("modalHelper.open");
+    }
 
-        var res = await Http.DeleteAsync($"/api/Contracts/{id}");
+    private async Task ConfirmDelete()
+    {
+        var res = await Http.DeleteAsync($"/api/Contracts/{pendingDeleteId}");
         if (res.IsSuccessStatusCode)
         {
-            contracts.RemoveAll(c => c.Id == id);
-            pinned.Remove(id);
+            contracts.RemoveAll(c => c.Id == pendingDeleteId);
+            pinned.Remove(pendingDeleteId);
             await SavePinsAsync();
             ToastService.Notify(new(ToastType.Success, "Contract Deleted Successfully"));
-            StateHasChanged();
         }
+        else
+        {
+            ToastService.Notify(new(ToastType.Danger, "Failed to delete contract"));
+        }
+
+        showDeleteModal = false;
+        StateHasChanged();
     }
+
+    private void CancelDelete()
+    {
+        showDeleteModal = false;
+        pendingDeleteId = 0;
+        JS.InvokeVoidAsync("modalHelper.close");
+
+    }
+
 
     private void toggleView(bool grid) => isGridView = grid;
 

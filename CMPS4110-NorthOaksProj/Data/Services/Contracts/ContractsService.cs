@@ -77,7 +77,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error deleting contract", id);
+                _logger.LogError(ex, message: "Error deleting contract", id);
                 return false;
             }
         }
@@ -98,14 +98,14 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                 .FirstOrDefaultAsync();
         }
 
-        public async Task ProcessContractAsync(int contractId, string rootPath, CancellationToken token)
+        public async Task ProcessContractAsync(int contractId, string rootPath, CancellationToken token, Func<int, string, Task>? progressCallback = null)
         {
             var contract = await GetByIdAsync(contractId);
             if (contract == null) return;
 
             var filePath = Path.Combine(rootPath, "UploadedContracts", contract.FileName);
 
-            await _documentProcessing.ProcessDocumentAsync(contract.Id, filePath);
+            await _documentProcessing.ProcessDocumentAsync(contract.Id, filePath, progressCallback, token);
         }
     }
 }
