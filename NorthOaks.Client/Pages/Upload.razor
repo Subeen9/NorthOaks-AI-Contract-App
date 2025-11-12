@@ -8,6 +8,7 @@
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
 @using Microsoft.AspNetCore.SignalR.Client
+@implements IAsyncDisposable
 
 
 <h3 class="text-center mb-4"> Upload PDF Documents</h3>
@@ -60,19 +61,14 @@
             }
             @if (isProcessing)
             {
-                <div class="text-center my-4">
-                    <p>@processingMessage</p>
-
-                    <Progress Class="mt-3 mb-3">
-                        <ProgressBar Type="ProgressType.StripedAndAnimated"
-                                     Color="ProgressColor.Info"
-                                     Width="@processingProgress">
-                            @processingProgress%
-                        </ProgressBar>
-                    </Progress>
-                </div>
+                <Progress Class="mt-3 mb-3">
+                    <ProgressBar Type="ProgressType.StripedAndAnimated"
+                                 Color="ProgressColor.Primary"
+                                 Width="@uploadProgress">
+                    </ProgressBar>
+                </Progress>
+                <p class="text-center mt-2"><strong>@uploadProgress%</strong> - @processingMessage</p>
             }
-
 
         </div>
      
@@ -93,8 +89,6 @@
     private bool isUploading = false;
     private string processingMessage = "";
     private HubConnection? hubConnection;
-    private int processingProgress = 0;
-
 
     // Getting the User Info
     protected override async Task OnInitializedAsync()
@@ -107,37 +101,31 @@
         }
 
         hubConnection = new HubConnectionBuilder()
-            .WithUrl(Navigation.ToAbsoluteUri("/processingHub"))
-            .WithAutomaticReconnect()
-            .Build();
+        .WithUrl(Navigation.ToAbsoluteUri("/processingHub"))
+        .WithAutomaticReconnect()
+        .Build();
 
-        hubConnection.On<string, int>("ProcessingUpdate", (msg, progress) =>
+        hubConnection.On<int, string>("ReceiveProcessingProgress", (progress, message) =>
         {
-            processingMessage = msg;
-            processingProgress = progress;
-
-            if (progress >= 0 && progress < 100)
-                isProcessing = true;
+            uploadProgress = progress;
+            processingMessage = message;
 
             if (progress == 100)
             {
                 isProcessing = false;
-                ToastService.Notify(new(ToastType.Success, "Document processed!"));
+                ToastService.Notify(new(ToastType.Success, "Document processed successfully!"));
                 Navigation.NavigateTo("/home");
             }
-
-            if (progress < 0)
+            else if (progress == -1)
             {
                 isProcessing = false;
-                ToastService.Notify(new(ToastType.Danger, msg));
+                ToastService.Notify(new(ToastType.Danger, "Processing failed!"));
             }
 
             InvokeAsync(StateHasChanged);
         });
 
         await hubConnection.StartAsync();
-        await hubConnection.InvokeAsync("JoinProcessingGroup", userId);
-
     }
 
     private void HandleFileSelected(InputFileChangeEventArgs e)
@@ -217,10 +205,18 @@
 
                     var uploadedContract = await response.Content.ReadFromJsonAsync<ContractStatus>();
 
+                  
+                    if (uploadedContract != null && hubConnection?.State == HubConnectionState.Connected)
+                    {
+                        await hubConnection.SendAsync("JoinContractProcessing", uploadedContract.Id);
+                    }
+
+                    isProcessing = true;
+                    uploadProgress = 0;
+                    statusMessage = "Upload complete, processing...";
                     uploadedDocuments.Add(selectedFile.Name);
 
                     ToastService.Notify(new(ToastType.Success, $"Upload Successful"));
-                    //Navigation.NavigateTo("/home");
                 }
                 else
                 {
@@ -249,10 +245,11 @@
 
     public async ValueTask DisposeAsync()
     {
-        if (hubConnection != null)
+        if (hubConnection is not null)
+        {
             await hubConnection.DisposeAsync();
+        }
     }
-
 
 }
 
