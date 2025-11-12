@@ -124,6 +124,7 @@
     private List<Message> messages = new();
     private string newMessage = "";
     private bool isLoading = false;
+    private ContractReadDto? selectedContract = null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -140,6 +141,11 @@
                     {
                         contracts.Add(contract);
                     }
+                }
+
+                if (contracts.Any())
+                {
+                    selectedContract = contracts.First();
                 }
 
                 try
@@ -262,6 +268,12 @@
     {
         var index = fileName.IndexOf('_');
         return index >= 0 ? fileName.Substring(index + 1) : fileName;
+    }
+
+    private void SelectContract(ContractReadDto contract)
+    {
+        selectedContract = contract;
+        StateHasChanged();
     }
 
     public class Message
