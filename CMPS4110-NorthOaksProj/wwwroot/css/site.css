@@ -29,3 +29,8 @@ body {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
   text-align: start;
 }
+
+/* Prevent scrolling when modal is open */
+body.modal-open {
+    overflow: hidden;
+}

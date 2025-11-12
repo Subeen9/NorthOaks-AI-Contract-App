@@ -48,22 +48,42 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                 using var scope = _scopeFactory.CreateScope();
                 var contractsService = scope.ServiceProvider.GetRequiredService<IContractsService>();
 
+                Func<int, string, Task> progressCallback = async (pct, msg) =>
+                {
+                    try
+                    {
+                        await hubContext.Clients.Group(userGroup).SendAsync("ProcessingUpdate", new
+                        {
+                            message = msg,
+                            progress = pct
+                        }, token);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to send progress update for contract {ContractId}", contractId);
+                    }
+                };
+
                 try
                 {
-                    await contractsService.ProcessContractAsync(contractId, rootPath, token);
-                    await hubContext.Clients.Group(userGroup).SendAsync("ProcessingUpdate", new
-                    {
-                        message = "Processing complete!",
-                        progress = 100
-                    });
+                    await contractsService.ProcessContractAsync(contractId, rootPath, token, progressCallback);
                 }
                 catch (Exception ex)
                 {
-                    await hubContext.Clients.Group(userGroup).SendAsync("ProcessingUpdate", new
+                    _logger.LogError(ex, "Error processing contract {ContractId}", contractId);
+
+                    try
                     {
-                        message = $"Error processing file: {ex.Message}",
-                        progress = -1
-                    });
+                        await hubContext.Clients.Group(userGroup).SendAsync("ProcessingUpdate", new
+                        {
+                            message = $"Error processing file: {ex.Message}",
+                            progress = -1
+                        }, token);
+                    }
+                    catch (Exception sendEx)
+                    {
+                        _logger.LogWarning(sendEx, "Failed to send error notification to group {Group}", userGroup);
+                    }
                 }
             });
         }
