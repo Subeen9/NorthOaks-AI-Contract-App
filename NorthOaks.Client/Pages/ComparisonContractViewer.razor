@@ -142,21 +142,29 @@
                     }
                 }
 
-                var existingMessages = await Http.GetFromJsonAsync<List<ChatMessageDto>>($"/api/chatmessages/session/{sessionId}");
-                if (existingMessages != null && existingMessages.Any())
+                try
                 {
-                    messages = new List<Message>();
-                    foreach (var m in existingMessages)
+                    var existingMessages = await Http.GetFromJsonAsync<List<ChatMessageDto>>($"/api/chatmessages/session/{sessionId}");
+                    if (existingMessages != null && existingMessages.Any())
                     {
-                        if (!string.IsNullOrWhiteSpace(m.Message))
+                        messages = new List<Message>();
+                        foreach (var m in existingMessages)
                         {
-                            messages.Add(new Message { Text = m.Message, IsUser = true });
-                        }
-                        if (!string.IsNullOrWhiteSpace(m.Response))
-                        {
-                            messages.Add(new Message { Text = m.Response, IsUser = false });
+                            if (!string.IsNullOrWhiteSpace(m.Message))
+                            {
+                                messages.Add(new Message { Text = m.Message, IsUser = true });
+                            }
+                            if (!string.IsNullOrWhiteSpace(m.Response))
+                            {
+                                messages.Add(new Message { Text = m.Response, IsUser = false });
+                            }
                         }
                     }
+                }
+                catch (Exception ex)
+                {
+                    // Session exists but no messages yet (this is fine for new comparison sessions)
+                    Console.WriteLine($"No existing messages: {ex.Message}");
                 }
             }
         }

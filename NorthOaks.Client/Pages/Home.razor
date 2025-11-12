@@ -6,7 +6,9 @@
 @inject IJSRuntime JS
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Authorization
 @attribute [Authorize]
+@inject AuthenticationStateProvider AuthStateProvider
 
 <!-- NOTE: px-4 removed, no-pad added -->
 <div class="container-fluid mt-4 mb-4 page-with-sidebar no-pad">
@@ -432,13 +434,19 @@
             return;
         }
 
-        var createSessionDto = new
-        {
-            ContractIds = selectedForComparison.ToList()
-        };
-
         try
         {
+            // Get current user ID
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userId = user.FindFirst("uid")?.Value ?? "1";
+
+            var createSessionDto = new
+            {
+                UserId = userId,
+                ContractIds = selectedForComparison.ToList()
+            };
+
             var response = await Http.PostAsJsonAsync("/api/chatsessions", createSessionDto);
 
             if (response.IsSuccessStatusCode)
@@ -448,6 +456,10 @@
                 {
                     Navigation.NavigateTo($"/compare-chat/{session.Id}");
                 }
+            }
+            else
+            {
+                ToastService.Notify(new(ToastType.Danger, "Failed to create comparison session"));
             }
         }
         catch (Exception ex)
