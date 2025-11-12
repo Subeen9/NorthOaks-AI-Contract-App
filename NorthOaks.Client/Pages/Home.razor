@@ -205,8 +205,8 @@
                     <div class="row g-4 home-grid">
                         @foreach (var c in page)
                         {
-                            <div class="col-xxl-4 col-xl-4 col-lg-6">
-                                <div class="contract-card contract-hover position-relative home-card">
+                            <div class="col-xxl-4 col-xl-4 col-lg-6" @onclick="() => HandleCardClick(c.Id)">
+                                <div class="contract-card contract-hover position-relative home-card @(selectedForComparison.Contains(c.Id) ? "selected-for-comparison" : "")">
                                     <ContractCard Id="@c.Id"
                                                   FileName="@CleanFileName(c.FileName)"
                                                   UploadedBy="@(c.UploadedBy ?? "Unknown")"
@@ -214,7 +214,8 @@
                                                   UserId="@c.UserId"
                                                   OnDelete="DeleteContract"
                                                   IsPinned="IsPinned(c.Id)"
-                                                  OnTogglePin="() => TogglePin(c.Id)" />
+                                                  OnTogglePin="() => TogglePin(c.Id)"
+                                                  IsSelected="selectedForComparison.Contains(c.Id)" />
                                 </div>
                             </div>
                         }
