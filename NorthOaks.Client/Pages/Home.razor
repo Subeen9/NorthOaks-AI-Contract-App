@@ -127,7 +127,7 @@
                     {
                         <button class="btn btn-outline-primary" @onclick="() => isMultiSelectMode = !isMultiSelectMode">
                             <i class="bi bi-files"></i>
-                            @(isMultiSelectMode ? "Exit Multi-Select" : "Multiple Contracts")
+                            @(isMultiSelectMode ? "Exit Multi-Select" : "Compare Contracts")
                         </button>
                     }
                     <div class="position-relative">
@@ -153,7 +153,7 @@
             {
                 <div class="alert alert-info d-flex align-items-center mb-3">
                     <i class="bi bi-info-circle me-2"></i>
-                    <strong>Multi-Select Mode: </strong> Click on 2-3 contracts to compare. @selectedForComparison.Count selected.
+                    <strong>Multi-Select Mode: </strong> Click on 2 contracts to compare. @selectedForComparison.Count selected.
                 </div>
             }
 
@@ -415,10 +415,10 @@
         {
             if (selectedForComparison.Contains(contractId))
                 selectedForComparison.Remove(contractId);
-            else if (selectedForComparison.Count < 3)
+            else if (selectedForComparison.Count < 2)
                 selectedForComparison.Add(contractId);
             else
-                ToastService.Notify(new(ToastType.Warning, "Maximum 3 contracts can be compared"));
+                ToastService.Notify(new(ToastType.Warning, "Maximum 2 contracts can be compared"));
         }
         else
         {

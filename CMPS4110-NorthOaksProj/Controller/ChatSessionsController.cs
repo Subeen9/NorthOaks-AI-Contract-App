@@ -59,6 +59,12 @@ namespace CMPS4110_NorthOaksProj.Controller
         [HttpPost]
         public async Task<ActionResult<ChatSessionDto>> Create(CreateChatSessionDto dto)
         {
+
+            if (dto.ContractIds is { Count: > 2 })
+            {
+                return BadRequest(new { error = "Maximum 2 contracts can be compared" });
+            }
+
             // If client provides contracts, try to find an existing session for this user that already references any of those contracts.
             // Only reuse existing sessions for single contracts (individual chats)
             // For comparisons (multiple contracts), always create new session
