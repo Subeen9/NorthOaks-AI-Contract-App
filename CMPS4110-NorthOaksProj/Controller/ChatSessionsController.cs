@@ -60,7 +60,9 @@ namespace CMPS4110_NorthOaksProj.Controller
         public async Task<ActionResult<ChatSessionDto>> Create(CreateChatSessionDto dto)
         {
             // If client provides contracts, try to find an existing session for this user that already references any of those contracts.
-            if (dto.ContractIds is { Count: > 0 })
+            // Only reuse existing sessions for single contracts (individual chats)
+            // For comparisons (multiple contracts), always create new session
+            if (dto.ContractIds is { Count:  1 })
             {
                 var existing = await _db.ChatSessions
                     .Include(s => s.Messages)
