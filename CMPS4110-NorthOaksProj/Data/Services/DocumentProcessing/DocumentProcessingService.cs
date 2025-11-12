@@ -270,6 +270,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                                     .Where(s => !string.IsNullOrWhiteSpace(s))
                                     .ToList();
 
+
                 foreach (var sectionText in sections)
                 {
                     var match = Regex.Match(sectionText, @"^\d+\.\s*([A-Za-z\s]+)");
