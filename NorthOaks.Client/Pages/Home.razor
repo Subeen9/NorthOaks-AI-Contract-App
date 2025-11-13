@@ -241,8 +241,11 @@
 
                             @foreach (var session in paginatedSessions)
                             {
-                                <div class="col-xxl-4 col-xl-4 col-lg-6" @onclick="@(() => Navigation.NavigateTo($"/compare-chat/{session.Id}"))" style="cursor: pointer;">
-                                    <div class="contract-card contract-hover position-relative home-card">
+                                <div class="col-xxl-4 col-xl-4 col-lg-6"
+                                     @onclick="@(() => Navigation.NavigateTo($"/compare-chat/{session.Id}"))"
+                                     style="cursor: pointer;">
+                                    <!-- 🔶 comparison-card hooks into golden hover CSS -->
+                                    <div class="contract-card contract-hover position-relative home-card comparison-card">
                                         <div class="card shadow-sm mb-3 h-100" style="border-radius:12px; border: 2px solid var(--brand-blue);">
                                             <div class="card-body d-flex flex-column">
                                                 <div class="d-flex align-items-center mb-2">
@@ -250,8 +253,9 @@
                                                     <small class="text-muted">@session.MessageCount messages</small>
                                                 </div>
 
-                                                <h5 class="card-title fw-bold contract-title mb-3">
-                                                    <i class="bi bi-files"></i> Contract Comparison
+                                                <h5 class="card-title fw-bold contract-title mb-3 d-flex align-items-center gap-2">
+                                                    <i class="bi bi-files"></i>
+                                                    <span>@BuildComparisonTitle(session)</span>
                                                 </h5>
 
                                                 @foreach (var contract in session.Contracts)
@@ -318,19 +322,30 @@
                         <nav class="mt-3" aria-label="Comparisons pagination">
                             <ul class="pagination justify-content-center">
                                 <li class="page-item @(currentPage == 1 ? "disabled" : "")">
-                                    <button class="page-link" @onclick="() => currentPage = Math.Max(1, currentPage - 1)" disabled="@(currentPage == 1)">Previous</button>
+                                    <button class="page-link"
+                                            @onclick="() => currentPage = Math.Max(1, currentPage - 1)"
+                                            disabled="@(currentPage == 1)">
+                                        Previous
+                                    </button>
                                 </li>
 
                                 @for (int i = 1; i <= totalComparisonPages; i++)
                                 {
                                     var n = i;
                                     <li class="page-item @(currentPage == n ? "active" : "")">
-                                        <button class="page-link" @onclick="() => currentPage = n">@n</button>
+                                        <button class="page-link"
+                                                @onclick="() => currentPage = n">
+                                            @n
+                                        </button>
                                     </li>
                                 }
 
                                 <li class="page-item @(currentPage == totalComparisonPages ? "disabled" : "")">
-                                    <button class="page-link" @onclick="() => currentPage = Math.Min(totalComparisonPages, currentPage + 1)" disabled="@(currentPage == totalComparisonPages)">Next</button>
+                                    <button class="page-link"
+                                            @onclick="() => currentPage = Math.Min(totalComparisonPages, currentPage + 1)"
+                                            disabled="@(currentPage == totalComparisonPages)">
+                                        Next
+                                    </button>
                                 </li>
                             </ul>
                         </nav>
@@ -341,19 +356,31 @@
                     <nav class="mt-3" aria-label="Contracts pagination">
                         <ul class="pagination justify-content-center">
                             <li class="page-item @(currentPage == 1 ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => ChangePage(currentPage - 1)" disabled="@(currentPage == 1)">Previous</button>
+                                <button class="page-link"
+                                        @onclick="() => ChangePage(currentPage - 1)"
+                                        disabled="@(currentPage == 1)">
+                                    Previous
+                                </button>
                             </li>
 
                             @for (int i = 1; i <= totalPages; i++)
                             {
                                 var n = i;
                                 <li class="page-item @(currentPage == n ? "active" : "")">
-                                    <button class="page-link" @onclick="() => ChangePage(n)" disabled="@(currentPage == n)">@n</button>
+                                    <button class="page-link"
+                                            @onclick="() => ChangePage(n)"
+                                            disabled="@(currentPage == n)">
+                                        @n
+                                    </button>
                                 </li>
                             }
 
                             <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => ChangePage(currentPage + 1)" disabled="@(currentPage == totalPages)">Next</button>
+                                <button class="page-link"
+                                        @onclick="() => ChangePage(currentPage + 1)"
+                                        disabled="@(currentPage == totalPages)">
+                                    Next
+                                </button>
                             </li>
                         </ul>
                     </nav>
@@ -395,8 +422,14 @@
             await LoadPinsAsync();
             await LoadSessionsAsync();
         }
-        catch (Exception ex) { error = $"Failed to load contracts: {ex.Message}"; }
-        finally { isLoading = false; }
+        catch (Exception ex)
+        {
+            error = $"Failed to load contracts: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private async Task LoadPinsAsync()
@@ -410,7 +443,10 @@
                 pinned = ids ?? new HashSet<int>();
             }
         }
-        catch { pinned = new(); }
+        catch
+        {
+            pinned = new();
+        }
     }
 
     private async Task SavePinsAsync()
@@ -420,14 +456,18 @@
             var json = JsonSerializer.Serialize(pinned);
             await JS.InvokeVoidAsync("localStorage.setItem", PinStorageKey, json);
         }
-        catch { }
+        catch
+        {
+        }
     }
 
     private bool IsPinned(int id) => pinned.Contains(id);
 
     private async Task TogglePin(int id)
     {
-        if (!pinned.Add(id)) pinned.Remove(id);
+        if (!pinned.Add(id))
+            pinned.Remove(id);
+
         await SavePinsAsync();
         StateHasChanged();
     }
@@ -454,6 +494,31 @@
     {
         var i = s.IndexOf('_');
         return (i >= 0 && i < s.Length - 1) ? s[(i + 1)..] : s;
+    }
+
+    // Build "A vs B (+n more)" style title for comparison cards
+    private string BuildComparisonTitle(ChatSessionDto session)
+    {
+        if (session?.Contracts == null || session.Contracts.Count == 0)
+            return "Contract Comparison";
+
+        var names = session.Contracts
+            .Where(c => c != null)
+            .Select(c => CleanFileName(c.FileName))
+            .Distinct()
+            .ToList();
+
+        if (names.Count == 0)
+            return "Contract Comparison";
+
+        if (names.Count == 1)
+            return names[0];
+
+        if (names.Count == 2)
+            return $"{names[0]} vs {names[1]}";
+
+        var extra = names.Count - 2;
+        return $"{names[0]} vs {names[1]} (+{extra} more)";
     }
 
     private void ChangePage(int page)
@@ -501,6 +566,7 @@
         currentPage = 1;
         StateHasChanged();
     }
+
     private void HandleCardClick(int contractId)
     {
         if (isMultiSelectMode)
@@ -531,7 +597,7 @@
 
             allSessions = await Http.GetFromJsonAsync<List<ChatSessionDto>>($"/api/chatsessions/user/{userId}") ?? new();
 
-            // Filter comparison sessions (2 contracts)
+            // comparison sessions are those with exactly 2 contracts (for now)
             comparisonSessions = allSessions.Where(s => s.ContractIds.Count == 2).ToList();
         }
         catch (Exception ex)
@@ -550,7 +616,6 @@
 
         try
         {
-            // Get current user ID
             var authState = await AuthStateProvider.GetAuthenticationStateAsync();
             var user = authState.User;
             var userId = user.FindFirst("uid")?.Value ?? "1";

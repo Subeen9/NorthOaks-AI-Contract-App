@@ -1581,4 +1581,34 @@ clear-highlights-btn {
 }
 
 
-/*test*/
+.home-grid .contract-card.contract-hover:hover,
+.home-grid .contract-card.contract-hover:hover > *,
+.home-grid .contract-card.contract-hover:hover .card {
+    background: var(--brand-gold) !important;
+    color: #fff !important;
+    box-shadow: var(--shadow-md) !important;
+    transform: translateY(-2px);
+}
+
+    /* make text + icons white on hover */
+    .home-grid .contract-card.contract-hover:hover .contract-title,
+    .home-grid .contract-card.contract-hover:hover .contract-meta,
+    .home-grid .contract-card.contract-hover:hover .card-title,
+    .home-grid .contract-card.contract-hover:hover small,
+    .home-grid .contract-card.contract-hover:hover .text-muted,
+    .home-grid .contract-card.contract-hover:hover i,
+    .home-grid .contract-card.contract-hover:hover .file-icon {
+        color: #fff !important;
+    }
+
+    /* keep badge readable on gold */
+    .home-grid .contract-card.contract-hover:hover .badge {
+        background: rgba(255,255,255,0.22) !important;
+        color: #fff !important;
+    }
+
+    /* nuke any blur/fade on hover */
+    .home-grid .contract-card.contract-hover:hover * {
+        opacity: 1 !important;
+        filter: none !important;
+    }
