@@ -1731,3 +1731,43 @@ clear-highlights-btn {
     .contract-card.contract-hover:hover .pin-btn i {
         color: #7a5600 !important;
     }
+
+.contract-card .card-menu,
+.comparison-card .card-menu {
+    opacity: 1 !important;
+    visibility: visible !important;
+    display: flex !important;
+    z-index: 999 !important;
+}
+
+    /* ensure icon is visible no matter the hover colors */
+    .contract-card .card-menu i,
+    .comparison-card .card-menu i {
+        color: #111 !important; /* solid dark */
+        opacity: 1 !important;
+    }
+
+/* on hover (gold background), keep delete button visible */
+.contract-card.contract-hover:hover .card-menu,
+.comparison-card.contract-hover:hover .card-menu {
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 3px 8px rgba(0,0,0,.15) !important;
+    opacity: 1 !important;
+}
+
+    /* on hover: keep the icon readable */
+    .contract-card.contract-hover:hover .card-menu i,
+    .comparison-card.contract-hover:hover .card-menu i {
+        color: #111 !important;
+    }
+
+/* fix position in comparison cards */
+.comparison-card .card-menu {
+    top: 12px !important;
+    right: 12px !important;
+    width: 34px !important;
+    height: 34px !important;
+    border-radius: 10px !important;
+    background: rgba(255,255,255,0.96) !important;
+}
