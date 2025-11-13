@@ -3,6 +3,7 @@
 @using NorthOaks.Shared.Model.Chat
 @using NorthOaks.Client.Components
 @using System.Net.Http.Json
+@using System.Linq
 @inject HttpClient Http
 @inject IJSRuntime JS
 @using Microsoft.AspNetCore.Authorization
@@ -11,11 +12,16 @@
 <div class="contract-viewer-page">
     <div class="content">
         <div class="viewer-wrapper">
+            <!-- LEFT SIDEBAR -->
             <div class="contracts-sidebar" style="width: 280px; border-right: 1px solid #ddd; background: #f8f9fa; overflow-y: auto;">
                 <div style="padding: 16px; border-bottom: 1px solid #ddd;">
-                    <h5 style="margin: 0; color: var(--brand-blue);">
-                        <i class="bi bi-files"></i> Comparing @contracts.Count Contracts
-                    </h5>
+                    <h6 style="margin: 0 0 4px 0; color: var(--brand-blue); font-weight: 700;">
+                        <i class="bi bi-files"></i>
+                        @GetComparisonTitle()
+                    </h6>
+                    <small class="text-muted">
+                        @contracts.Count document@(contracts.Count == 1 ? "" : "s") selected
+                    </small>
                 </div>
 
                 @if (contracts.Count == 0)
@@ -42,17 +48,22 @@
                         }
                     </div>
 
-                    <div class="alert alert-info m-3">
-                        <i class="bi bi-lightbulb"></i> <strong>Try asking:</strong>
-                        <ul class="mb-0 mt-2" style="font-size: 0.85rem;">
-                            <li>What are the main differences?</li>
-                            <li>Compare payment terms</li>
-                            <li>Which contract is better?</li>
-                        </ul>
+                    <!-- PROFESSIONAL INFO CARD INSTEAD OF "TRY ASKING" -->
+                    <div class="m-3 p-3 rounded" style="background:#eef5ff; border:1px solid #d4e1ff;">
+                        <div class="d-flex align-items-center mb-1">
+                            <i class="bi bi-activity me-2" style="color:#003768;"></i>
+                            <strong class="text-muted" style="font-size:0.8rem; text-transform:uppercase; letter-spacing:.06em;">
+                                Comparison summary
+                            </strong>
+                        </div>
+                        <small class="text-muted d-block">
+                            Use the chat on the right to review key differences, clarify clauses, and capture guidance for this comparison.
+                        </small>
                     </div>
                 }
             </div>
 
+            <!-- CENTER: PDF VIEWER -->
             <div class="pdf-area">
                 @if (selectedContract == null)
                 {
@@ -70,15 +81,27 @@
 
             <div class="resizer" @onmousedown="StartResize"></div>
 
+            <!-- RIGHT: CHAT PANEL -->
             <div id="chatPanel" class="chat-panel">
                 <div class="chat-header">
-                    <h5>Contract Comparison Chat</h5>
+                    <div class="d-flex flex-column">
+                        <div class="d-flex align-items-center gap-2 mb-1">
+                            <span class="badge bg-primary">COMPARISON</span>
+                            <small class="text-muted">
+                                @contracts.Count document@(contracts.Count == 1 ? "" : "s")
+                            </small>
+                        </div>
+                    </div>
+
+                    <small class="text-muted d-block mt-2">
+                        Ask questions to compare clauses, terms, and risk between these documents.
+                    </small>
                 </div>
 
                 <div id="chatMessages" class="chat-messages">
                     @if (messages.Count == 0)
                     {
-                        <div class="text-muted empty-chat">Ask questions to compare the selected contracts!</div>
+                        <div class="text-muted empty-chat">Start by asking what differs between the documents.</div>
                     }
                     else
                     {
@@ -284,8 +307,30 @@
 
     private string CleanFileName(string fileName)
     {
+        // remove prefix before "_" if present
         var index = fileName.IndexOf('_');
-        return index >= 0 ? fileName.Substring(index + 1) : fileName;
+        var cleaned = index >= 0 ? fileName[(index + 1)..] : fileName;
+
+        // drop extension
+        var dot = cleaned.LastIndexOf('.');
+        if (dot > 0)
+        {
+            cleaned = cleaned[..dot];
+        }
+
+        // shorten long names for UI
+        if (cleaned.Length > 32)
+        {
+            cleaned = cleaned[..29] + "...";
+        }
+
+        return cleaned;
+    }
+
+    private string GetComparisonTitle()
+    {
+        // Always show a clean, generic title – no raw filenames
+        return "Contract Comparison";
     }
 
     private void SelectContract(ContractReadDto contract)
