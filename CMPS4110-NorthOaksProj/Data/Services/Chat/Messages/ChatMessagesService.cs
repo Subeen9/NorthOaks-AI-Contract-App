@@ -163,16 +163,47 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     var contextText = ContextBuilder.BuildStructuredContext(filteredResults);
                     _logger.LogInformation("Context built: {Length} characters", contextText.Length);
 
-                    var systemPrompt = @"
+                var systemPrompt = contractIds.Count > 1
+                    ? @"
+You are a professional contract analyst comparing two documents.
+
+CRITICAL FORMATTING RULES:
+1. NEVER use phrases like 'one text', 'the first set of texts', 'one contract', or empty parentheses ()
+2. ALWAYS refer to documents as 'Document 1' and 'Document 2'
+3. DO NOT reference clause numbers, chunks, or any internal labels
+4. Write as if you're reading the actual documents directly
+
+COMPARISON STRUCTURE:
+If the documents are similar in nature (both contracts, both agreements):
+- Compare them side-by-side using clear section headings
+- Example: 'Document 1 specifies a payment term of 30 days, while Document 2 requires payment within 15 days'
+
+If the documents are completely different in nature:
+- First, clearly state what each document is about
+- Then explain that they cannot be meaningfully compared
+- Example: 'Document 1 is a recommendation letter for a software developer. Document 2 is a logo design specification. These are fundamentally different document types and cannot be compared in a meaningful way.'
+
+For meaningful comparisons, focus on:
+- Key terms and conditions
+- Dates and deadlines  
+- Parties involved
+- Obligations and responsibilities
+- Payment terms
+- Notable differences in scope or requirements
+
+Keep responses clear, concise, and professional."
+
+                    : @"
 You are a professional contract analysis assistant.
-Use only the clauses provided in the context to answer the question.
-Do NOT include internal labels, clause numbers, chunk identifiers, or any metadata in the output.
+Use only the information provided in the context to answer the question.
+
+CRITICAL: Do NOT include internal labels, clause numbers, chunk identifiers, or any metadata in your output.
+
 Provide a clean, concise, professional, human-readable response.
 If the answer cannot be found, reply exactly: 'Not found in contract.'
-Avoid using jargon or technical references unrelated to the user question.
-";
+Write naturally as if you're reading the actual contract document.";
 
-                    var userPrompt = $@"
+                var userPrompt = $@"
 Context:
 {contextText}
 
