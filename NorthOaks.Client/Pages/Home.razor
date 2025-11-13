@@ -342,19 +342,68 @@
                 }
                 else
                 {
-                    <div class="list-group">
-                        @foreach (var c in page)
-                        {
-                            <div class="contract-row mb-2 position-relative">
-                                <ContractList Id="@c.Id"
-                                              FileName="@CleanFileName(c.FileName)"
-                                              UploadDate="@c.UploadDate"
-                                              UploadedBy="@c.UploadedBy"
-                                              OnDelete="DeleteContract" />
-                            </div>
-                        }
-                    </div>
+                    if (activeTab == "comparisons")
+                    {
+                        var comparisonPage = comparisonFiltered
+                        .Skip((currentPage - 1) * pageSize)
+                        .Take(pageSize)
+                        .ToList();
+
+                        <div class="list-group">
+                            @foreach (var session in comparisonPage)
+                            {
+                                <div class="contract-row mb-3 position-relative comparison-row contract-hover"
+                                     style="cursor:pointer"
+                                     @onclick="@(() => Navigation.NavigateTo($"/compare-chat/{session.Id}"))">
+
+                                    <!-- 3-dots menu (delete) -->
+                                    <button type="button"
+                                            class="card-menu comparison-menu"
+                                            title="More actions"
+                                            @onclick="@(e => OnComparisonMenuClick(session.Id))"
+                                            @onclick:stopPropagation="true">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+
+                                    <!-- Pin button (shows on hover, always visible when pinned) -->
+                                    <button type="button"
+                                            class="pin-btn comparison-pin @(IsComparisonPinned(session.Id) ? "pinned" : "")"
+                                            @onclick="@(e => ToggleComparisonPin(session.Id))"
+                                            @onclick:stopPropagation="true">
+                                        <i class="bi @(IsComparisonPinned(session.Id) ? "bi-pin-fill" : "bi-pin")"></i>
+                                    </button>
+
+                                    <div class="comparison-row-body">
+                                        <h6 class="mb-1 fw-semibold contract-title text-truncate">
+                                            Comparison between @BuildComparisonTitle(session)
+                                        </h6>
+                                        <small class="contract-meta">
+                                            Created @session.CreatedDate.ToShortDateString()
+                                            · @session.MessageCount message@(session.MessageCount == 1 ? "" : "s")
+                                        </small>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="list-group">
+                            @foreach (var c in page)
+                            {
+                                <div class="contract-row mb-2 position-relative">
+                                    <ContractList Id="@c.Id"
+                                                  FileName="@CleanFileName(c.FileName)"
+                                                  UploadDate="@c.UploadDate"
+                                                  UploadedBy="@c.UploadedBy"
+                                                  OnDelete="DeleteContract" />
+                                </div>
+                            }
+                        </div>
+                    }
                 }
+
+
 
                 @if (activeTab == "comparisons" && totalComparisonPagesLocal > 1)
                 {
