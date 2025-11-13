@@ -1089,38 +1089,52 @@ clear-highlights-btn {
     min-height: 124px;
 }
 
+    /* uniform padding for cards */
     .contract-card .card-body {
         padding: 16px 18px;
     }
 
+    /* 3-dots menu button in top-right */
     .contract-card .card-menu {
         position: absolute;
         top: 12px;
         right: 12px;
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        border: 1px solid var(--stroke);
+        background: #ffffff;
         color: #9ca3af;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        line-height: 0;
+        box-shadow: var(--shadow-sm);
+        cursor: pointer;
+        transition: transform .12s ease, background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
     }
 
+        .contract-card .card-menu i {
+            font-size: 18px;
+        }
+
+        /* hover on the button itself */
+        .contract-card .card-menu:hover {
+            background: #ffffff;
+            color: #4b5563;
+            border-color: #f0e0b4;
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+/* meta text */
 .contract-meta {
     color: #6b7280;
     font-size: .9rem;
 }
 
-/* status pill */
-.status-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    border-radius: 999px;
-    padding: 4px 10px;
-    font-size: .75rem;
-    font-weight: 600;
-    letter-spacing: .2px;
-    border: 1px solid var(--stroke);
-    color: #374151;
-    background: #f9fafb;
-}
-
-/* hover to gold */
+/* main hover: card goes gold */
 .contract-card.contract-hover:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
@@ -1128,14 +1142,22 @@ clear-highlights-btn {
     color: #fff !important;
 }
 
+    /* on hover or selected, make title/meta white */
     .contract-card.contract-hover:hover .contract-title,
     .contract-card.contract-hover:hover .contract-meta,
-    .contract-card.contract-hover:hover .file-icon {
+    .contract-card.contract-hover:hover .file-icon,
+    .contract-card.selected-for-comparison .contract-title,
+    .contract-card.selected-for-comparison .contract-meta,
+    .contract-card.selected-for-comparison .file-icon {
         color: #fff !important;
     }
 
+    /* on hover keep 3-dots visible */
     .contract-card.contract-hover:hover .card-menu {
-        color: #111 !important;
+        background: #ffffff !important;
+        border-color: #f0e0b4 !important;
+        color: #111827 !important;
+        box-shadow: var(--shadow-md);
     }
 
 /* Selected state (same as hover, but permanent) */
@@ -1146,15 +1168,53 @@ clear-highlights-btn {
     color: #fff !important;
 }
 
-    .contract-card.selected-for-comparison .contract-title,
-    .contract-card.selected-for-comparison .contract-meta,
-    .contract-card.selected-for-comparison .file-icon {
-        color: #fff !important;
+/* normalize component-in-card (prevents "double card" look) */
+.home-card {
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+    .home-card > * {
+        margin: 0 !important;
+        border: 1px solid var(--stroke) !important;
+        border-radius: 16px !important;
+        background: #fff !important;
+        box-shadow: var(--shadow-sm) !important;
+        min-height: 168px;
+        overflow: hidden;
+        display: block;
     }
 
-    .contract-card.selected-for-comparison .card-menu {
-        color: #111 !important;
+    .home-card > .card {
+        margin: 0 !important;
+        border: none !important;
+        border-radius: 16px !important;
+        box-shadow: none !important;
+        height: 100%;
     }
+
+    .home-card .card-body {
+        padding: 20px 22px !important;
+    }
+
+/* list-view rows stay the same */
+.list-group .contract-row {
+    border: 1px solid var(--stroke);
+    border-radius: 12px;
+    padding: 14px 16px;
+    background: #fff;
+    box-shadow: var(--shadow-sm);
+    transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+    .list-group .contract-row:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+        background: #fff5e0;
+    }
+
 
 
 /* normalize component-in-card (prevents "double card" look) */
@@ -1611,4 +1671,63 @@ clear-highlights-btn {
     .home-grid .contract-card.contract-hover:hover * {
         opacity: 1 !important;
         filter: none !important;
+    }
+
+
+/* =========================================================
+   COMPARISON CARDS – REFINED HEADER + META
+========================================================= */
+
+.comparison-card .comparison-inner-card {
+    border-radius: var(--radius);
+    border: 1px solid var(--stroke);
+    background: var(--card-bg);
+}
+
+/* icon pill on the left of header */
+.comparison-icon-pill {
+    width: 32px;
+    height: 32px;
+    border-radius: 10px;
+    background: rgba(0, 55, 104, 0.06);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+    color: var(--brand-blue);
+}
+
+/* tiny label "Review session" */
+.comparison-label-text {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 700;
+    color: var(--muted);
+}
+
+/* messages count on the right */
+.comparison-messages {
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--muted);
+}
+
+/* created-on text */
+.comparison-meta {
+    font-size: 0.8rem;
+    color: var(--muted);
+}
+
+/* Ensure pin icon always visible on gold hover (contracts + comparisons) */
+.home-grid .contract-card.contract-hover:hover .pin-btn,
+.contract-card.contract-hover:hover .pin-btn {
+    background: rgba(255,255,255,.96) !important;
+    border-color: #f0e0b4 !important;
+    box-shadow: var(--shadow-md);
+}
+
+    .home-grid .contract-card.contract-hover:hover .pin-btn i,
+    .contract-card.contract-hover:hover .pin-btn i {
+        color: #7a5600 !important;
     }
