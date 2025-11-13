@@ -1129,6 +1129,25 @@ clear-highlights-btn {
         color: #111 !important;
     }
 
+/* Selected state (same as hover, but permanent) */
+.contract-card.selected-for-comparison {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    background: var(--brand-gold) !important;
+    color: #fff !important;
+}
+
+    .contract-card.selected-for-comparison .contract-title,
+    .contract-card.selected-for-comparison .contract-meta,
+    .contract-card.selected-for-comparison .file-icon {
+        color: #fff !important;
+    }
+
+    .contract-card.selected-for-comparison .card-menu {
+        color: #111 !important;
+    }
+
+
 /* normalize component-in-card (prevents "double card" look) */
 .home-card {
     border: 0 !important;
