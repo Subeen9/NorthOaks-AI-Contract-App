@@ -1656,10 +1656,11 @@ clear-highlights-btn {
     .home-grid .contract-card.contract-hover:hover .card-title,
     .home-grid .contract-card.contract-hover:hover small,
     .home-grid .contract-card.contract-hover:hover .text-muted,
-    .home-grid .contract-card.contract-hover:hover i,
+    .home-grid .contract-card.contract-hover:hover i:not(.bi-three-dots-vertical),
     .home-grid .contract-card.contract-hover:hover .file-icon {
         color: #fff !important;
     }
+
 
     /* keep badge readable on gold */
     .home-grid .contract-card.contract-hover:hover .badge {
@@ -1771,3 +1772,21 @@ clear-highlights-btn {
     border-radius: 10px !important;
     background: rgba(255,255,255,0.96) !important;
 }
+
+.library-header > .d-flex.align-items-center.gap-3 {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+}
+
+    /* Make the search wrapper grow and cap max width */
+    .library-header > .d-flex.align-items-center.gap-3 .position-relative {
+        flex: 1 1 auto;
+        max-width: 640px; /* tweak if you want even wider */
+    }
+
+/* Search pill uses full width of its wrapper instead of fixed px */
+.library-header .search-pill {
+    width: 100% !important;
+}
+
+
