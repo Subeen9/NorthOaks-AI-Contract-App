@@ -12,7 +12,6 @@
 <div class="contract-viewer-page">
     <div class="content">
         <div class="viewer-wrapper">
-            <!-- LEFT SIDEBAR -->
             <div class="contracts-sidebar" style="width: 280px; border-right: 1px solid #ddd; background: #f8f9fa; overflow-y: auto;">
                 <div style="padding: 16px; border-bottom: 1px solid #ddd;">
                     <h6 style="margin: 0 0 4px 0; color: var(--brand-blue); font-weight: 700;">
@@ -48,7 +47,7 @@
                         }
                     </div>
 
-                    <!-- PROFESSIONAL INFO CARD INSTEAD OF "TRY ASKING" -->
+                    
                     <div class="m-3 p-3 rounded" style="background:#eef5ff; border:1px solid #d4e1ff;">
                         <div class="d-flex align-items-center mb-1">
                             <i class="bi bi-activity me-2" style="color:#003768;"></i>
@@ -63,7 +62,7 @@
                 }
             </div>
 
-            <!-- CENTER: PDF VIEWER -->
+           
             <div class="pdf-area">
                 @if (selectedContract == null)
                 {
@@ -81,7 +80,7 @@
 
             <div class="resizer" @onmousedown="StartResize"></div>
 
-            <!-- RIGHT: CHAT PANEL -->
+           
             <div id="chatPanel" class="chat-panel">
                 <div class="chat-header">
                     <div class="d-flex flex-column">
@@ -329,7 +328,7 @@
 
     private string GetComparisonTitle()
     {
-        // Always show a clean, generic title – no raw filenames
+        
         return "Contract Comparison";
     }
 
