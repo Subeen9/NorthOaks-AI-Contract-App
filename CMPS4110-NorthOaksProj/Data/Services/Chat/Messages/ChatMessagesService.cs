@@ -8,18 +8,19 @@ using CMPS4110_NorthOaksProj.Models.Chat;
 using Microsoft.EntityFrameworkCore;
 using NorthOaks.Shared.Model.Chat;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 
 namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 {
     public class ChatMessagesService : EntityBaseRepository<ChatMessage>, IChatMessagesService
     {
-        // Summary intent detection 
+        
         private static readonly Regex SummaryRegex = new(
             @"\b(summarize|summary|summarise|summarzie|summery|tl;dr|tldr|short\s+version|condense|brief\s+me|give\s+me\s+a\s+summary)\b",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-        // optimization constants for 100 second LLM timeout
+        
         private const int MAX_EXCERPTS_TOTAL = 40;
         private const int MAX_EXCERPTS_PER_DOC = 30;
         private const int MAX_CONTEXT_CHARS = 9000;
@@ -51,7 +52,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
             var exists = await _context.ChatSessions.AsNoTracking().AnyAsync(s => s.Id == sessionId);
             if (!exists) return Enumerable.Empty<ChatMessageDto>();
 
-            return await _context.ChatMessages
+            var messages = await _context.ChatMessages
                 .AsNoTracking()
                 .Where(m => m.SessionId == sessionId)
                 .OrderBy(m => m.Timestamp)
@@ -61,9 +62,43 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     SessionId = m.SessionId,
                     Message = m.Message,
                     Response = m.Response,
-                    Timestamp = m.Timestamp
+                    Timestamp = m.Timestamp,
+                    Sources = DeserializeSources(m.SourcesJson)
                 })
                 .ToListAsync();
+
+            return messages;
+        }
+
+        private static List<ChatMessageSourceDto> DeserializeSources(string? sourcesJson)
+        {
+            if (string.IsNullOrWhiteSpace(sourcesJson))
+                return new List<ChatMessageSourceDto>();
+
+            try
+            {
+                var sources = JsonSerializer.Deserialize<List<ChatMessageSourceDto>>(sourcesJson);
+                return sources ?? new List<ChatMessageSourceDto>();
+            }
+            catch
+            {
+                return new List<ChatMessageSourceDto>();
+            }
+        }
+
+        private static string? SerializeSources(List<ChatMessageSourceDto>? sources)
+        {
+            if (sources == null || sources.Count == 0)
+                return null;
+
+            try
+            {
+                return JsonSerializer.Serialize(sources);
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private string CleanGeneratedResponse(string text)
@@ -97,7 +132,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 
             try
             {
-                // ===== FAST SUMMARY path =====
+                
                 if (IsSummaryIntent(dto.Message))
                 {
                     _logger.LogInformation("Summary intent detected for session {SessionId}", dto.SessionId);
@@ -108,14 +143,14 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     return MapToDto(entity);
                 }
 
-                // ===== RAG path =====
+                
                 _logger.LogInformation("Starting RAG pipeline for: {Message}", dto.Message);
 
-                    var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
-                    _logger.LogInformation("Message embedding took {Ms}ms", sw.ElapsedMilliseconds);
-                    sw.Restart();
+                var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
+                _logger.LogInformation("Message embedding took {Ms}ms", sw.ElapsedMilliseconds);
+                sw.Restart();
 
-                // Get contracts linked to this session and restrict the vector search to them
+                
                 var contractIds = await _context.ChatSessionContracts
                     .AsNoTracking()
                     .Where(x => x.ChatSessionId == dto.SessionId)
@@ -130,7 +165,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     return MapToDto(entity);
                 }
 
-                // ✅ Updated call to new QdrantService with contract filter support
+                
                 var results = await _qdrantService.SearchSimilarAsync(
                     vector,
                     limit: 20,
@@ -142,28 +177,28 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     sw.ElapsedMilliseconds, results.Count);
                 sw.Restart();
 
-                    if (results.Count == 0)
-                    {
-                        entity.Response = "I'm sorry, I couldn't find any relevant information to answer your question.";
-                        await _context.SaveChangesAsync();
-                        return MapToDto(entity);
-                    }
+                if (results.Count == 0)
+                {
+                    entity.Response = "I'm sorry, I couldn't find any relevant information to answer your question.";
+                    await _context.SaveChangesAsync();
+                    return MapToDto(entity);
+                }
 
-                    // Deduplicate overlapping chunks
-                    var dedupedTexts = ContextBuilder.DeduplicateChunks(results.Select(r => r.ChunkText).ToList());
-                    var filteredResults = results
-                        .Where(r => dedupedTexts.Contains(r.ChunkText))
-                        .Take(12)
-                        .ToList();
+                
+                var dedupedTexts = ContextBuilder.DeduplicateChunks(results.Select(r => r.ChunkText).ToList());
+                var filteredResults = results
+                    .Where(r => dedupedTexts.Contains(r.ChunkText))
+                    .Take(12)
+                    .ToList();
 
-                    _logger.LogInformation("Deduplication: {Original} → {Filtered} chunks",
-                        results.Count, filteredResults.Count);
+                _logger.LogInformation("Deduplication: {Original} → {Filtered} chunks",
+                    results.Count, filteredResults.Count);
 
-                    // Build structured clause context
-                    var contextText = ContextBuilder.BuildStructuredContext(filteredResults);
-                    _logger.LogInformation("Context built: {Length} characters", contextText.Length);
+                
+                var contextText = ContextBuilder.BuildStructuredContext(filteredResults);
+                _logger.LogInformation("Context built: {Length} characters", contextText.Length);
 
-                    var systemPrompt = @"
+                var systemPrompt = @"
 You are a professional contract analysis assistant.
 Use only the clauses provided in the context to answer the question.
 Do NOT include internal labels, clause numbers, chunk identifiers, or any metadata in the output.
@@ -172,7 +207,7 @@ If the answer cannot be found, reply exactly: 'Not found in contract.'
 Avoid using jargon or technical references unrelated to the user question.
 ";
 
-                    var userPrompt = $@"
+                var userPrompt = $@"
 Context:
 {contextText}
 
@@ -182,41 +217,46 @@ User question:
 Answer:
 ";
 
-                    _logger.LogInformation("Calling LLM generation (model: {Model})", "llama3.2");
-                    _logger.LogInformation("Prompt size: system={SystemLen}chars, user={UserLen}chars",
-                        systemPrompt.Length, userPrompt.Length);
+                _logger.LogInformation("Calling LLM generation (model: {Model})", "llama3.2");
+                _logger.LogInformation("Prompt size: system={SystemLen}chars, user={UserLen}chars",
+                    systemPrompt.Length, userPrompt.Length);
 
-                    sw.Restart();
-                    var rawresponse = await _generationClient.GenerateAsync(
-                        userPrompt,
-                        systemPrompt
-                    );
-                    var generatedResponse = CleanGeneratedResponse(rawresponse);
-                    _logger.LogInformation("LLM generation took {Ms}ms, response length: {Len}",
-                        sw.ElapsedMilliseconds, generatedResponse?.Length ?? 0);
+                sw.Restart();
+                var rawresponse = await _generationClient.GenerateAsync(
+                    userPrompt,
+                    systemPrompt
+                );
+                var generatedResponse = CleanGeneratedResponse(rawresponse);
+                _logger.LogInformation("LLM generation took {Ms}ms, response length: {Len}",
+                    sw.ElapsedMilliseconds, generatedResponse?.Length ?? 0);
 
-                    if (string.IsNullOrWhiteSpace(generatedResponse))
-                    {
-                        _logger.LogWarning("Empty response from LLM!");
-                        entity.Response = "The model returned an empty response. Please try rephrasing your question.";
-                    }
-                    else
-                    {
-                        entity.Response = generatedResponse;
-                    }
+                if (string.IsNullOrWhiteSpace(generatedResponse))
+                {
+                    _logger.LogWarning("Empty response from LLM!");
+                    entity.Response = "The model returned an empty response. Please try rephrasing your question.";
+                }
+                else
+                {
+                    entity.Response = generatedResponse;
+                }
 
-                await _context.SaveChangesAsync();
-                _logger.LogInformation("Successfully generated response for message {MessageId}", entity.Id);
-
-                var responseDto = MapToDto(entity);
-                responseDto.Sources = results.Select(r => new ChatMessageSourceDto
+                var sources = results.Select(r => new ChatMessageSourceDto
                 {
                     ContractId = r.ContractId,
                     ChunkText = r.ChunkText,
                     ChunkIndex = r.ChunkIndex,
-                    PageNumber = r.PageNumber, 
+                    PageNumber = r.PageNumber,
                     SimilarityScore = (double)r.Score
                 }).ToList();
+
+                entity.SourcesJson = SerializeSources(sources);
+
+                await _context.SaveChangesAsync();
+                _logger.LogInformation("Successfully generated response for message {MessageId} with {Count} sources",
+                    entity.Id, sources.Count);
+
+                var responseDto = MapToDto(entity);
+                responseDto.Sources = sources;
 
                 _logger.LogInformation("Returning {Count} sources with response", responseDto.Sources.Count);
                 return responseDto;
@@ -247,7 +287,7 @@ Answer:
             Message = entity.Message,
             Response = entity.Response,
             Timestamp = entity.Timestamp,
-            Sources = new List<ChatMessageSourceDto>()
+            Sources = DeserializeSources(entity.SourcesJson)
         };
 
         private static bool IsSummaryIntent(string? text)
