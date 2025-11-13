@@ -127,7 +127,7 @@
                 </div>
 
                 <div class="d-flex align-items-center gap-3 mt-3 mt-md-0">
-                    @if (selectedForComparison.Count > 0)
+                    @if (selectedForComparison.Count > 0 && activeTab == "contracts")
                     {
                         <button class="btn btn-success" @onclick="OpenComparisonChat">
                             <i class="bi bi-chat-dots"></i> Compare (@selectedForComparison.Count)
@@ -279,8 +279,9 @@
                                 <div class="col-xxl-4 col-xl-4 col-lg-6"
                                      @onclick="@(() => Navigation.NavigateTo($"/compare-chat/{session.Id}"))"
                                      style="cursor: pointer;">
+                                    <!-- Make comparison cards visually identical to contract cards -->
                                     <div class="contract-card contract-hover position-relative home-card comparison-card">
-                                        <div class="card shadow-sm mb-3 h-100 comparison-inner-card">
+                                        <div class="card shadow-sm mb-3 h-100">
                                             <div class="card-body d-flex flex-column">
 
                                                 <!-- 3-dots menu (delete) -->
@@ -292,33 +293,26 @@
                                                     <i class="bi bi-three-dots-vertical"></i>
                                                 </button>
 
-                                                <!-- top row: icon + messages + pin -->
-                                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                                    <div class="comparison-icon-pill">
-                                                        <i class="bi bi-files"></i>
-                                                    </div>
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        <small class="comparison-messages">
-                                                            @session.MessageCount message@(session.MessageCount == 1 ? "" : "s")
-                                                        </small>
-                                                        <button type="button"
-                                                                class="pin-btn @(IsComparisonPinned(session.Id) ? "pinned" : "")"
-                                                                @onclick="@(e => ToggleComparisonPin(session.Id))"
-                                                                @onclick:stopPropagation="true">
-                                                            <i class="bi @(IsComparisonPinned(session.Id) ? "bi-pin-fill" : "bi-pin")"></i>
-                                                        </button>
-                                                    </div>
-                                                </div>
-
-                                                <!-- title -->
-                                                <h5 class="card-title fw-bold contract-title mb-1">
+                                                <!-- title (same style as contracts) -->
+                                                <h5 class="card-title fw-bold contract-title mb-2">
                                                     @BuildComparisonTitle(session)
                                                 </h5>
 
-                                                <!-- footer meta -->
-                                                <small class="comparison-meta mt-2">
+                                                <!-- footer meta: date + message count stacked -->
+                                                <small class="contract-meta d-block">
                                                     Created @session.CreatedDate.ToShortDateString()
                                                 </small>
+                                                <small class="contract-meta d-block">
+                                                    @session.MessageCount message@(session.MessageCount == 1 ? "" : "s")
+                                                </small>
+
+                                                <!-- pin button bottom-right -->
+                                                <button type="button"
+                                                        class="pin-btn @(IsComparisonPinned(session.Id) ? "pinned" : "")"
+                                                        @onclick="@(e => ToggleComparisonPin(session.Id))"
+                                                        @onclick:stopPropagation="true">
+                                                    <i class="bi @(IsComparisonPinned(session.Id) ? "bi-pin-fill" : "bi-pin")"></i>
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
