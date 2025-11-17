@@ -1677,7 +1677,6 @@ clear-highlights-btn {
 
 /* =========================================================
    COMPARISON CARDS – REFINED HEADER + META
-========================================================= */
 
 .comparison-card .comparison-inner-card {
     border-radius: var(--radius);
@@ -1846,3 +1845,39 @@ clear-highlights-btn {
 .home-card.contract-hover:hover .pin-btn i {
     color: #111 !important;
 }
+.visibility-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 50px;
+    color: #fff;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+    .visibility-badge.public {
+        background: linear-gradient(90deg, #28a745, #34d058);
+    }
+
+    .visibility-badge.private {
+        background: linear-gradient(90deg, #6c757d, #868e96);
+    }
+
+    .visibility-badge:hover {
+        transform: scale(1.05);
+        opacity: 0.95;
+    }
+
+.contract-hover:hover .visibility-badge {
+    opacity: 1;
+}
+
+/* =========================================================
+   FIX: Preserve dropdown icon colors inside menu
+.contract-hover .dropdown-menu i {
+    color: inherit !important; /* resets forced white */
+}
+

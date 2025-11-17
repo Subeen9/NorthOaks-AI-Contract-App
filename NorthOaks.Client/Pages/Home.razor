@@ -1,4 +1,4 @@
-﻿@page "/home"
+@page "/home"
 @using NorthOaks.Shared.Model.Contracts
 @using NorthOaks.Shared.Model.Chat
 @using System.Linq
@@ -8,6 +8,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
 @attribute [Authorize]
 @inject AuthenticationStateProvider AuthStateProvider
 
@@ -184,10 +185,10 @@
             {
                 /* =================== CONTRACTS FILTER + SORT =================== */
                 var filtered = contracts
-                .Where(c => string.IsNullOrEmpty(searchTerm)
-                || CleanFileName(c.FileName).Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
-                || (c.UploadedBy ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
-                .ToList();
+                    .Where(c => string.IsNullOrEmpty(searchTerm)
+                                || CleanFileName(c.FileName).Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                                || (c.UploadedBy ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
 
                 if (pinOnly)
                     filtered = filtered.Where(c => IsPinned(c.Id)).ToList();
@@ -234,7 +235,7 @@
                     {
                         "uploaded_asc" or "uploaded_desc" => s => s.CreatedDate,
                         "name_asc" or "name_desc" or "uploader_asc" or "uploader_desc"
-                        => s => BuildComparisonTitle(s),
+                            => s => BuildComparisonTitle(s),
                         _ => s => s.CreatedDate
                     };
 
@@ -270,9 +271,9 @@
                         @if (activeTab == "comparisons")
                         {
                             var paginatedSessions = comparisonFiltered
-                            .Skip((currentPage - 1) * pageSize)
-                            .Take(pageSize)
-                            .ToList();
+                                .Skip((currentPage - 1) * pageSize)
+                                .Take(pageSize)
+                                .ToList();
 
                             @foreach (var session in paginatedSessions)
                             {
@@ -330,9 +331,11 @@
                                                       UploadedBy="@(c.UploadedBy ?? "Unknown")"
                                                       UploadDate="@c.UploadDate"
                                                       UserId="@c.UserId"
+                                                      IsPublic="@c.IsPublic"
                                                       OnDelete="DeleteContract"
                                                       IsPinned="IsPinned(c.Id)"
                                                       OnTogglePin="() => TogglePin(c.Id)"
+                                                      OnToggleVisibility="ToggleVisibility"
                                                       IsSelected="selectedForComparison.Contains(c.Id)" />
                                     </div>
                                 </div>
@@ -345,9 +348,9 @@
                     if (activeTab == "comparisons")
                     {
                         var comparisonPage = comparisonFiltered
-                        .Skip((currentPage - 1) * pageSize)
-                        .Take(pageSize)
-                        .ToList();
+                            .Skip((currentPage - 1) * pageSize)
+                            .Take(pageSize)
+                            .ToList();
 
                         <div class="list-group">
                             @foreach (var session in comparisonPage)
@@ -402,8 +405,6 @@
                         </div>
                     }
                 }
-
-
 
                 @if (activeTab == "comparisons" && totalComparisonPagesLocal > 1)
                 {
@@ -502,18 +503,43 @@
 
     const string PinStorageKey = "pinnedContracts";
     const string ComparisonPinStorageKey = "pinnedComparisonSessions";
+    private HubConnection? _hubConnection;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            // Load contracts and pins first
             contracts = await Http.GetFromJsonAsync<List<ContractReadDto>>("/api/contracts") ?? new();
             await LoadPinsAsync();
             await LoadSessionsAsync();
+
+            // Initialize SignalR connection for visibility updates
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/hubs/notification"), options =>
+                {
+                    options.AccessTokenProvider = async () =>
+                        await JS.InvokeAsync<string>("localStorage.getItem", "authToken");
+                })
+                .WithAutomaticReconnect()
+                .Build();
+
+            _hubConnection.On<int, bool>("ContractVisibilityChanged", (id, isPublic) =>
+            {
+                var c = contracts.FirstOrDefault(c => c.Id == id);
+                if (c != null)
+                {
+                    c.IsPublic = isPublic;
+                    InvokeAsync(StateHasChanged);
+                }
+            });
+
+            await _hubConnection.StartAsync();
         }
         catch (Exception ex)
         {
             error = $"Failed to load contracts: {ex.Message}";
+            Console.WriteLine($"[SignalR ERROR] {ex.Message}");
         }
         finally
         {
@@ -594,7 +620,8 @@
         var ok = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this contract?");
         if (!ok) return;
 
-        var res = await Http.DeleteAsync($"/api/Contracts/{id}");
+        var res = await Http.DeleteAsync($"/api/contracts/{id}");
+
         if (res.IsSuccessStatusCode)
         {
             contracts.RemoveAll(c => c.Id == id);
@@ -794,5 +821,26 @@
     {
         selectedForComparison.Clear();
         isMultiSelectMode = false;
+    }
+
+    private async Task ToggleVisibility(int id)
+    {
+        var contract = contracts.FirstOrDefault(c => c.Id == id);
+        if (contract == null) return;
+
+        var newVisibility = !contract.IsPublic;
+        var res = await Http.PutAsync($"/api/contracts/{id}/visibility?isPublic={newVisibility}", null);
+
+        if (res.IsSuccessStatusCode)
+        {
+            contract.IsPublic = newVisibility;
+            ToastService.Notify(new(ToastType.Info,
+                newVisibility ? "Contract is now Public" : "Contract is now Private"));
+            StateHasChanged();
+        }
+        else
+        {
+            ToastService.Notify(new(ToastType.Danger, "Failed to update visibility"));
+        }
     }
 }
