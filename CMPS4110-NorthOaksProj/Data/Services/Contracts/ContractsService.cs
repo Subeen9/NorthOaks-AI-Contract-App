@@ -99,7 +99,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                 .FirstOrDefaultAsync();
         }
 
-        public async Task ProcessContractAsync(int contractId, string rootPath, CancellationToken token)
+        public async Task ProcessContractAsync(int contractId, string rootPath, CancellationToken token, Func<int, string, Task>? progressCallback = null)
         {
             var contract = await GetByIdAsync(contractId);
             if (contract == null) return;
