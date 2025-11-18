@@ -1992,4 +1992,73 @@ clear-highlights-btn {
         outline: none;
     }
 
+/* ===========================
+   CUSTOM CONFIRM MODAL
+=========================== */
+.confirm-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    z-index: 200000;
+    padding: 20px;
+    backdrop-filter: blur(3px);
+}
+
+.confirm-box {
+    background: #fff;
+    width: 400px;
+    border-radius: 16px;
+    padding: 26px;
+    border: 1px solid #e5e7eb;
+    animation: popIn .18s ease-out;
+}
+
+@keyframes popIn {
+    from {
+        transform: scale(.92);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.confirm-title {
+    font-weight: 700;
+    color: var(--brand-blue);
+    margin-bottom: 6px;
+}
+
+.confirm-message {
+    color: #475569;
+    font-size: 0.95rem;
+    margin-bottom: 22px;
+}
+
+.confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.confirm-cancel {
+    background: #f1f5f9;
+    border: 1px solid #cbd5e1;
+    color: #475569;
+    border-radius: 10px;
+    padding: 8px 16px;
+}
+
+.confirm-delete {
+    background: linear-gradient(90deg, #7f1d1d, #b91c1c);
+    color: #fff;
+    border-radius: 10px;
+    padding: 8px 16px;
+    border: none;
+}
 
