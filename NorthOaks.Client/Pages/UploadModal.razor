@@ -10,72 +10,84 @@
 
 @if (IsOpen)
 {
-    <form autocomplete="off">
-        <div class="modal-backdrop fade show"></div>
-        <div class="modal fade show d-block" tabindex="-1" style="z-index:1055;">
-            <div class="modal-dialog modal-lg modal-dialog-centered">
-                <div class="modal-content" style="border-radius:14px;" autocomplete="off">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Upload PDF Documents</h5>
-                        <button type="button" class="btn-close" @onclick="HandleClose"></button>
-                    </div>
+    <div class="modal-backdrop fade show"></div>
 
-                    <div class="modal-body">
-                        <div class="d-flex justify-content-center">
-                            <div class="card shadow p-4" style="max-width: 700px; width: 100%;" autocomplete="off">
+    <div class="modal fade show d-block" tabindex="-1" style="z-index:1055;">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content upload-modal">
+                <div class="modal-header upload-header">
+                    <h5 class="modal-title">Upload PDF Documents</h5>
+                    <button type="button" class="btn-close" @onclick="HandleClose"></button>
+                </div>
 
-                                <div class="card-body">
+                <div class="modal-body p-4">
 
-                                    <!-- Drag & Drop Area -->
-                                    <div id="dropArea" class="border border-dashed rounded p-4 mb-3 text-center">
-                                        <p class="mb-2">@dragText</p>
-                                        <p>or click below to select a file</p>
-                                    </div>
+                    <!-- CARD WRAPPER -->
+                    <div class="upload-card shadow-sm">
 
-                                    <!-- Hidden InputFile -->
-                                    <InputFile id="hiddenInputFile" style="display:none" autocomplete="off" form="noform"
-                                               OnChange="HandleFileSelected" accept="application/pdf" />
+                        <!-- DRAG AREA -->
+                        <div id="dropArea"
+                             class="upload-dropzone @(isDragOver ? "drag-over" : "")">
+                            <i class="bi bi-file-earmark-arrow-up upload-icon"></i>
+                            <p class="upload-text-bold">@dragText</p>
+                            <p class="upload-text-muted">or click below to select a file</p>
+                        </div>
 
-                                    <button type="button" formnovalidate autocomplete="off" class="btn btn-primary w-100 mb-3" @onclick="UploadFile" disabled="@(!isFileSelected)">
-                                        <i class="bi bi-upload"></i> Upload PDF
-                                    </button>
+                        <!-- Hidden InputFile -->
+                        <InputFile id="hiddenInputFile" style="display:none"
+                                   OnChange="HandleFileSelected"
+                                   accept="application/pdf" />
 
-                                    @if (!string.IsNullOrEmpty(statusMessage))
-                                    {
-                                        <div class="alert alert-info">@statusMessage</div>
-                                    }
+                        <!-- Upload Button -->
+                        <button type="button"
+                                class="btn upload-cta w-100"
+                                @onclick="UploadFile"
+                                disabled="@(!isFileSelected)">
+                            <i class="bi bi-upload"></i> Upload PDF
+                        </button>
 
-                                    @if (isUploading && uploadProgress > 0 && uploadProgress < 100)
-                                    {
-                                        <Progress Class="mt-3 mb-3">
-                                            <ProgressBar Type="ProgressType.StripedAndAnimated"
-                                                         Color="ProgressColor.Success"
-                                                         Width="@uploadProgress">
-                                                @uploadProgress%
-                                            </ProgressBar>
-                                        </Progress>
-                                    }
-                                    @if (isProcessing)
-                                    {
-                                        <Progress Class="mt-3 mb-3">
-                                            <ProgressBar Type="ProgressType.StripedAndAnimated"
-                                                         Color="ProgressColor.Primary"
-                                                         Width="@uploadProgress">
-                                            </ProgressBar>
-                                        </Progress>
-                                        <p class="text-center mt-2"><strong>@uploadProgress%</strong> - @processingMessage</p>
-                                    }
+                        <!-- Status Message -->
+                        @if (!string.IsNullOrEmpty(statusMessage))
+                        {
+                            <div class="upload-status">
+                                @statusMessage
+                            </div>
+                        }
 
+                        <!-- Upload Progress -->
+                        @if (isUploading && uploadProgress < 100)
+                        {
+                            <div class="progress upload-progress mt-3">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                                     role="progressbar"
+                                     style="width:@($"{uploadProgress}%")">
+                                    @uploadProgress%
                                 </div>
                             </div>
-                        </div>
+                        }
+
+                        <!-- Processing Progress -->
+                        @if (isProcessing)
+                        {
+                            <div class="progress upload-progress mt-3">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                                     role="progressbar"
+                                     style="width:@($"{uploadProgress}%")">
+                                </div>
+                            </div>
+
+                            <p class="processing-label mt-2 text-center">
+                                <strong>@uploadProgress% —</strong> @processingMessage
+                            </p>
+                        }
+
                     </div>
                 </div>
+
             </div>
         </div>
-    </form>
+    </div>
 }
-
 
 @code {
     private bool _isOpen;
