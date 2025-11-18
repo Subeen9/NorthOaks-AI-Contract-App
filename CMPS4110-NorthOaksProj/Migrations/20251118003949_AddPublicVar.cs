@@ -4,49 +4,38 @@
 
 namespace CMPS4110_NorthOaksProj.Migrations
 {
-    /// <inheritdoc />
     public partial class AddPublicVar : Migration
     {
-        /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            // Drop FK if it exists
-            migrationBuilder.DropForeignKey(
-                name: "FK_ChatSessionContracts_Contracts_ContractId",
-                table: "ChatSessionContracts");
+            // The FK and index DO NOT EXIST in the database.
+            // Comment out everything to avoid errors.
 
-            // Drop index if it exists
-            migrationBuilder.DropIndex(
-                name: "IX_ChatSessionContracts_ContractId",
-                table: "ChatSessionContracts");
+            // migrationBuilder.DropForeignKey(
+            //     name: "FK_ChatSessionContracts_Contracts_ContractId",
+            //     table: "ChatSessionContracts");
 
-            // Recreate index
-            migrationBuilder.CreateIndex(
-                name: "IX_ChatSessionContracts_ContractId",
-                table: "ChatSessionContracts",
-                column: "ContractId");
+            // migrationBuilder.DropIndex(
+            //     name: "IX_ChatSessionContracts_ContractId",
+            //     table: "ChatSessionContracts");
 
-            // Re-add FK
-            migrationBuilder.AddForeignKey(
-                name: "FK_ChatSessionContracts_Contracts_ContractId",
-                table: "ChatSessionContracts",
-                column: "ContractId",
-                principalTable: "Contracts",
-                principalColumn: "Id",
-                onDelete: ReferentialAction.Cascade);
+            // migrationBuilder.CreateIndex(
+            //     name: "IX_ChatSessionContracts_ContractId",
+            //     table: "ChatSessionContracts",
+            //     column: "ContractId");
+
+            // migrationBuilder.AddForeignKey(
+            //     name: "FK_ChatSessionContracts_Contracts_ContractId",
+            //     table: "ChatSessionContracts",
+            //     column: "ContractId",
+            //     principalTable: "Contracts",
+            //     principalColumn: "Id",
+            //     onDelete: ReferentialAction.Cascade);
         }
 
-
-        /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropForeignKey(
-                name: "FK_ChatSessionContracts_Contracts_ContractId",
-                table: "ChatSessionContracts");
-
-            migrationBuilder.DropIndex(
-                name: "IX_ChatSessionContracts_ContractId",
-                table: "ChatSessionContracts");
+            // Nothing to undo because Up() is empty now
         }
     }
 }
