@@ -2,7 +2,8 @@
 
 <div class="card shadow-sm mb-3 h-100 contract-hover position-relative @(IsSelected ? "selected-for-comparison" : "")"
      style="border-radius:14px; overflow:hidden; @(IsSelected ? "background: var(--brand-gold) !important;" : "")"
-     @onclick="@(() => Navigation.NavigateTo($"/contract/{Id}"))">
+     @ondblclick="@(() => Navigation.NavigateTo($"/contract/{Id}"))">
+
 
     <!-- Options dropdown -->
     <div class="dropdown position-absolute top-0 end-0 m-2">
