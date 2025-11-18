@@ -8,24 +8,23 @@ using CMPS4110_NorthOaksProj.Models.Chat;
 using Microsoft.EntityFrameworkCore;
 using NorthOaks.Shared.Model.Chat;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
-
-
 
 namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 {
-    public class ChatMessagesService : EntityBaseRepository<ChatMessage>,IChatMessagesService
+    public class ChatMessagesService : EntityBaseRepository<ChatMessage>, IChatMessagesService
     {
-        // Summary intent detection 
+        
         private static readonly Regex SummaryRegex = new(
             @"\b(summarize|summary|summarise|summarzie|summery|tl;dr|tldr|short\s+version|condense|brief\s+me|give\s+me\s+a\s+summary)\b",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-        // optimization constants for 100 second LLM timeout
-        private const int MAX_EXCERPTS_TOTAL = 40;     // limits total chunks across all docs
-        private const int MAX_EXCERPTS_PER_DOC = 30;     // per-doc cap
-        private const int MAX_CONTEXT_CHARS = 9000;   // ~6–7k tokens per model
-        private const int MIN_CHUNK_LEN = 20;     // skip crumbs
+        
+        private const int MAX_EXCERPTS_TOTAL = 40;
+        private const int MAX_EXCERPTS_PER_DOC = 30;
+        private const int MAX_CONTEXT_CHARS = 9000;
+        private const int MIN_CHUNK_LEN = 20;
 
         private readonly DataContext _context;
         private readonly MessageEmbeddingService _messageEmbeddings;
@@ -53,7 +52,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
             var exists = await _context.ChatSessions.AsNoTracking().AnyAsync(s => s.Id == sessionId);
             if (!exists) return Enumerable.Empty<ChatMessageDto>();
 
-            return await _context.ChatMessages
+            var messages = await _context.ChatMessages
                 .AsNoTracking()
                 .Where(m => m.SessionId == sessionId)
                 .OrderBy(m => m.Timestamp)
@@ -63,27 +62,56 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     SessionId = m.SessionId,
                     Message = m.Message,
                     Response = m.Response,
-                    Timestamp = m.Timestamp
+                    Timestamp = m.Timestamp,
+                    Sources = DeserializeSources(m.SourcesJson)
                 })
                 .ToListAsync();
+
+            return messages;
         }
+
+        private static List<ChatMessageSourceDto> DeserializeSources(string? sourcesJson)
+        {
+            if (string.IsNullOrWhiteSpace(sourcesJson))
+                return new List<ChatMessageSourceDto>();
+
+            try
+            {
+                var sources = JsonSerializer.Deserialize<List<ChatMessageSourceDto>>(sourcesJson);
+                return sources ?? new List<ChatMessageSourceDto>();
+            }
+            catch
+            {
+                return new List<ChatMessageSourceDto>();
+            }
+        }
+
+        private static string? SerializeSources(List<ChatMessageSourceDto>? sources)
+        {
+            if (sources == null || sources.Count == 0)
+                return null;
+
+            try
+            {
+                return JsonSerializer.Serialize(sources);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
         private string CleanGeneratedResponse(string text)
         {
             if (string.IsNullOrWhiteSpace(text))
                 return text;
 
-            // Remove clause/chunk references like "Clause8: Chunk1"
             text = Regex.Replace(text, @"Clause\d+: Chunk\d+", "", RegexOptions.IgnoreCase);
-
-            // Remove excessive symbols like *, +, etc. at the start of lines
             text = Regex.Replace(text, @"^[\*\+\-]\s*", "", RegexOptions.Multiline);
-
-            // Normalize whitespace
             text = Regex.Replace(text, @"\s{2,}", " ").Trim();
 
             return text;
         }
-
 
         public async Task<ChatMessageDto?> Create(CreateChatMessageDto dto)
         {
@@ -104,7 +132,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 
             try
             {
-                // ===== FAST SUMMARY path =====
+                
                 if (IsSummaryIntent(dto.Message))
                 {
                     _logger.LogInformation("Summary intent detected for session {SessionId}", dto.SessionId);
@@ -115,14 +143,36 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     return MapToDto(entity);
                 }
 
-                // ===== RAG path =====
+                
                 _logger.LogInformation("Starting RAG pipeline for: {Message}", dto.Message);
 
                 var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
                 _logger.LogInformation("Message embedding took {Ms}ms", sw.ElapsedMilliseconds);
                 sw.Restart();
 
-                var results = await _qdrantService.SearchSimilarAsync(vector, limit: 20, scoreThreshold: 0.15f);
+                
+                var contractIds = await _context.ChatSessionContracts
+                    .AsNoTracking()
+                    .Where(x => x.ChatSessionId == dto.SessionId)
+                    .Select(x => x.ContractId)
+                    .Distinct()
+                    .ToListAsync();
+
+                if (contractIds.Count == 0)
+                {
+                    entity.Response = "I don't see any document linked to this chat to search.";
+                    await _context.SaveChangesAsync();
+                    return MapToDto(entity);
+                }
+
+                
+                var results = await _qdrantService.SearchSimilarAsync(
+                    vector,
+                    limit: 20,
+                    scoreThreshold: 0.15f,
+                    contractIds: contractIds
+                );
+
                 _logger.LogInformation("Vector search took {Ms}ms, found {Count} results",
                     sw.ElapsedMilliseconds, results.Count);
                 sw.Restart();
@@ -134,7 +184,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     return MapToDto(entity);
                 }
 
-                // Deduplicate overlapping chunks
+                
                 var dedupedTexts = ContextBuilder.DeduplicateChunks(results.Select(r => r.ChunkText).ToList());
                 var filteredResults = results
                     .Where(r => dedupedTexts.Contains(r.ChunkText))
@@ -144,18 +194,49 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                 _logger.LogInformation("Deduplication: {Original} → {Filtered} chunks",
                     results.Count, filteredResults.Count);
 
-                // Build structured clause context
+                
                 var contextText = ContextBuilder.BuildStructuredContext(filteredResults);
                 _logger.LogInformation("Context built: {Length} characters", contextText.Length);
 
-                var systemPrompt = @"
+                var systemPrompt = contractIds.Count > 1
+                    ? @"
+You are a professional contract analyst comparing two documents.
+
+CRITICAL FORMATTING RULES:
+1. NEVER use phrases like 'one text', 'the first set of texts', 'one contract', or empty parentheses ()
+2. ALWAYS refer to documents as 'Document 1' and 'Document 2'
+3. DO NOT reference clause numbers, chunks, or any internal labels
+4. Write as if you're reading the actual documents directly
+
+COMPARISON STRUCTURE:
+If the documents are similar in nature (both contracts, both agreements):
+- Compare them side-by-side using clear section headings
+- Example: 'Document 1 specifies a payment term of 30 days, while Document 2 requires payment within 15 days'
+
+If the documents are completely different in nature:
+- First, clearly state what each document is about
+- Then explain that they cannot be meaningfully compared
+- Example: 'Document 1 is a recommendation letter for a software developer. Document 2 is a logo design specification. These are fundamentally different document types and cannot be compared in a meaningful way.'
+
+For meaningful comparisons, focus on:
+- Key terms and conditions
+- Dates and deadlines  
+- Parties involved
+- Obligations and responsibilities
+- Payment terms
+- Notable differences in scope or requirements
+
+Keep responses clear, concise, and professional."
+
+                    : @"
 You are a professional contract analysis assistant.
-Use only the clauses provided in the context to answer the question.
-Do NOT include internal labels, clause numbers, chunk identifiers, or any metadata in the output.
+Use only the information provided in the context to answer the question.
+
+CRITICAL: Do NOT include internal labels, clause numbers, chunk identifiers, or any metadata in your output.
+
 Provide a clean, concise, professional, human-readable response.
 If the answer cannot be found, reply exactly: 'Not found in contract.'
-Avoid using jargon or technical references unrelated to the user question.
-";
+Write naturally as if you're reading the actual contract document.";
 
                 var userPrompt = $@"
 Context:
@@ -190,36 +271,36 @@ Answer:
                     entity.Response = generatedResponse;
                 }
 
+                var sources = results.Select(r => new ChatMessageSourceDto
+                {
+                    ContractId = r.ContractId,
+                    ChunkText = r.ChunkText,
+                    ChunkIndex = r.ChunkIndex,
+                    PageNumber = r.PageNumber,
+                    SimilarityScore = (double)r.Score
+                }).ToList();
+
+                entity.SourcesJson = SerializeSources(sources);
+
                 await _context.SaveChangesAsync();
-                _logger.LogInformation("Successfully generated response for message {MessageId}", entity.Id);
-                return MapToDto(entity);
-            }
-           
-            catch (OperationCanceledException ex)
-            {
-                _logger.LogError(ex, "OPERATION CANCELED after {Ms}ms at: {StackTrace}",
-                    sw.ElapsedMilliseconds, ex.StackTrace);
-                entity.Response = "The request was canceled due to timeout (100 seconds).";
-                await _context.SaveChangesAsync();
-                return MapToDto(entity);
-            }
-            catch (HttpRequestException ex)
-            {
-                _logger.LogError(ex, "HTTP ERROR: {Message}, StatusCode: {StatusCode}",
-                    ex.Message, ex.StatusCode);
-                entity.Response = $"Connection error: {ex.Message}. Is Ollama running?";
-                await _context.SaveChangesAsync();
-                return MapToDto(entity);
+                _logger.LogInformation("Successfully generated response for message {MessageId} with {Count} sources",
+                    entity.Id, sources.Count);
+
+                var responseDto = MapToDto(entity);
+                responseDto.Sources = sources;
+
+                _logger.LogInformation("Returning {Count} sources with response", responseDto.Sources.Count);
+                return responseDto;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "UNEXPECTED ERROR after {Ms}ms: {ExceptionType} - {Message}",
-                    sw.ElapsedMilliseconds, ex.GetType().Name, ex.Message);
-                entity.Response = $"Error: {ex.Message}";
+                _logger.LogError(ex, "Error in Create()");
+                entity.Response = "An unexpected error occurred while processing your message.";
                 await _context.SaveChangesAsync();
                 return MapToDto(entity);
             }
         }
+
 
 
         public async Task<bool> Delete(int id)
@@ -236,20 +317,18 @@ Answer:
             SessionId = entity.SessionId,
             Message = entity.Message,
             Response = entity.Response,
-            Timestamp = entity.Timestamp
+            Timestamp = entity.Timestamp,
+            Sources = DeserializeSources(entity.SourcesJson)
         };
 
-        // intent detection
         private static bool IsSummaryIntent(string? text)
         {
             if (string.IsNullOrWhiteSpace(text)) return false;
             return SummaryRegex.IsMatch(text);
         }
 
-        // summary handler
         private async Task<string> HandleSummaryAsync(int sessionId, string userMessage)
         {
-            //  contracts linked to session
             var contractIds = await _context.ChatSessionContracts
                 .AsNoTracking()
                 .Where(x => x.ChatSessionId == sessionId)
@@ -263,7 +342,6 @@ Answer:
             if (contractIds.Count == 0)
                 return "I don't see any document linked to this chat to summarize.";
 
-            //  pulls text chunks with limits
             var rawChunks = await _context.ContractEmbeddings
                 .AsNoTracking()
                 .Where(e => contractIds.Contains(e.ContractId))
@@ -273,12 +351,9 @@ Answer:
                 .Select(e => new { e.ContractId, e.ChunkIndex, e.ChunkText })
                 .ToListAsync();
 
-           
-
             if (rawChunks.Count == 0)
                 return "No text was found to summarize for the linked document(s).";
 
-            // 3) Build context
             var sb = new StringBuilder(MAX_CONTEXT_CHARS + 512);
             var totalChars = 0;
             var totalTaken = 0;
@@ -308,7 +383,6 @@ Answer:
                     takenForThisDoc++;
                     totalTaken++;
                     totalChars += text.Length;
-
                 }
                 if (totalTaken >= MAX_EXCERPTS_TOTAL) break;
             }
@@ -321,7 +395,6 @@ Answer:
             if (totalTaken == 0)
                 return "I couldn't extract enough readable text to summarize.";
 
-            // System + user prompt
             var systemPrompt = "Summarize briefly and faithfully. Use ONLY the provided text. Keep it under 200 words. Do not invent facts.";
             var userPrompt = new StringBuilder(2048);
             userPrompt.AppendLine("Summarize the following text clearly and briefly.");
@@ -337,18 +410,14 @@ Answer:
             userPrompt.AppendLine();
             userPrompt.AppendLine("Return only the final summary text — no introductions or headings.");
 
-            //   LLM call 
             try
             {
                 _logger.LogInformation("Calling LLM for summary generation");
-              
 
                 var result = await _generationClient.GenerateAsync(
                     prompt: userPrompt.ToString(),
                     systemPrompt: systemPrompt
                 );
-
-              
 
                 return result;
             }
@@ -358,11 +427,8 @@ Answer:
             }
             catch (Exception ex)
             {
-               
                 return "I couldn't generate the summary due to an internal issue. Please try again.";
             }
         }
     }
-    }
-
-
+}

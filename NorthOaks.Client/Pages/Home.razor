@@ -1,22 +1,21 @@
-﻿@page "/home"
+@page "/home"
 @using NorthOaks.Shared.Model.Contracts
+@using NorthOaks.Shared.Model.Chat
 @using System.Linq
 @using System.Text.Json
 @inject HttpClient Http
 @inject IJSRuntime JS
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Routing
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.SignalR.Client
 @attribute [Authorize]
+@inject AuthenticationStateProvider AuthStateProvider
 
-<!-- NOTE: px-4 removed, no-pad added -->
 <div class="container-fluid mt-4 mb-4 page-with-sidebar no-pad">
     <div class="page-grid">
         <!-- Sidebar -->
         <aside class="app-sidebar">
-            <div class="sb-brand">
-                <span class="sb-logo">🦁</span>
-                <span class="sb-title">ContractHub</span>
-            </div>
 
             <nav class="sb-nav">
                 <NavLink href="/home" class="sb-link" Match="NavLinkMatch.All">
@@ -34,7 +33,7 @@
             <div class="sb-panel">
                 <div class="sb-sec-title">Sort</div>
 
-                <!-- Pin switches (grouped for spacing) -->
+                <!-- Pin switches -->
                 <div class="pin-group">
                     <label class="sb-switch">
                         <input type="checkbox" @bind="pinFirst" />
@@ -108,10 +107,43 @@
 
         <!-- Main -->
         <main class="page-main">
-            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap library-header">
-                <h4 class="fw-semibold mb-2 mb-md-0 library-title">Contract Library</h4>
+            <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap library-header">
+                <div class="d-flex flex-column">
+                    <h4 class="fw-semibold mb-3 library-title">Contract Library</h4>
 
-                <div class="d-flex align-items-center gap-3">
+                    <ul class="nav nav-tabs">
+                        <li class="nav-item">
+                            <button class="nav-link @(activeTab == "contracts" ? "active" : "")"
+                                    @onclick='() => { activeTab = "contracts"; currentPage = 1; }'>
+                                <i class="bi bi-file-earmark"></i> All Contracts
+                            </button>
+                        </li>
+                        <li class="nav-item">
+                            <button class="nav-link @(activeTab == "comparisons" ? "active" : "")"
+                                    @onclick='() => { activeTab = "comparisons"; currentPage = 1; }'>
+                                <i class="bi bi-files"></i> Comparisons (@comparisonSessions.Count)
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="d-flex align-items-center gap-3 mt-3 mt-md-0">
+                    @if (selectedForComparison.Count > 0 && activeTab == "contracts")
+                    {
+                        <button class="btn btn-success" @onclick="OpenComparisonChat">
+                            <i class="bi bi-chat-dots"></i> Compare (@selectedForComparison.Count)
+                        </button>
+                        <button class="btn btn-outline-secondary" @onclick="ClearSelection">
+                            <i class="bi bi-x-circle"></i> Clear
+                        </button>
+                    }
+                    else
+                    {
+                        <button class="btn btn-outline-primary" @onclick="() => isMultiSelectMode = !isMultiSelectMode">
+                            <i class="bi bi-files"></i>
+                            @(isMultiSelectMode ? "Exit Multi-Select" : "Compare Contracts")
+                        </button>
+                    }
                     <div class="position-relative">
                         <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 search-icon"></i>
                         <input class="form-control ps-5 search-pill search-xl"
@@ -121,15 +153,25 @@
 
                     <!-- View toggle in header -->
                     <div class="btn-group view-toggle" role="group" aria-label="View mode">
-                        <button type="button" class="btn @(isGridView ? "active" : null)" @onclick="() => toggleView(true)" title="Grid view">
+                        <button type="button" class="btn @(isGridView ? "active" : null)"
+                                @onclick="() => toggleView(true)" title="Grid view">
                             <i class="bi bi-grid"></i>
                         </button>
-                        <button type="button" class="btn @(!isGridView ? "active" : null)" @onclick="() => toggleView(false)" title="List view">
+                        <button type="button" class="btn @(!isGridView ? "active" : null)"
+                                @onclick="() => toggleView(false)" title="List view">
                             <i class="bi bi-list"></i>
                         </button>
                     </div>
                 </div>
             </div>
+
+            @if (isMultiSelectMode && activeTab == "contracts")
+            {
+                <div class="alert alert-info d-flex align-items-center mb-3">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Multi-Select Mode: </strong> Click on 2 contracts to compare. @selectedForComparison.Count selected.
+                </div>
+            }
 
             @if (isLoading)
             {
@@ -141,18 +183,16 @@
             }
             else
             {
-                // filter by search
+                /* =================== CONTRACTS FILTER + SORT =================== */
                 var filtered = contracts
-                .Where(c => string.IsNullOrEmpty(searchTerm)
-                || CleanFileName(c.FileName).Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
-                || (c.UploadedBy ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
-                .ToList();
+                    .Where(c => string.IsNullOrEmpty(searchTerm)
+                                || CleanFileName(c.FileName).Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                                || (c.UploadedBy ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
 
-                // filter pinned-only if requested
                 if (pinOnly)
                     filtered = filtered.Where(c => IsPinned(c.Id)).ToList();
 
-                // secondary key for normal sort
                 Func<ContractReadDto, object> key = sortKey switch
                 {
                     "uploaded_asc" => c => c.UploadDate,
@@ -166,7 +206,6 @@
 
                 IEnumerable<ContractReadDto> q = filtered;
 
-                // if pinFirst: primary sort = pinned desc, then chosen key
                 if (pinFirst)
                 {
                     var ordered = q.OrderByDescending(c => IsPinned(c.Id));
@@ -182,63 +221,254 @@
                 var totalPages = (int)Math.Ceiling(filtered.Count / (double)pageSize);
                 var page = filtered.Skip((currentPage - 1) * pageSize).Take(pageSize).ToList();
 
-                <p class="results-hint">@filtered.Count contracts found</p>
+                /* =================== COMPARISONS FILTER + SORT =================== */
+                List<ChatSessionDto> comparisonFiltered = comparisonSessions;
+
+                if (activeTab == "comparisons")
+                {
+                    IEnumerable<ChatSessionDto> cq = comparisonSessions;
+
+                    if (pinOnly)
+                        cq = cq.Where(s => IsComparisonPinned(s.Id));
+
+                    Func<ChatSessionDto, object> compKey = sortKey switch
+                    {
+                        "uploaded_asc" or "uploaded_desc" => s => s.CreatedDate,
+                        "name_asc" or "name_desc" or "uploader_asc" or "uploader_desc"
+                            => s => BuildComparisonTitle(s),
+                        _ => s => s.CreatedDate
+                    };
+
+                    bool compAsc = sortKey is "uploaded_asc" or "name_asc" or "uploader_asc";
+
+                    if (pinFirst)
+                    {
+                        var orderedComp = cq.OrderByDescending(s => IsComparisonPinned(s.Id));
+                        cq = compAsc ? orderedComp.ThenBy(compKey) : orderedComp.ThenByDescending(compKey);
+                    }
+                    else
+                    {
+                        cq = compAsc ? cq.OrderBy(compKey) : cq.OrderByDescending(compKey);
+                    }
+
+                    comparisonFiltered = cq.ToList();
+                }
+
+                if (activeTab == "comparisons")
+                {
+                    <p class="results-hint">@comparisonFiltered.Count comparisons found</p>
+                }
+                else
+                {
+                    <p class="results-hint">@filtered.Count contracts found</p>
+                }
+
+                var totalComparisonPagesLocal = (int)Math.Ceiling(comparisonFiltered.Count / (double)pageSize);
 
                 @if (isGridView)
                 {
                     <div class="row g-4 home-grid">
-                        @foreach (var c in page)
+                        @if (activeTab == "comparisons")
                         {
-                            <div class="col-xxl-4 col-xl-4 col-lg-6">
-                                <div class="contract-card contract-hover position-relative home-card">
-                                    <ContractCard Id="@c.Id"
-                                                  FileName="@CleanFileName(c.FileName)"
-                                                  UploadedBy="@(c.UploadedBy ?? "Unknown")"
-                                                  UploadDate="@c.UploadDate"
-                                                  UserId="@c.UserId"
-                                                  OnDelete="DeleteContract"
-                                                  IsPinned="IsPinned(c.Id)"
-                                                  OnTogglePin="() => TogglePin(c.Id)" />
+                            var paginatedSessions = comparisonFiltered
+                                .Skip((currentPage - 1) * pageSize)
+                                .Take(pageSize)
+                                .ToList();
+
+                            @foreach (var session in paginatedSessions)
+                            {
+                                <div class="col-xxl-4 col-xl-4 col-lg-6"
+                                     @onclick="@(() => Navigation.NavigateTo($"/compare-chat/{session.Id}"))"
+                                     style="cursor: pointer;">
+                                    <!-- Make comparison cards visually identical to contract cards -->
+                                    <div class="contract-card contract-hover position-relative home-card comparison-card">
+                                        <div class="card shadow-sm mb-3 h-100">
+                                            <div class="card-body d-flex flex-column">
+
+                                                <!-- 3-dots menu (delete) -->
+                                                <button type="button"
+                                                        class="card-menu"
+                                                        title="More actions"
+                                                        @onclick="@(e => OnComparisonMenuClick(session.Id))"
+                                                        @onclick:stopPropagation="true">
+                                                    <i class="bi bi-three-dots-vertical"></i>
+                                                </button>
+
+                                                <!-- title (same style as contracts) -->
+                                                <h5 class="card-title fw-bold contract-title mb-2">
+                                                    @BuildComparisonTitle(session)
+                                                </h5>
+
+                                                <!-- footer meta: date + message count stacked -->
+                                                <small class="contract-meta d-block">
+                                                    Created @session.CreatedDate.ToShortDateString()
+                                                </small>
+                                                <small class="contract-meta d-block">
+                                                    @session.MessageCount message@(session.MessageCount == 1 ? "" : "s")
+                                                </small>
+
+                                                <!-- pin button bottom-right -->
+                                                <button type="button"
+                                                        class="pin-btn @(IsComparisonPinned(session.Id) ? "pinned" : "")"
+                                                        @onclick="@(e => ToggleComparisonPin(session.Id))"
+                                                        @onclick:stopPropagation="true">
+                                                    <i class="bi @(IsComparisonPinned(session.Id) ? "bi-pin-fill" : "bi-pin")"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                            </div>
+                            }
+                        }
+                        else
+                        {
+                            @foreach (var c in page)
+                            {
+                                <div class="col-xxl-4 col-xl-4 col-lg-6" @onclick="() => HandleCardClick(c.Id)">
+                                    <div class="contract-card contract-hover position-relative home-card @(selectedForComparison.Contains(c.Id) ? "selected-for-comparison" : "")">
+                                        <ContractCard Id="@c.Id"
+                                                      FileName="@CleanFileName(c.FileName)"
+                                                      UploadedBy="@(c.UploadedBy ?? "Unknown")"
+                                                      UploadDate="@c.UploadDate"
+                                                      UserId="@c.UserId"
+                                                      IsPublic="@c.IsPublic"
+                                                      OnDelete="DeleteContract"
+                                                      IsPinned="IsPinned(c.Id)"
+                                                      OnTogglePin="() => TogglePin(c.Id)"
+                                                      OnToggleVisibility="ToggleVisibility"
+                                                      IsSelected="selectedForComparison.Contains(c.Id)" />
+                                    </div>
+                                </div>
+                            }
                         }
                     </div>
                 }
                 else
                 {
-                    <div class="list-group">
-                        @foreach (var c in page)
-                        {
-                            <div class="contract-row mb-2 position-relative">
-                                <ContractList Id="@c.Id"
-                                              FileName="@CleanFileName(c.FileName)"
-                                              UploadDate="@c.UploadDate"
-                                              UploadedBy="@c.UploadedBy"
-                                              OnDelete="DeleteContract" />
-                                <!-- If you also want pins in list rows, create a list component variant with the pin control -->
-                            </div>
-                        }
-                    </div>
+                    if (activeTab == "comparisons")
+                    {
+                        var comparisonPage = comparisonFiltered
+                            .Skip((currentPage - 1) * pageSize)
+                            .Take(pageSize)
+                            .ToList();
+
+                        <div class="list-group">
+                            @foreach (var session in comparisonPage)
+                            {
+                                <div class="contract-row mb-3 position-relative comparison-row contract-hover"
+                                     style="cursor:pointer"
+                                     @onclick="@(() => Navigation.NavigateTo($"/compare-chat/{session.Id}"))">
+
+                                    <!-- 3-dots menu (delete) -->
+                                    <button type="button"
+                                            class="card-menu comparison-menu"
+                                            title="More actions"
+                                            @onclick="@(e => OnComparisonMenuClick(session.Id))"
+                                            @onclick:stopPropagation="true">
+                                        <i class="bi bi-three-dots-vertical"></i>
+                                    </button>
+
+                                    <!-- Pin button (shows on hover, always visible when pinned) -->
+                                    <button type="button"
+                                            class="pin-btn comparison-pin @(IsComparisonPinned(session.Id) ? "pinned" : "")"
+                                            @onclick="@(e => ToggleComparisonPin(session.Id))"
+                                            @onclick:stopPropagation="true">
+                                        <i class="bi @(IsComparisonPinned(session.Id) ? "bi-pin-fill" : "bi-pin")"></i>
+                                    </button>
+
+                                    <div class="comparison-row-body">
+                                        <h6 class="mb-1 fw-semibold contract-title text-truncate">
+                                            Comparison between @BuildComparisonTitle(session)
+                                        </h6>
+                                        <small class="contract-meta">
+                                            Created @session.CreatedDate.ToShortDateString()
+                                            · @session.MessageCount message@(session.MessageCount == 1 ? "" : "s")
+                                        </small>
+                                    </div>
+                                </div>
+                            }
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="list-group">
+                            @foreach (var c in page)
+                            {
+                                <div class="contract-row mb-2 position-relative">
+                                    <ContractList Id="@c.Id"
+                                                  FileName="@CleanFileName(c.FileName)"
+                                                  UploadDate="@c.UploadDate"
+                                                  UploadedBy="@c.UploadedBy"
+                                                  OnDelete="DeleteContract" />
+                                </div>
+                            }
+                        </div>
+                    }
                 }
 
-                @if (totalPages > 1)
+                @if (activeTab == "comparisons" && totalComparisonPagesLocal > 1)
+                {
+                    <nav class="mt-3" aria-label="Comparisons pagination">
+                        <ul class="pagination justify-content-center">
+                            <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                                <button class="page-link"
+                                        @onclick="() => currentPage = Math.Max(1, currentPage - 1)"
+                                        disabled="@(currentPage == 1)">
+                                    Previous
+                                </button>
+                            </li>
+
+                            @for (int i = 1; i <= totalComparisonPagesLocal; i++)
+                            {
+                                var n = i;
+                                <li class="page-item @(currentPage == n ? "active" : "")">
+                                    <button class="page-link"
+                                            @onclick="() => currentPage = n">
+                                        @n
+                                    </button>
+                                </li>
+                            }
+
+                            <li class="page-item @(currentPage == totalComparisonPagesLocal ? "disabled" : "")">
+                                <button class="page-link"
+                                        @onclick="() => currentPage = Math.Min(totalComparisonPagesLocal, currentPage + 1)"
+                                        disabled="@(currentPage == totalComparisonPagesLocal)">
+                                    Next
+                                </button>
+                            </li>
+                        </ul>
+                    </nav>
+                }
+                else if (activeTab == "contracts" && totalPages > 1)
                 {
                     <nav class="mt-3" aria-label="Contracts pagination">
                         <ul class="pagination justify-content-center">
                             <li class="page-item @(currentPage == 1 ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => ChangePage(currentPage - 1)" disabled="@(currentPage == 1)">Previous</button>
+                                <button class="page-link"
+                                        @onclick="() => ChangePage(currentPage - 1)"
+                                        disabled="@(currentPage == 1)">
+                                    Previous
+                                </button>
                             </li>
 
                             @for (int i = 1; i <= totalPages; i++)
                             {
                                 var n = i;
                                 <li class="page-item @(currentPage == n ? "active" : "")">
-                                    <button class="page-link" @onclick="() => ChangePage(n)" disabled="@(currentPage == n)">@n</button>
+                                    <button class="page-link"
+                                            @onclick="() => ChangePage(n)"
+                                            disabled="@(currentPage == n)">
+                                        @n
+                                    </button>
                                 </li>
                             }
 
                             <li class="page-item @(currentPage == totalPages ? "disabled" : "")">
-                                <button class="page-link" @onclick="() => ChangePage(currentPage + 1)" disabled="@(currentPage == totalPages)">Next</button>
+                                <button class="page-link"
+                                        @onclick="() => ChangePage(currentPage + 1)"
+                                        disabled="@(currentPage == totalPages)">
+                                    Next
+                                </button>
                             </li>
                         </ul>
                     </nav>
@@ -250,34 +480,76 @@
 
 @code {
     [Inject] protected ToastService ToastService { get; set; } = default!;
+    [Inject] protected NavigationManager Navigation { get; set; } = default!;
     private List<ContractReadDto> contracts = new();
     private bool isLoading = true;
     private string? error;
+    private List<ChatSessionDto> allSessions = new();
+    private List<ChatSessionDto> comparisonSessions = new();
     private bool isGridView = true;
     private string searchTerm = "";
     private int currentPage = 1;
     private int pageSize = 9;
+    private string activeTab = "contracts";
 
     private string sortKey = "uploaded_desc";
     private HashSet<int> pinned = new();
+    private HashSet<int> pinnedComparisonSessions = new();
     private bool pinFirst = false;
     private bool pinOnly = false;
 
+    private bool isMultiSelectMode = false;
+    private HashSet<int> selectedForComparison = new();
+
     const string PinStorageKey = "pinnedContracts";
+    const string ComparisonPinStorageKey = "pinnedComparisonSessions";
+    private HubConnection? _hubConnection;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
+            // Load contracts and pins first
             contracts = await Http.GetFromJsonAsync<List<ContractReadDto>>("/api/contracts") ?? new();
             await LoadPinsAsync();
+            await LoadSessionsAsync();
+
+            // Initialize SignalR connection for visibility updates
+            _hubConnection = new HubConnectionBuilder()
+                .WithUrl(Navigation.ToAbsoluteUri("/hubs/notification"), options =>
+                {
+                    options.AccessTokenProvider = async () =>
+                        await JS.InvokeAsync<string>("localStorage.getItem", "authToken");
+                })
+                .WithAutomaticReconnect()
+                .Build();
+
+            _hubConnection.On<int, bool>("ContractVisibilityChanged", (id, isPublic) =>
+            {
+                var c = contracts.FirstOrDefault(c => c.Id == id);
+                if (c != null)
+                {
+                    c.IsPublic = isPublic;
+                    InvokeAsync(StateHasChanged);
+                }
+            });
+
+            await _hubConnection.StartAsync();
         }
-        catch (Exception ex) { error = $"Failed to load contracts: {ex.Message}"; }
-        finally { isLoading = false; }
+        catch (Exception ex)
+        {
+            error = $"Failed to load contracts: {ex.Message}";
+            Console.WriteLine($"[SignalR ERROR] {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private async Task LoadPinsAsync()
     {
+        // Contract pins
         try
         {
             var json = await JS.InvokeAsync<string>("localStorage.getItem", PinStorageKey);
@@ -288,6 +560,18 @@
             }
         }
         catch { pinned = new(); }
+
+        // Comparison pins
+        try
+        {
+            var json = await JS.InvokeAsync<string>("localStorage.getItem", ComparisonPinStorageKey);
+            if (!string.IsNullOrWhiteSpace(json))
+            {
+                var ids = JsonSerializer.Deserialize<HashSet<int>>(json);
+                pinnedComparisonSessions = ids ?? new HashSet<int>();
+            }
+        }
+        catch { pinnedComparisonSessions = new(); }
     }
 
     private async Task SavePinsAsync()
@@ -300,28 +584,80 @@
         catch { }
     }
 
+    private async Task SaveComparisonPinsAsync()
+    {
+        try
+        {
+            var json = JsonSerializer.Serialize(pinnedComparisonSessions);
+            await JS.InvokeVoidAsync("localStorage.setItem", ComparisonPinStorageKey, json);
+        }
+        catch { }
+    }
+
     private bool IsPinned(int id) => pinned.Contains(id);
+    private bool IsComparisonPinned(int id) => pinnedComparisonSessions.Contains(id);
 
     private async Task TogglePin(int id)
     {
-        if (!pinned.Add(id)) pinned.Remove(id);
+        if (!pinned.Add(id))
+            pinned.Remove(id);
+
         await SavePinsAsync();
+        StateHasChanged();
+    }
+
+    private async Task ToggleComparisonPin(int id)
+    {
+        if (!pinnedComparisonSessions.Add(id))
+            pinnedComparisonSessions.Remove(id);
+
+        await SaveComparisonPinsAsync();
         StateHasChanged();
     }
 
     private async Task DeleteContract(int id)
     {
-        var ok = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to Delete");
+        var ok = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this contract?");
         if (!ok) return;
 
-        var res = await Http.DeleteAsync($"/api/Contracts/{id}");
+        var res = await Http.DeleteAsync($"/api/contracts/{id}");
+
         if (res.IsSuccessStatusCode)
         {
             contracts.RemoveAll(c => c.Id == id);
             pinned.Remove(id);
             await SavePinsAsync();
-            ToastService.Notify(new(ToastType.Success, "Contract Deleted Successfully"));
+            ToastService.Notify(new(ToastType.Success, "Contract deleted successfully"));
             StateHasChanged();
+        }
+        else
+        {
+            ToastService.Notify(new(ToastType.Danger, "Failed to delete contract"));
+        }
+    }
+
+    private async Task OnComparisonMenuClick(int sessionId)
+    {
+        var ok = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this comparison?");
+        if (!ok) return;
+
+        await DeleteComparisonSession(sessionId);
+    }
+
+    private async Task DeleteComparisonSession(int id)
+    {
+        var res = await Http.DeleteAsync($"/api/chatsessions/{id}");
+        if (res.IsSuccessStatusCode)
+        {
+            comparisonSessions.RemoveAll(s => s.Id == id);
+            pinnedComparisonSessions.Remove(id);
+            await SaveComparisonPinsAsync();
+            ToastService.Notify(new(ToastType.Success, "Comparison deleted successfully"));
+            StateHasChanged();
+        }
+        else
+        {
+            ToastService.Notify(new(ToastType.Danger, "Failed to delete comparison"));
         }
     }
 
@@ -331,6 +667,28 @@
     {
         var i = s.IndexOf('_');
         return (i >= 0 && i < s.Length - 1) ? s[(i + 1)..] : s;
+    }
+
+    private string BuildComparisonTitle(ChatSessionDto session)
+    {
+        if (session?.Contracts == null || session.Contracts.Count == 0)
+            return "Contract Comparison";
+
+        var names = session.Contracts
+            .Where(c => c != null)
+            .Select(c => CleanFileName(c.FileName))
+            .Distinct()
+            .ToList();
+
+        if (names.Count == 0)
+            return "Contract Comparison";
+        if (names.Count == 1)
+            return names[0];
+        if (names.Count == 2)
+            return $"{names[0]} vs {names[1]}";
+
+        var extra = names.Count - 2;
+        return $"{names[0]} vs {names[1]} (+{extra} more)";
     }
 
     private void ChangePage(int page)
@@ -377,5 +735,112 @@
         pinOnly = false;
         currentPage = 1;
         StateHasChanged();
+    }
+
+    private void HandleCardClick(int contractId)
+    {
+        if (isMultiSelectMode)
+        {
+            if (selectedForComparison.Contains(contractId))
+                selectedForComparison.Remove(contractId);
+            else if (selectedForComparison.Count < 2)
+                selectedForComparison.Add(contractId);
+            else
+                ToastService.Notify(new(ToastType.Warning, "Maximum 2 contracts can be compared"));
+        }
+        else
+        {
+            Navigation.NavigateTo($"/contract/{contractId}");
+        }
+    }
+
+    private async Task LoadSessionsAsync()
+    {
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userId = user.FindFirst("uid")?.Value;
+
+            if (string.IsNullOrEmpty(userId))
+                return;
+
+            allSessions = await Http.GetFromJsonAsync<List<ChatSessionDto>>($"/api/chatsessions/user/{userId}") ?? new();
+
+            // comparison sessions are those with exactly 2 contracts (for now)
+            comparisonSessions = allSessions.Where(s => s.ContractIds.Count == 2).ToList();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading sessions: {ex.Message}");
+        }
+    }
+
+    private async Task OpenComparisonChat()
+    {
+        if (selectedForComparison.Count < 2)
+        {
+            ToastService.Notify(new(ToastType.Warning, "Please select at least 2 contracts"));
+            return;
+        }
+
+        try
+        {
+            var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+            var user = authState.User;
+            var userId = user.FindFirst("uid")?.Value ?? "1";
+
+            var createSessionDto = new
+            {
+                UserId = userId,
+                ContractIds = selectedForComparison.ToList()
+            };
+
+            var response = await Http.PostAsJsonAsync("/api/chatsessions", createSessionDto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var session = await response.Content.ReadFromJsonAsync<ChatSessionDto>();
+                if (session != null)
+                {
+                    Navigation.NavigateTo($"/compare-chat/{session.Id}");
+                }
+            }
+            else
+            {
+                ToastService.Notify(new(ToastType.Danger, "Failed to create comparison session"));
+            }
+        }
+        catch (Exception ex)
+        {
+            ToastService.Notify(new(ToastType.Danger, $"Error: {ex.Message}"));
+        }
+    }
+
+    private void ClearSelection()
+    {
+        selectedForComparison.Clear();
+        isMultiSelectMode = false;
+    }
+
+    private async Task ToggleVisibility(int id)
+    {
+        var contract = contracts.FirstOrDefault(c => c.Id == id);
+        if (contract == null) return;
+
+        var newVisibility = !contract.IsPublic;
+        var res = await Http.PutAsync($"/api/contracts/{id}/visibility?isPublic={newVisibility}", null);
+
+        if (res.IsSuccessStatusCode)
+        {
+            contract.IsPublic = newVisibility;
+            ToastService.Notify(new(ToastType.Info,
+                newVisibility ? "Contract is now Public" : "Contract is now Private"));
+            StateHasChanged();
+        }
+        else
+        {
+            ToastService.Notify(new(ToastType.Danger, "Failed to update visibility"));
+        }
     }
 }

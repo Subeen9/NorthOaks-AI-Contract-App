@@ -40,6 +40,9 @@ namespace CMPS4110_NorthOaksProj.Migrations
                     b.Property<int>("SessionId")
                         .HasColumnType("int");
 
+                    b.Property<string>("SourcesJson")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("datetime2");
 
@@ -87,6 +90,8 @@ namespace CMPS4110_NorthOaksProj.Migrations
 
                     b.HasIndex("ChatSessionId");
 
+                    b.HasIndex("ContractId");
+
                     b.ToTable("ChatSessionContracts");
                 });
 
@@ -109,6 +114,9 @@ namespace CMPS4110_NorthOaksProj.Migrations
                         .HasColumnType("bit");
 
                     b.Property<bool>("IsProcessed")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsPublic")
                         .HasColumnType("bit");
 
                     b.Property<string>("OCRText")
@@ -415,7 +423,15 @@ namespace CMPS4110_NorthOaksProj.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("CMPS4110_NorthOaksProj.Models.Contracts.Contract", "Contract")
+                        .WithMany()
+                        .HasForeignKey("ContractId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
                     b.Navigation("ChatSession");
+
+                    b.Navigation("Contract");
                 });
 
             modelBuilder.Entity("CMPS4110_NorthOaksProj.Models.Contracts.Contract", b =>

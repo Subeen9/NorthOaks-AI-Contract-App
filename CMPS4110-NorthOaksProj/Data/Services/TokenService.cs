@@ -23,15 +23,16 @@ namespace CMPS4110_NorthOaksProj.Data.Services
             var claims = new[]
             {
                 new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
+                new Claim(ClaimTypes.Name, user.UserName),
                 new Claim(JwtRegisteredClaimNames.Name, user.FirstName),
-                new Claim (JwtRegisteredClaimNames.FamilyName, user.LastName),
+                new Claim(JwtRegisteredClaimNames.FamilyName, user.LastName),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
                 new Claim("uid", user.Id.ToString())
             };
 
+
             var token = new JwtSecurityToken(
                 issuer: config["Jwt:Issuer"],
-                audience: config["Jwt:Audience"],
                 claims: claims,
                 expires: DateTime.Now.AddHours(1),
                 signingCredentials: creds

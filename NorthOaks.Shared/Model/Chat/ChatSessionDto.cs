@@ -10,5 +10,6 @@ namespace NorthOaks.Shared.Model.Chat
         public DateTime CreatedDate { get; set; }
         public int MessageCount { get; set; }
         public List<int> ContractIds { get; set; } = new();
+        public List<ContractInfoDto> Contracts { get; set; } = new();
     }
 }

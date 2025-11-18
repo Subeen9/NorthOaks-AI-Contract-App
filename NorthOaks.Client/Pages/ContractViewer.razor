@@ -1,10 +1,13 @@
 ﻿@page "/contract/{id:int}"
 @using NorthOaks.Shared.Model.Contracts
 @using NorthOaks.Shared.Model.Chat
+@using NorthOaks.Client.Components
+@using System.Net.Http.Json
 @inject HttpClient Http
 @inject IJSRuntime JS
 @using Microsoft.AspNetCore.Authorization
 @attribute [Authorize]
+
 <div class="contract-viewer-page">
     <div class="viewer-wrapper">
         <div class="pdf-area">
@@ -14,10 +17,10 @@
             }
             else
             {
-                <PdfViewer Class="pdf-frame"
-                           Url="@contract.FileUrl"
-                           OnDocumentLoaded="OnDocumentLoaded"
-                           OnPageChanged="OnPageChanged" />
+                <PdfJsViewer Class="pdf-frame"
+                             Url="@contract.FileUrl"
+                             OnDocumentLoaded="OnDocumentLoaded"
+                             OnPageChanged="OnPageChanged" />
             }
         </div>
 
@@ -25,7 +28,7 @@
 
         <div id="chatPanel" class="chat-panel">
             <div class="chat-header">
-                <h5> Chat about this contract</h5>
+                <h5>Chat about this contract</h5>
             </div>
 
             <div id="chatMessages" class="chat-messages">
@@ -38,7 +41,34 @@
                     @foreach (var msg in messages)
                     {
                         <div class="message @(msg.IsUser ? "user-message" : "ai-message")">
-                            <strong>@(msg.IsUser ? "You" : "AI"):</strong> @msg.Text
+                            <strong>@(msg.IsUser ? "You" : "AI"):</strong>
+                            <div class="message-content">
+                                @msg.Text
+
+                                @if (!msg.IsUser && msg.Sources != null && msg.Sources.Count > 0)
+                                {
+                                    var relevantSources = msg.Sources
+                                    .Where(s => s.SimilarityScore >= SIMILARITY_THRESHOLD)
+                                    .OrderByDescending(s => s.SimilarityScore)
+                                    .Take(3)
+                                    .ToList();
+
+                                    @if (relevantSources.Count > 0)
+                                    {
+                                        <div class="source-links-inline">
+                                            <span class="source-label">Sources:</span>
+                                            @for (int i = 0; i < relevantSources.Count; i++)
+                                            {
+                                                var source = relevantSources[i];
+                                                var index = i;
+                                                <a class="source-link" @onclick="() => JumpToSource(msg.Sources, index)">
+                                                    @(i + 1) (Page @source.PageNumber)@(i < relevantSources.Count - 1 ? "," : "")
+                                                </a>
+                                            }
+                                        </div>
+                                    }
+                                }
+                            </div>
                         </div>
                     }
                 }
@@ -69,7 +99,7 @@
                     <button class="send-btn-inside"
                             @onclick="SendMessage"
                             @onclick:preventDefault="true"
-                            disabled="@string.IsNullOrWhiteSpace(newMessage)">
+                            disabled="@(string.IsNullOrWhiteSpace(newMessage) || isLoading)">
                         <svg width="16" height="16" viewBox="0 0 24 24"
                              fill="none" stroke="currentColor"
                              stroke-width="2" stroke-linecap="round"
@@ -85,76 +115,112 @@
 </div>
 
 @code {
-    [Parameter] public int id { get; set; }
+    [Parameter]
+    public int id { get; set; }
+
     private ContractReadDto? contract;
     private List<Message> messages = new();
     private string newMessage = "";
     private int currentSessionId;
     private bool isLoading = false;
 
+    private const double SIMILARITY_THRESHOLD = 0.30;
+
     protected override async Task OnInitializedAsync()
     {
-        contract = await Http.GetFromJsonAsync<ContractReadDto>($"/api/contracts/{id}");
-
-        var sessionResponse = await Http.PostAsJsonAsync("/api/chatsessions",
-            new CreateChatSessionDto { ContractIds = new List<int> { id } });
-
-        if (sessionResponse.IsSuccessStatusCode)
+        try
         {
-            var session = await sessionResponse.Content.ReadFromJsonAsync<ChatSessionDto>();
-            if (session != null)
-                currentSessionId = session.Id;
+            contract = await Http.GetFromJsonAsync<ContractReadDto>($"/api/contracts/{id}");
+
+            if (contract == null)
+            {
+                Console.WriteLine($"Failed to load contract with ID {id}");
+                return;
+            }
+
+           
+            var storageKey = $"session_{id}";
+            var stored = await JS.InvokeAsync<string>("localStorage.getItem", storageKey);
+            if (!string.IsNullOrWhiteSpace(stored) && int.TryParse(stored, out var parsedId))
+            {
+                currentSessionId = parsedId;
+                Console.WriteLine($"Found stored session id {currentSessionId} for contract {id}");
+            }
+            else
+            {
+
+                var sessionResponse = await Http.PostAsJsonAsync("/api/chatsessions",
+                    new CreateChatSessionDto { ContractIds = new List<int> { id } });
+
+                if (sessionResponse.IsSuccessStatusCode)
+                {
+                    var session = await sessionResponse.Content.ReadFromJsonAsync<ChatSessionDto>();
+                    if (session != null)
+                    {
+                        currentSessionId = session.Id;
+                        await JS.InvokeVoidAsync("localStorage.setItem", storageKey, currentSessionId.ToString());
+                        Console.WriteLine($"Chat session created/returned: {currentSessionId}");
+                    }
+                }
+            }
+            if (currentSessionId == 0)
+            {
+                messages.Add(new Message { Text = "Failed to create chat session. Please reload the page.", IsUser = false });
+                return;
+            }
+
+            else
+            {
+                var rawMessages = await Http.GetFromJsonAsync<List<ChatMessageDto>>($"/api/chatmessages/session/{currentSessionId}");
+                if (rawMessages != null && rawMessages.Any())
+                {
+                    messages = new List<Message>();
+
+                    foreach (var m in rawMessages)
+                    {
+                        
+                        if (!string.IsNullOrWhiteSpace(m.Message))
+                        {
+                            messages.Add(new Message
+                            {
+                                Text = m.Message,
+                                IsUser = true
+                            });
+                        }
+                        if (!string.IsNullOrWhiteSpace(m.Response))
+                        {
+                            messages.Add(new Message
+                            {
+                                Text = m.Response,
+                                IsUser = false,
+                                Sources = m.Sources ?? new List<ChatMessageSourceDto>()
+                            });
+                        }
+                    }
+                }
+            }
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in OnInitializedAsync: {ex.Message}");
         }
     }
 
-    private void OnDocumentLoaded(PdfViewerEventArgs args) { }
-    private void OnPageChanged(PdfViewerEventArgs args) { }
+    private void OnDocumentLoaded()
+    {
+        Console.WriteLine("PDF document loaded");
+    }
+
+    private void OnPageChanged()
+    {
+        Console.WriteLine("Page changed");
+    }
 
     private async Task OnInput(ChangeEventArgs e)
     {
         newMessage = e.Value?.ToString() ?? "";
         await JS.InvokeVoidAsync("autoResizeTextarea");
-        await InvokeAsync(StateHasChanged);
-    }
-
-    private async Task SendMessage()
-    {
-        if (string.IsNullOrWhiteSpace(newMessage)) return;
-
-        var userInput = newMessage.Trim();
-        newMessage = "";
-
-        messages.Add(new Message { Text = userInput, IsUser = true });
-        isLoading = true;
-        await InvokeAsync(StateHasChanged);
-        await JS.InvokeVoidAsync("resetTextareaHeight");
-        await JS.InvokeVoidAsync("scrollChatToBottom");
-
-        try
-        {
-            var request = new CreateChatMessageDto { SessionId = currentSessionId, Message = userInput };
-            var response = await Http.PostAsJsonAsync("/api/chatmessages", request);
-
-            if (response.IsSuccessStatusCode)
-            {
-                var result = await response.Content.ReadFromJsonAsync<ChatMessageDto>();
-                messages.Add(new Message { Text = result?.Response ?? "Empty response", IsUser = false });
-            }
-            else
-            {
-                messages.Add(new Message { Text = $"Backend error: {response.StatusCode}", IsUser = false });
-            }
-        }
-        catch (Exception ex)
-        {
-            messages.Add(new Message { Text = $"Exception: {ex.Message}", IsUser = false });
-        }
-        finally
-        {
-            isLoading = false;
-            await InvokeAsync(StateHasChanged);
-            await JS.InvokeVoidAsync("scrollChatToBottom");
-        }
     }
 
     private async Task OnKeyDown(KeyboardEventArgs e)
@@ -166,6 +232,127 @@
         }
     }
 
+    private async Task SendMessage()
+    {
+        if (string.IsNullOrWhiteSpace(newMessage) || isLoading) return;
+
+        var userInput = newMessage.Trim();
+        newMessage = "";
+
+        messages.Add(new Message { Text = userInput, IsUser = true });
+        isLoading = true;
+        StateHasChanged();
+
+        await JS.InvokeVoidAsync("resetTextareaHeight");
+        await JS.InvokeVoidAsync("scrollChatToBottom");
+
+        try
+        {
+            Console.WriteLine($"Sending message to session {currentSessionId}");
+
+            var request = new CreateChatMessageDto
+            {
+                SessionId = currentSessionId,
+                Message = userInput
+            };
+
+            var response = await Http.PostAsJsonAsync("/api/chatmessages", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var result = await response.Content.ReadFromJsonAsync<ChatMessageDto>();
+
+                if (result != null)
+                {
+                    messages.Add(new Message
+                    {
+                        Text = result.Response ?? "Empty response",
+                        IsUser = false,
+                        Sources = result.Sources ?? new List<ChatMessageSourceDto>()
+                    });
+
+                    Console.WriteLine($"Received AI response with {result.Sources?.Count ?? 0} sources");
+                }
+            }
+            else
+            {
+                messages.Add(new Message
+                {
+                    Text = $"Error: {response.StatusCode}. Please try again.",
+                    IsUser = false
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Exception: {ex.Message}");
+            messages.Add(new Message
+            {
+                Text = "An unexpected error occurred. Please try again.",
+                IsUser = false
+            });
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+            await JS.InvokeVoidAsync("scrollChatToBottom");
+        }
+    }
+
+    private async Task JumpToSource(List<ChatMessageSourceDto> sources, int index)
+    {
+        if (sources == null || sources.Count == 0)
+        {
+            Console.WriteLine("No sources available");
+            return;
+        }
+
+        var relevantSources = sources
+            .Where(s => s.SimilarityScore >= SIMILARITY_THRESHOLD)
+            .OrderByDescending(s => s.SimilarityScore)
+            .Take(3)
+            .ToList();
+
+        if (index < 0 || index >= relevantSources.Count)
+            return;
+
+        var source = relevantSources[index];
+
+        try
+        {
+            Console.WriteLine($"Jumping to source {index + 1}: Page {source.PageNumber}");
+
+            await JS.InvokeVoidAsync("pdfViewerClearHighlights");
+            await Task.Delay(200);
+
+            Console.WriteLine($"Going to page {source.PageNumber}");
+            await JS.InvokeVoidAsync("pdfViewerGoToPage", source.PageNumber);
+            await Task.Delay(1000);
+
+            var searchPhrase = ExtractBestSearchPhrase(source.ChunkText);
+            Console.WriteLine($"Highlighting: '{searchPhrase.Substring(0, Math.Min(60, searchPhrase.Length))}'");
+
+            await JS.InvokeVoidAsync("pdfViewerHighlightText", searchPhrase);
+
+            Console.WriteLine("Highlighting complete");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error jumping to source: {ex.Message}");
+        }
+    }
+
+    private string ExtractBestSearchPhrase(string chunkText)
+    {
+        if (string.IsNullOrWhiteSpace(chunkText))
+            return "";
+
+        chunkText = System.Text.RegularExpressions.Regex.Replace(chunkText, @"\s+", " ").Trim();
+        var words = chunkText.Split(' ').Take(50).ToArray();
+        return string.Join(" ", words);
+    }
+
     private void StartResize(MouseEventArgs e)
     {
         JS.InvokeVoidAsync("startResizing");
@@ -175,5 +362,6 @@
     {
         public string Text { get; set; } = "";
         public bool IsUser { get; set; }
+        public List<ChatMessageSourceDto> Sources { get; set; } = new();
     }
 }
