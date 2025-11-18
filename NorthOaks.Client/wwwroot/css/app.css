@@ -1872,3 +1872,16 @@ clear-highlights-btn {
     color: inherit !important; /* resets forced white */
 }
 
+.sb-button-link {
+    background: none;
+    border: none;
+    padding: 0;
+    width: 100%;
+    text-align: left;
+}
+
+    .sb-button-link:focus {
+        outline: none;
+    }
+
+

@@ -9,8 +9,11 @@
 @using Microsoft.AspNetCore.Components.Routing
 @using Microsoft.AspNetCore.Components.Authorization
 @using Microsoft.AspNetCore.SignalR.Client
+@using NorthOaks.Client.Providers
 @attribute [Authorize]
 @inject AuthenticationStateProvider AuthStateProvider
+@implements IDisposable
+
 
 <div class="container-fluid mt-4 mb-4 page-with-sidebar no-pad">
     <div class="page-grid">
@@ -21,9 +24,9 @@
                 <NavLink href="/home" class="sb-link" Match="NavLinkMatch.All">
                     <i class="bi bi-collection"></i><span>Library</span>
                 </NavLink>
-                <NavLink href="/upload" class="sb-link" Match="NavLinkMatch.Prefix">
+                <button type="button" class="sb-link sb-button-link" @onclick="OpenUploadModal">
                     <i class="bi bi-upload"></i><span>Upload</span>
-                </NavLink>
+                </button>
                 <NavLink href="/settings" class="sb-link" Match="NavLinkMatch.Prefix">
                     <i class="bi bi-gear"></i><span>Settings</span>
                 </NavLink>
@@ -107,6 +110,9 @@
 
         <!-- Main -->
         <main class="page-main">
+            <div @onclick:stopPropagation="true">
+                <UploadModal IsOpen="@showUploadModal" OnClose="CloseUploadModal" />
+            </div>
             <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap library-header">
                 <div class="d-flex flex-column">
                     <h4 class="fw-semibold mb-3 library-title">Contract Library</h4>
@@ -505,10 +511,29 @@
     const string ComparisonPinStorageKey = "pinnedComparisonSessions";
     private HubConnection? _hubConnection;
 
+    private bool showUploadModal = false;
+
+    protected override void OnInitialized()
+    {
+        UploadService.UploadRequested += OpenUploadModalFromLayout;
+    }
+
+    private void OpenUploadModalFromLayout()
+    {
+        showUploadModal = true;
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        UploadService.UploadRequested -= OpenUploadModalFromLayout;
+    }
+
+
     protected override async Task OnInitializedAsync()
     {
         try
-        {
+        { 
             // Load contracts and pins first
             contracts = await Http.GetFromJsonAsync<List<ContractReadDto>>("/api/contracts") ?? new();
             await LoadPinsAsync();
@@ -842,5 +867,15 @@
         {
             ToastService.Notify(new(ToastType.Danger, "Failed to update visibility"));
         }
+    }
+
+    private void OpenUploadModal()
+    {
+        showUploadModal = true;
+    }
+
+    private void CloseUploadModal()
+    {
+        showUploadModal = false;
     }
 }
