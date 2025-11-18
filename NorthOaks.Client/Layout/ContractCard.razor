@@ -1,7 +1,7 @@
-﻿@inject NavigationManager Navigation
+@inject NavigationManager Navigation
 
-<div class="card shadow-sm mb-3 h-100 contract-hover position-relative"
-     style="border-radius:14px; overflow:hidden;"
+<div class="card shadow-sm mb-3 h-100 contract-hover position-relative @(IsSelected ? "selected-for-comparison" : "")"
+     style="border-radius:14px; overflow:hidden; @(IsSelected ? "background: var(--brand-gold) !important;" : "")"
      @onclick="@(() => Navigation.NavigateTo($"/contract/{Id}"))">
 
     <!-- Options dropdown -->
@@ -14,12 +14,16 @@
             aria-labelledby="dropdownMenuButton-@Id"
             style="border-radius: 8px; font-size: 0.9rem;">
             <li>
-                <button class="dropdown-item text-danger" @onclick:stopPropagation="true" @onclick="OpenDelete">
+                <button class="dropdown-item text-danger"
+                        @onclick:stopPropagation="true"
+                        @onclick="OpenDelete">
                     <i class="bi bi-trash me-2"></i> Delete Contract
                 </button>
             </li>
             <li>
-                <button class="dropdown-item" @onclick:stopPropagation="true" @onclick="ToggleVisibility">
+                <button class="dropdown-item"
+                        @onclick:stopPropagation="true"
+                        @onclick="ToggleVisibility">
                     <i class="bi @(IsPublic ? "bi-lock-fill" : "bi-globe-americas") me-2"></i>
                     @(IsPublic ? "Make Private" : "Make Public")
                 </button>
@@ -37,7 +41,7 @@
         <i class="bi @(IsPinned ? "bi-pin-angle-fill" : "bi-pin-angle")"></i>
     </button>
 
-    <!-- Visibility tag -->
+    <!-- Visibility Badge -->
     <div class="position-absolute top-0 start-0 m-2">
         <span class="visibility-badge @(IsPublic ? "public" : "private")">
             <i class="bi @(IsPublic ? "bi-globe-americas" : "bi-lock-fill") me-1"></i>
@@ -45,10 +49,18 @@
         </span>
     </div>
 
-    <div class="card-body d-flex flex-column mt-4">
-        <h5 class="card-title fw-semibold contract-title text-truncate">@FileName</h5>
-        <p class="text-muted mb-1">Uploaded by <strong>@UploadedBy</strong></p>
-        <small class="text-muted">Uploaded: @UploadDate.ToShortDateString()</small>
+    <!-- Card content -->
+    <div class="card-body d-flex flex-column mt-4" style="@(IsSelected ? "color:#fff !important;" : "")">
+        <h5 class="card-title fw-bold contract-title text-truncate"
+            style="@(IsSelected ? "color:#fff !important;" : "")">@FileName</h5>
+
+        <p class="@(IsSelected ? "text-white" : "text-muted") mb-1">
+            Uploaded by <strong>@UploadedBy</strong>
+        </p>
+
+        <small class="@(IsSelected ? "text-white" : "text-muted")">
+            Uploaded: @UploadDate.ToShortDateString()
+        </small>
     </div>
 </div>
 
@@ -58,12 +70,13 @@
     [Parameter] public int UserId { get; set; }
     [Parameter] public string? UploadedBy { get; set; }
     [Parameter] public DateTime UploadDate { get; set; }
-    [Parameter] public EventCallback<int> OnDelete { get; set; }
-    [Parameter] public bool IsPublic { get; set; }
 
-    [Parameter] public EventCallback<int> OnToggleVisibility { get; set; }
-
+    [Parameter] public bool IsSelected { get; set; }      // new-dev
+    [Parameter] public bool IsPublic { get; set; }        // feat-prop
     [Parameter] public bool IsPinned { get; set; }
+
+    [Parameter] public EventCallback<int> OnDelete { get; set; }
+    [Parameter] public EventCallback<int> OnToggleVisibility { get; set; }
     [Parameter] public EventCallback OnTogglePin { get; set; }
 
     private async Task OpenDelete()
@@ -78,4 +91,3 @@
             await OnToggleVisibility.InvokeAsync(Id);
     }
 }
-
