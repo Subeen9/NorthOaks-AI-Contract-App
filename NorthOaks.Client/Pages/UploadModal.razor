@@ -125,11 +125,8 @@
         .Build();
 
         // FIX: Mark lambda as async so 'await' can be used inside
-        hubConnection.On<object>("ProcessingUpdate", async (payload) =>
+        hubConnection.On<int, string>("ProcessingUpdate", async (progress, message) =>
         {
-            var progress = (int)payload.GetType().GetProperty("progress").GetValue(payload);
-            var message = (string)payload.GetType().GetProperty("message").GetValue(payload);
-
             uploadProgress = progress;
             processingMessage = message;
 

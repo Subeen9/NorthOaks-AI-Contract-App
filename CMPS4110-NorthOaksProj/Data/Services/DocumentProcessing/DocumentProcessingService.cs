@@ -49,7 +49,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                     try
                     {
                         await _hubContext.Clients.Group($"contract-{contractId}")
-                            .SendAsync("ReceiveProcessingProgress", p, m);
+                            .SendAsync("ProcessingUpdate", p, m);
 
                         _logger.LogInformation("Progress: {Progress}% - {Message}", p, m);
                     }
@@ -154,7 +154,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                     contractId);
 
                 await _hubContext.Clients.Group($"contract-{contractId}")
-                    .SendAsync("ReceiveProcessingProgress", -1, $"Error: {ex.Message}");
+                    .SendAsync("ProcessingUpdate", -1, $"Error: {ex.Message}");
 
                 throw;
             }
