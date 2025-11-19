@@ -35,9 +35,11 @@
                         <!-- Right section -->
                         <div class="d-flex align-items-center gap-3">
                             <!-- Upload -->
-                            <button class="btn text-white" style="background:#003768" @onclick="NavigateToUpload">
+                            <button class="btn text-white" style="background:#003768"
+                                    @onclick="TriggerUpload">
                                 <i class="bi bi-upload me-2"></i> Upload Contract
                             </button>
+
 
                             <!-- Notifications -->
                             <div class="dropdown">
@@ -127,7 +129,6 @@
     private int unreadCount = 0;
     private string? currentUserId;
 
-    private void NavigateToUpload() => Navigation.NavigateTo("/upload");
     private void NavigateToHome() => Navigation.NavigateTo("/home");
 
     protected override async Task OnInitializedAsync()
@@ -201,6 +202,11 @@
             unreadCount = 0;
             StateHasChanged();
         }
+    }
+
+    private void TriggerUpload ()
+    {
+        UploadService.RaiseUpload();
     }
 
 
