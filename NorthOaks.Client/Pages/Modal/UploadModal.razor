@@ -1,81 +1,112 @@
-﻿@page "/upload"
-@using Microsoft.AspNetCore.Components.Authorization
+﻿@using Microsoft.AspNetCore.Components.Authorization
 @inject HttpClient Http
 @inject AuthenticationStateProvider AuthStateProvider
 @inject IJSRuntime JSRuntime
 @using NorthOaks.Shared.Models
 @inject NavigationManager Navigation
 @using Microsoft.AspNetCore.Authorization
-@attribute [Authorize]
 @using Microsoft.AspNetCore.SignalR.Client
 @implements IAsyncDisposable
 
+@if (IsOpen)
+{
+    <div class="modal-backdrop fade show"></div>
 
-<h3 class="text-center mb-4"> Upload PDF Documents</h3>
+    <div class="modal fade show d-block" tabindex="-1" style="z-index:1055;">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content upload-modal">
+                <div class="modal-header upload-header">
+                    <h5 class="modal-title">Upload PDF Documents</h5>
+                    <button type="button" class="btn-close" @onclick="HandleClose"></button>
+                </div>
 
-<div class="d-flex justify-content-center">
-    <div class="card shadow p-4" style="max-width: 700px; width: 100%;">
+                <div class="modal-body p-4">
 
-        <div class="card-body">
+                    <!-- CARD WRAPPER -->
+                    <div class="upload-card shadow-sm">
 
-            <!-- Drag & Drop Area -->
-            <div id="dropArea" class="border border-dashed rounded p-4 mb-3 text-center">
-                <p class="mb-2">@dragText</p>
-                <p>or click below to select a file</p>
+                        <!-- DRAG AREA -->
+                        <div id="dropArea"
+                             class="upload-dropzone @(isDragOver ? "drag-over" : "")">
+                            <i class="bi bi-file-earmark-arrow-up upload-icon"></i>
+                            <p class="upload-text-bold">@dragText</p>
+                            <p class="upload-text-muted">or click below to select a file</p>
+                        </div>
+
+                        <!-- Hidden InputFile -->
+                        <InputFile id="hiddenInputFile" style="display:none"
+                                   OnChange="HandleFileSelected"
+                                   accept="application/pdf" />
+
+                        <!-- Upload Button -->
+                        <button type="button"
+                                class="btn upload-cta w-100"
+                                @onclick="UploadFile"
+                                disabled="@(!isFileSelected)">
+                            <i class="bi bi-upload"></i> Upload PDF
+                        </button>
+
+                        <!-- Status Message -->
+                        @if (!string.IsNullOrEmpty(statusMessage))
+                        {
+                            <div class="upload-status">
+                                @statusMessage
+                            </div>
+                        }
+
+                        <!-- Upload Progress -->
+                        @if (isUploading && uploadProgress < 100)
+                        {
+                            <div class="progress upload-progress mt-3">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
+                                     role="progressbar"
+                                     style="width:@($"{uploadProgress}%")">
+                                    @uploadProgress%
+                                </div>
+                            </div>
+                        }
+
+                        <!-- Processing Progress -->
+                        @if (isProcessing)
+                        {
+                            <div class="progress upload-progress mt-3">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                                     role="progressbar"
+                                     style="width:@($"{uploadProgress}%")">
+                                </div>
+                            </div>
+
+                            <p class="processing-label mt-2 text-center">
+                                <strong>@uploadProgress% —</strong> @processingMessage
+                            </p>
+                        }
+
+                    </div>
+                </div>
+
             </div>
-
-            <!-- Hidden InputFile -->
-            <InputFile id="hiddenInputFile" style="display:none"
-                       OnChange="HandleFileSelected" accept="application/pdf" />
-
-            <button class="btn btn-primary w-100 mb-3" @onclick="UploadFile" disabled="@(!isFileSelected)">
-                <i class="bi bi-upload"></i> Upload PDF
-            </button>
-
-            @if (!string.IsNullOrEmpty(statusMessage))
-            {
-                <div class="alert alert-info">@statusMessage</div>
-            }
-
-            @if (uploadedDocuments.Any())
-            {
-                <h5 class="mt-4">Uploaded Documents</h5>
-                <ul class="list-group">
-                    @foreach (var doc in uploadedDocuments)
-                    {
-                        <li class="list-group-item">
-                            <i class="bi bi-file-earmark-pdf text-danger"></i> @doc
-                        </li>
-                    }
-                </ul>
-            }
-            @if (isUploading && uploadProgress > 0 && uploadProgress < 100)
-            {
-                <Progress Class="mt-3 mb-3">
-                    <ProgressBar Type="ProgressType.StripedAndAnimated"
-                                 Color="ProgressColor.Success"
-                                 Width="@uploadProgress">
-                        @uploadProgress%
-                    </ProgressBar>
-                </Progress>
-            }
-            @if (isProcessing)
-            {
-                <Progress Class="mt-3 mb-3">
-                    <ProgressBar Type="ProgressType.StripedAndAnimated"
-                                 Color="ProgressColor.Primary"
-                                 Width="@uploadProgress">
-                    </ProgressBar>
-                </Progress>
-                <p class="text-center mt-2"><strong>@uploadProgress%</strong> - @processingMessage</p>
-            }
-
         </div>
-     
     </div>
-</div>
+}
 
 @code {
+    private bool _isOpen;
+    [Parameter]
+    public bool IsOpen
+    {
+        get => _isOpen;
+        set
+        {
+            var wasClosed = !_isOpen && value;
+            _isOpen = value;
+
+            if (wasClosed)
+            {
+                _ = InitializeDragDrop();
+            }
+        }
+    }
+    [Parameter] public EventCallback OnClose { get; set; }
     [Inject] protected ToastService ToastService { get; set; } = default!;
     private IBrowserFile? selectedFile;
     private bool isFileSelected = false;
@@ -105,7 +136,8 @@
         .WithAutomaticReconnect()
         .Build();
 
-        hubConnection.On<int, string>("ReceiveProcessingProgress", (progress, message) =>
+        // FIX: Mark lambda as async so 'await' can be used inside
+        hubConnection.On<int, string>("ProcessingUpdate", async (progress, message) =>
         {
             uploadProgress = progress;
             processingMessage = message;
@@ -113,18 +145,11 @@
             if (progress == 100)
             {
                 isProcessing = false;
-                ToastService.Notify(new(ToastType.Success, "Document processed successfully!"));
-                Navigation.NavigateTo("/home");
-            }
-            else if (progress == -1)
-            {
-                isProcessing = false;
-                ToastService.Notify(new(ToastType.Danger, "Processing failed!"));
+                await HandleClose();
             }
 
-            InvokeAsync(StateHasChanged);
+            await InvokeAsync(StateHasChanged);
         });
-
         await hubConnection.StartAsync();
     }
 
@@ -134,41 +159,6 @@
         isFileSelected = selectedFile != null && selectedFile.ContentType == "application/pdf";
         statusMessage = isFileSelected ? $"Selected: {selectedFile.Name}" : " Please select a PDF file.";
     }
-    // private async Task PollProcessingStatus(int contractId)
-    // {
-    //     isProcessing = true;
-    //     processingMessage = "Processing your document... please wait";
-
-    //     while (true)
-    //     {
-    //         try
-    //         {
-
-    //             var status = await Http.GetFromJsonAsync<ContractStatus>($"api/contracts/{contractId}/status");
-
-    //             if (status != null)
-    //             {
-    //                 processingMessage = status.ProcessingStatus ?? "Processing your document...";
-
-    //                 if (status.IsProcessed)
-    //                 {
-    //                     Finished processing
-    //                     isProcessing = false;
-    //                     ToastService.Notify(new(ToastType.Success, "Document processed successfully!"));
-    //                     break;
-    //                 }
-    //             }
-    //         }
-    //         catch
-    //         {
-
-    //         }
-
-    //         await Task.Delay(10000);
-    //         StateHasChanged();
-    //     }
-    // }
-
 
     private async Task UploadFile()
     {
@@ -205,7 +195,7 @@
 
                     var uploadedContract = await response.Content.ReadFromJsonAsync<ContractStatus>();
 
-                  
+
                     if (uploadedContract != null && hubConnection?.State == HubConnectionState.Connected)
                     {
                         await hubConnection.SendAsync("JoinContractProcessing", uploadedContract.Id);
@@ -234,14 +224,13 @@
             }
         }
     }
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+
+    private async Task InitializeDragDrop()
     {
-        if (firstRender)
-        {
-            await Task.Delay(30);
-            await JSRuntime.InvokeVoidAsync("initDragDrop");
-        }
+        await Task.Delay(50);
+        await JSRuntime.InvokeVoidAsync("initDragDrop");
     }
+
 
     public async ValueTask DisposeAsync()
     {
@@ -251,9 +240,12 @@
         }
     }
 
+    private async Task HandleClose()
+    {
+        if (OnClose.HasDelegate)
+        {
+            await OnClose.InvokeAsync();
+        }
+    }
+
 }
-
-
-
-
-
