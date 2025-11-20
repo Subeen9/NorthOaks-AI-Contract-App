@@ -47,6 +47,12 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
             _logger = logger;
         }
 
+        private static string CleanFileName(string fileName)
+        {
+            return Path.GetFileNameWithoutExtension(fileName) ?? "Document";
+        }
+
+
         public async Task<IEnumerable<ChatMessageDto>> GetBySession(int sessionId)
         {
             var exists = await _context.ChatSessions.AsNoTracking().AnyAsync(s => s.Id == sessionId);
@@ -194,49 +200,92 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                 _logger.LogInformation("Deduplication: {Original} → {Filtered} chunks",
                     results.Count, filteredResults.Count);
 
-                
-                var contextText = ContextBuilder.BuildStructuredContext(filteredResults);
-                _logger.LogInformation("Context built: {Length} characters", contextText.Length);
 
-                var systemPrompt = contractIds.Count > 1
-                    ? @"
-You are a professional contract analyst comparing two documents.
+                // Load session (for stable ordering)
+                var session = await _context.ChatSessions
+                    .AsNoTracking()
+                    .Include(s => s.SessionContracts)
+                    .FirstOrDefaultAsync(s => s.Id == dto.SessionId);
 
-CRITICAL FORMATTING RULES:
-1. NEVER use phrases like 'one text', 'the first set of texts', 'one contract', or empty parentheses ()
-2. ALWAYS refer to documents as 'Document 1' and 'Document 2'
-3. DO NOT reference clause numbers, chunks, or any internal labels
-4. Write as if you're reading the actual documents directly
+                // Determine stable ordering of Contract IDs
+                var orderedContractIds = session?.SessionContracts
+                    .Select(sc => sc.ContractId)
+                    .Distinct()
+                    .ToList() ?? contractIds;
 
-COMPARISON STRUCTURE:
-If the documents are similar in nature (both contracts, both agreements):
-- Compare them side-by-side using clear section headings
-- Example: 'Document 1 specifies a payment term of 30 days, while Document 2 requires payment within 15 days'
+                // Fetch contract names for nicer labels
+                var contractNames = await _context.Contracts
+                    .AsNoTracking()
+                    .Where(c => orderedContractIds.Contains(c.Id))
+                    .ToDictionaryAsync(c => c.Id, c => c.FileName);
 
-If the documents are completely different in nature:
-- First, clearly state what each document is about
-- Then explain that they cannot be meaningfully compared
-- Example: 'Document 1 is a recommendation letter for a software developer. Document 2 is a logo design specification. These are fundamentally different document types and cannot be compared in a meaningful way.'
+                // Group chunks by contract (in stable order)
+                var docGroups = filteredResults
+                    .GroupBy(r => r.ContractId)
+                    .OrderBy(g => orderedContractIds.IndexOf(g.Key))
+                    .ToList();
 
-For meaningful comparisons, focus on:
-- Key terms and conditions
-- Dates and deadlines  
-- Parties involved
-- Obligations and responsibilities
-- Payment terms
-- Notable differences in scope or requirements
+                // BUILD CONTEXT
+                var contextSb = new StringBuilder(MAX_CONTEXT_CHARS + 512);
+                int docIndex = 1;
 
-Keep responses clear, concise, and professional."
+                foreach (var g in docGroups)
+                {
+                    var displayName = contractNames.TryGetValue(g.Key, out var fn)
+                        ? CleanFileName(fn)
+                        : $"Document {docIndex}";
 
-                    : @"
+                    foreach (var r in g.OrderByDescending(x => x.Score))
+                    {
+                        var text = (r.ChunkText ?? string.Empty).Trim();
+                        if (text.Length < MIN_CHUNK_LEN) continue;
+
+                        contextSb.AppendLine($"Document {docIndex}: {text}");
+                    }
+
+                    docIndex++;
+                }
+
+
+                var contextText = contextSb.ToString().Trim();
+                _logger.LogInformation("Structured context built: {Length} chars; documents: {Docs}",
+                    contextText.Length, docGroups.Count);
+
+                // DYNAMIC comparison mode
+                bool isComparison = docGroups.Count > 1;
+
+                // DYNAMIC SYSTEM PROMPT
+                string systemPrompt;
+
+                if (!isComparison)
+                {
+                    // SINGLE DOCUMENT
+                    systemPrompt = @"
 You are a professional contract analysis assistant.
-Use only the information provided in the context to answer the question.
+Use ONLY the provided text.
+Do NOT invent facts.
+If the answer cannot be found, reply exactly: 'Not found in contract.'";
+                }
+                else
+                {
+                    // MULTI-DOCUMENT COMPARISON
+                    systemPrompt = @"
+You are a professional contract analyst comparing documents.
+Use ONLY the provided text.
 
-CRITICAL: Do NOT include internal labels, clause numbers, chunk identifiers, or any metadata in your output.
+CRITICAL RULES:
+1. Only refer to documents as 'Document 1', 'Document 2', etc.
+2. NEVER mix up content between documents.
+3. NEVER invent missing sections.
 
-Provide a clean, concise, professional, human-readable response.
-If the answer cannot be found, reply exactly: 'Not found in contract.'
-Write naturally as if you're reading the actual contract document.";
+If the answer cannot be found in the provided text,
+'If unsure, try your best using the text provided.'";
+                }
+
+                // DYNAMIC USER PROMPT
+                string evidenceInstruction = docGroups.Count > 1
+                    ? "When giving evidence, prefix it with the document number (e.g., 'Document 1:')."
+                    : "When giving evidence, refer to text as 'Document 1:'.";
 
                 var userPrompt = $@"
 Context:
@@ -245,19 +294,13 @@ Context:
 User question:
 {dto.Message}
 
-Answer:
+Answer using ONLY the context above. {evidenceInstruction}
 ";
 
-                _logger.LogInformation("Calling LLM generation (model: {Model})", "llama3.2");
-                _logger.LogInformation("Prompt size: system={SystemLen}chars, user={UserLen}chars",
-                    systemPrompt.Length, userPrompt.Length);
-
-                sw.Restart();
-                var rawresponse = await _generationClient.GenerateAsync(
-                    userPrompt,
-                    systemPrompt
-                );
+                _logger.LogInformation("Calling LLM generation");
+                var rawresponse = await _generationClient.GenerateAsync(userPrompt, systemPrompt);
                 var generatedResponse = CleanGeneratedResponse(rawresponse);
+
                 _logger.LogInformation("LLM generation took {Ms}ms, response length: {Len}",
                     sw.ElapsedMilliseconds, generatedResponse?.Length ?? 0);
 
