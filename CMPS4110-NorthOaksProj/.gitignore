@@ -365,3 +365,6 @@ FodyWeavers.xsd
 
 appsettings.json
 
+# Added the qdrant_storage folder to ignore the local vector database files
+qdrant_storage/
+
