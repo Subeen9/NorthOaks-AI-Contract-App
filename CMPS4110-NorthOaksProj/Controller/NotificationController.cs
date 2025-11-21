@@ -65,6 +65,36 @@ namespace CMPS4110_NorthOaksProj.Controllers
                 return StatusCode(500, "An error occurred while fetching notifications.");
             }
         }
+        [HttpGet("{userName}")]
+        public async Task<ActionResult<IEnumerable<NotificationDto>>> GetAll(string userName)
+        {
+            try
+            {
+                // Verify the JWT user is the same person requesting their notifications
+                var currentUserIdStr = User.FindFirstValue("uid");
+                if (!int.TryParse(currentUserIdStr, out var currentUserId))
+                    return Unauthorized("Invalid user ID in token.");
+
+                var items = await _service.GetAllAsync(currentUserId);
+
+                var dtos = items.Select(n => new NotificationDto
+                {
+                    Id = n.Id,
+                    Message = n.Message,
+                    CreatedAt = n.CreatedAt,
+                    IsRead = n.IsRead,
+                    TargetUserId = n.TargetUserId
+                }).ToList();
+
+                return Ok(dtos);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching all notifications");
+                return StatusCode(500, "An error occurred while fetching notifications.");
+            }
+        }
+
 
         [HttpPost("mark-read")]
         public async Task<IActionResult> MarkRead()

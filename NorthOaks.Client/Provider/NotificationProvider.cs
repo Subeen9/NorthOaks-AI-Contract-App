@@ -37,12 +37,15 @@ namespace NorthOaks.Client.Providers
             // === 1️⃣ Load unread notifications from API ===
             try
             {
-                var offline = await _http.GetFromJsonAsync<List<NotificationDto>>("api/notifications/unread");
+                var offline = await _http.GetFromJsonAsync<List<NotificationDto>>($"api/notifications/{_currentUserName}");
+
+
                 if (offline != null && offline.Any())
                 {
                     Messages.Clear();
                     Messages.AddRange(offline);
-                    _unreadCount = offline.Count;
+                    _unreadCount = offline.Count(n => !n.IsRead);
+
                     OnCountChanged?.Invoke();
                 }
             }
