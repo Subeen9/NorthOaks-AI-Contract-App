@@ -27,19 +27,5 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
             return uniqueChunks;
         }
 
-        // --- 2. Structured context formatting ---
-        public static string BuildStructuredContext(List<VectorSearchResult> chunks)
-        {
-            var sb = new StringBuilder();
-            int i = 1;
-            foreach (var chunk in chunks)
-            {
-                sb.AppendLine($"[Clause {i}: Chunk {chunk.ChunkIndex}]");
-                sb.AppendLine($"Text: {chunk.ChunkText}");
-                sb.AppendLine("---");
-                i++;
-            }
-            return sb.ToString();
-        }
     }
 }
