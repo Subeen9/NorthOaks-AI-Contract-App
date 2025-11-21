@@ -3,6 +3,7 @@
     public class ChatMessageSourceDto
     {
         public int ContractId { get; set; }
+        public string OriginalChunkText { get; set; } = string.Empty;
         public string ChunkText { get; set; } = string.Empty;
         public int ChunkIndex { get; set; }
         public string? SectionTitle { get; set; }

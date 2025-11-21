@@ -15,12 +15,12 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 {
     public class ChatMessagesService : EntityBaseRepository<ChatMessage>, IChatMessagesService
     {
-        
+
         private static readonly Regex SummaryRegex = new(
             @"\b(summarize|summary|summarise|summarzie|summery|tl;dr|tldr|short\s+version|condense|brief\s+me|give\s+me\s+a\s+summary)\b",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-        
+
         private const int MAX_EXCERPTS_TOTAL = 40;
         private const int MAX_EXCERPTS_PER_DOC = 30;
         private const int MAX_CONTEXT_CHARS = 9000;
@@ -132,7 +132,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 
             try
             {
-                
+
                 if (IsSummaryIntent(dto.Message))
                 {
                     _logger.LogInformation("Summary intent detected for session {SessionId}", dto.SessionId);
@@ -143,14 +143,14 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     return MapToDto(entity);
                 }
 
-                
+
                 _logger.LogInformation("Starting RAG pipeline for: {Message}", dto.Message);
 
                 var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
                 _logger.LogInformation("Message embedding took {Ms}ms", sw.ElapsedMilliseconds);
                 sw.Restart();
 
-                
+
                 var contractIds = await _context.ChatSessionContracts
                     .AsNoTracking()
                     .Where(x => x.ChatSessionId == dto.SessionId)
@@ -165,7 +165,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     return MapToDto(entity);
                 }
 
-                
+
                 var results = await _qdrantService.SearchSimilarAsync(
                     vector,
                     limit: 20,
@@ -184,7 +184,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                     return MapToDto(entity);
                 }
 
-                
+
                 var dedupedTexts = ContextBuilder.DeduplicateChunks(results.Select(r => r.ChunkText).ToList());
                 var filteredResults = results
                     .Where(r => dedupedTexts.Contains(r.ChunkText))
@@ -194,7 +194,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                 _logger.LogInformation("Deduplication: {Original} → {Filtered} chunks",
                     results.Count, filteredResults.Count);
 
-                
+
                 var contextText = ContextBuilder.BuildStructuredContext(filteredResults);
                 _logger.LogInformation("Context built: {Length} characters", contextText.Length);
 
@@ -271,13 +271,43 @@ Answer:
                     entity.Response = generatedResponse;
                 }
 
-                var sources = results.Select(r => new ChatMessageSourceDto
+                var resultContractIds = results.Select(r => r.ContractId).Distinct().ToList();
+
+                var allEmbeddings = await _context.ContractEmbeddings
+                    .AsNoTracking()
+                    .Where(e => resultContractIds.Contains(e.ContractId))
+                    .Select(e => new
+                    {
+                        e.ContractId,
+                        e.ChunkIndex,
+                        e.ChunkText,
+                        e.OriginalChunkText
+                    })
+                    .ToListAsync();
+
+                var embeddingLookup = allEmbeddings
+                    .ToDictionary(
+                        e => $"{e.ContractId}_{e.ChunkIndex}",
+                        e => e
+                    );
+
+                _logger.LogInformation("Fetched {Count} embeddings with original text from database",
+                    allEmbeddings.Count);
+
+                var sources = results.Select(r =>
                 {
-                    ContractId = r.ContractId,
-                    ChunkText = r.ChunkText,
-                    ChunkIndex = r.ChunkIndex,
-                    PageNumber = r.PageNumber,
-                    SimilarityScore = (double)r.Score
+                    var key = $"{r.ContractId}_{r.ChunkIndex}";
+                    var hasEmbedding = embeddingLookup.TryGetValue(key, out var embedding);
+
+                    return new ChatMessageSourceDto
+                    {
+                        ContractId = r.ContractId,
+                        ChunkText = r.ChunkText,
+                        OriginalChunkText = hasEmbedding ? embedding.OriginalChunkText : r.ChunkText,
+                        ChunkIndex = r.ChunkIndex,
+                        PageNumber = r.PageNumber,
+                        SimilarityScore = (double)r.Score
+                    };
                 }).ToList();
 
                 entity.SourcesJson = SerializeSources(sources);
