@@ -4,6 +4,7 @@ using CMPS4110_NorthOaksProj.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace CMPS4110_NorthOaksProj.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20251110151646_AddIsPublicFlagToContracts")]
+    partial class AddIsPublicFlagToContracts
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -39,9 +42,6 @@ namespace CMPS4110_NorthOaksProj.Migrations
 
                     b.Property<int>("SessionId")
                         .HasColumnType("int");
-
-                    b.Property<string>("SourcesJson")
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<DateTime>("Timestamp")
                         .HasColumnType("datetime2");
@@ -89,8 +89,6 @@ namespace CMPS4110_NorthOaksProj.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ChatSessionId");
-
-                    b.HasIndex("ContractId");
 
                     b.ToTable("ChatSessionContracts");
                 });
@@ -158,10 +156,6 @@ namespace CMPS4110_NorthOaksProj.Migrations
 
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime2");
-
-                    b.Property<string>("OriginalChunkText")
-                        .IsRequired()
-                        .HasColumnType("nvarchar(max)");
 
                     b.Property<Guid>("QdrantPointId")
                         .HasColumnType("uniqueidentifier");
@@ -427,15 +421,7 @@ namespace CMPS4110_NorthOaksProj.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("CMPS4110_NorthOaksProj.Models.Contracts.Contract", "Contract")
-                        .WithMany()
-                        .HasForeignKey("ContractId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
                     b.Navigation("ChatSession");
-
-                    b.Navigation("Contract");
                 });
 
             modelBuilder.Entity("CMPS4110_NorthOaksProj.Models.Contracts.Contract", b =>

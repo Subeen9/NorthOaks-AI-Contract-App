@@ -1,16 +1,38 @@
-﻿@inject NavigationManager Navigation
+@inject NavigationManager Navigation
 
 <div class="card shadow-sm mb-3 h-100 contract-hover position-relative @(IsSelected ? "selected-for-comparison" : "")"
-     style="border-radius:12px; @(IsSelected ? "background: var(--brand-gold) !important;" : "")">
+     style="border-radius:14px; overflow:hidden; @(IsSelected ? "background: var(--brand-gold) !important;" : "")"
+     @ondblclick="@(() => Navigation.NavigateTo($"/contract/{Id}"))">
 
-    <!-- Kebab -->
-    <button class="btn btn-sm btn-light position-absolute top-0 end-0 m-2 p-1"
-            @onclick:stopPropagation="true"
-            @onclick="OpenDelete">
-        <i class="bi bi-three-dots-vertical" style="color:black"></i>
-    </button>
 
-    <!-- PIN inside card, bottom-right -->
+    <!-- Options dropdown -->
+    <div class="dropdown position-absolute top-0 end-0 m-2">
+        <button class="btn btn-sm btn-light p-1" type="button" id="dropdownMenuButton-@Id"
+                data-bs-toggle="dropdown" aria-expanded="false" @onclick:stopPropagation="true">
+            <i class="bi bi-three-dots-vertical" style="color:black"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm"
+            aria-labelledby="dropdownMenuButton-@Id"
+            style="border-radius: 8px; font-size: 0.9rem;">
+            <li>
+                <button class="dropdown-item text-danger"
+                        @onclick:stopPropagation="true"
+                        @onclick="OpenDelete">
+                    <i class="bi bi-trash me-2"></i> Delete Contract
+                </button>
+            </li>
+            <li>
+                <button class="dropdown-item"
+                        @onclick:stopPropagation="true"
+                        @onclick="ToggleVisibility">
+                    <i class="bi @(IsPublic ? "bi-lock-fill" : "bi-globe-americas") me-2"></i>
+                    @(IsPublic ? "Make Private" : "Make Public")
+                </button>
+            </li>
+        </ul>
+    </div>
+
+    <!-- Pin button -->
     <button type="button"
             class="pin-btn @(IsPinned ? "pinned" : null)"
             aria-pressed="@(IsPinned ? "true" : "false")"
@@ -20,10 +42,26 @@
         <i class="bi @(IsPinned ? "bi-pin-angle-fill" : "bi-pin-angle")"></i>
     </button>
 
-    <div class="card-body d-flex flex-column" style="@(IsSelected ? "color: #fff !important;" : "")">
-        <h5 class="card-title fw-bold contract-title" style="@(IsSelected ? "color: #fff !important;" : "")">@FileName</h5>
-        <p class="@(IsSelected ? "text-white" : "text-muted") mb-1">Uploaded by @UploadedBy</p>
-        <small class="@(IsSelected ? "text-white" : "text-muted")">Uploaded: @UploadDate.ToShortDateString()</small>
+    <!-- Visibility Badge -->
+    <div class="position-absolute top-0 start-0 m-2">
+        <span class="visibility-badge @(IsPublic ? "public" : "private")">
+            <i class="bi @(IsPublic ? "bi-globe-americas" : "bi-lock-fill") me-1"></i>
+            @(IsPublic ? "Public" : "Private")
+        </span>
+    </div>
+
+    <!-- Card content -->
+    <div class="card-body d-flex flex-column mt-4" style="@(IsSelected ? "color:#fff !important;" : "")">
+        <h5 class="card-title fw-bold contract-title text-truncate"
+            style="@(IsSelected ? "color:#fff !important;" : "")">@FileName</h5>
+
+        <p class="@(IsSelected ? "text-white" : "text-muted") mb-1">
+            Uploaded by <strong>@UploadedBy</strong>
+        </p>
+
+        <small class="@(IsSelected ? "text-white" : "text-muted")">
+            Uploaded: @UploadDate.ToShortDateString()
+        </small>
     </div>
 </div>
 
@@ -33,16 +71,24 @@
     [Parameter] public int UserId { get; set; }
     [Parameter] public string? UploadedBy { get; set; }
     [Parameter] public DateTime UploadDate { get; set; }
-    [Parameter] public EventCallback<int> OnDelete { get; set; }
-    [Parameter] public bool IsSelected { get; set; }
 
-    // New for pin
+    [Parameter] public bool IsSelected { get; set; }      // new-dev
+    [Parameter] public bool IsPublic { get; set; }        // feat-prop
     [Parameter] public bool IsPinned { get; set; }
+
+    [Parameter] public EventCallback<int> OnDelete { get; set; }
+    [Parameter] public EventCallback<int> OnToggleVisibility { get; set; }
     [Parameter] public EventCallback OnTogglePin { get; set; }
 
     private async Task OpenDelete()
     {
         if (OnDelete.HasDelegate)
             await OnDelete.InvokeAsync(Id);
+    }
+
+    private async Task ToggleVisibility()
+    {
+        if (OnToggleVisibility.HasDelegate)
+            await OnToggleVisibility.InvokeAsync(Id);
     }
 }

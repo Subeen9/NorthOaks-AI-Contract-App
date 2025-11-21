@@ -35,9 +35,11 @@
                         <!-- Right section -->
                         <div class="d-flex align-items-center gap-3">
                             <!-- Upload -->
-                            <button class="btn text-white" style="background:#003768" @onclick="NavigateToUpload">
+                            <button class="btn text-white" style="background:#003768"
+                                    @onclick="TriggerUpload">
                                 <i class="bi bi-upload me-2"></i> Upload Contract
                             </button>
+
 
                             <!-- Notifications -->
                             <div class="dropdown">
@@ -59,7 +61,7 @@
                                         <span class="fw-semibold text-dark">Notifications</span>
                                         <span class="notif-header__action @(unreadCount == 0 ? "text-muted opacity-50" : "text-primary")"
                                               style="cursor:pointer;"
-                                              @onclick="ClearNotifications">
+                                              @onclick="MarkAllAsReadAsync">
                                             Mark all as read
                                         </span>
                                     </div>
@@ -86,6 +88,7 @@
                                     </div>
                                 </div>
                             </div>
+
 
 
 
@@ -126,7 +129,6 @@
     private int unreadCount = 0;
     private string? currentUserId;
 
-    private void NavigateToUpload() => Navigation.NavigateTo("/upload");
     private void NavigateToHome() => Navigation.NavigateTo("/home");
 
     protected override async Task OnInitializedAsync()
@@ -157,7 +159,7 @@
         }
         catch (Exception ex)
         {
-            Console.Error.WriteLine($"❌ Initialization failed: {ex.Message}");
+            Console.Error.WriteLine($" Initialization failed: {ex.Message}");
             ToastService.Notify(new(ToastType.Danger, "Failed to initialize notifications."));
         }
     }
@@ -168,10 +170,13 @@
         InvokeAsync(StateHasChanged);
     }
 
-    private async void ClearNotifications()
+    private async Task MarkAllAsReadAsync()
     {
         await Notifications.ClearUnread();
+        unreadCount = 0;
+        StateHasChanged();
     }
+
 
     private string GetInitials(string firstName, string lastName)
     {
@@ -197,6 +202,11 @@
             unreadCount = 0;
             StateHasChanged();
         }
+    }
+
+    private void TriggerUpload ()
+    {
+        UploadService.RaiseUpload();
     }
 
 

@@ -48,7 +48,8 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                     FileName = savedFileName,   //  store actual saved file name
                     UploadDate = DateTime.Now,
                     UserId = dto.UserId,
-                    IsDeleted = false
+                    IsDeleted = false,
+                    IsPublic = false
                 };
 
                 await AddAsync(contract);
@@ -82,23 +83,23 @@ namespace CMPS4110_NorthOaksProj.Data.Services
             }
         }
 
-        public async Task<IEnumerable<Contract>> GetAllWithUser()
+        public async Task<IEnumerable<Contract>> GetAllWithUser(int currentUserId)
         {
             return await _context.Contracts
-                .Where(c => !c.IsDeleted)
+                .Where(c => !c.IsDeleted && (c.UserId == currentUserId || c.IsPublic))
                 .Include(c => c.User)
                 .ToListAsync();
         }
 
-        public async Task<Contract?> GetByIdWithUser(int id)
+        public async Task<Contract?> GetByIdWithUser(int id, int currentUserId)
         {
             return await _context.Contracts
-                .Where(c => !c.IsDeleted && c.Id == id)
+                .Where(c => !c.IsDeleted && c.Id == id && (c.UserId == currentUserId || c.IsPublic))
                 .Include(c => c.User)
                 .FirstOrDefaultAsync();
         }
 
-        public async Task ProcessContractAsync(int contractId, string rootPath, CancellationToken token)
+        public async Task ProcessContractAsync(int contractId, string rootPath, CancellationToken token, Func<int, string, Task>? progressCallback = null)
         {
             var contract = await GetByIdAsync(contractId);
             if (contract == null) return;
@@ -106,6 +107,20 @@ namespace CMPS4110_NorthOaksProj.Data.Services
             var filePath = Path.Combine(rootPath, "UploadedContracts", contract.FileName);
 
             await _documentProcessing.ProcessDocumentAsync(contract.Id, filePath);
+        }
+        public string GetOriginalFileName(string dbFileName)
+        {
+            if (string.IsNullOrEmpty(dbFileName)) return "Unknown File";
+
+            // Split by the first underscore to remove the GUID prefix
+            var parts = dbFileName.Split('_', 2);
+
+            if (parts.Length > 1)
+            {
+                return parts[1];
+            }
+
+            return dbFileName;
         }
     }
 }
