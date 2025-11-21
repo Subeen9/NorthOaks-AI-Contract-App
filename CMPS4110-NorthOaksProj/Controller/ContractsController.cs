@@ -151,7 +151,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
             if (contract == null)
                 return NotFound("Contract not found.");
 
-            var fileName = contract.FileName;
+            var fileName = _contractsService.GetOriginalFileName(contract.FileName);
             var deletedBy = $"{deletor.FirstName} {deletor.LastName}";
 
             // Perform delete
@@ -230,7 +230,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
             // ======================================================
             if (wasPrivate && isPublic)
             {
-                var fileName = contract.FileName;
+                var fileName = _contractsService.GetOriginalFileName(contract.FileName);
                 var ownerName = $"{currentUser.FirstName} {currentUser.LastName}";
 
                 var targetUsers = await _context.Users

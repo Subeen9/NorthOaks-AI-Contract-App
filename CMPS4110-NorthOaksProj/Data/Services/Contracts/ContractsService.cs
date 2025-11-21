@@ -108,5 +108,19 @@ namespace CMPS4110_NorthOaksProj.Data.Services
 
             await _documentProcessing.ProcessDocumentAsync(contract.Id, filePath);
         }
+        public string GetOriginalFileName(string dbFileName)
+        {
+            if (string.IsNullOrEmpty(dbFileName)) return "Unknown File";
+
+            // Split by the first underscore to remove the GUID prefix
+            var parts = dbFileName.Split('_', 2);
+
+            if (parts.Length > 1)
+            {
+                return parts[1];
+            }
+
+            return dbFileName;
+        }
     }
 }
