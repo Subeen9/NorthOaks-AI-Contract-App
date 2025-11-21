@@ -15,12 +15,12 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 {
     public class ChatMessagesService : EntityBaseRepository<ChatMessage>, IChatMessagesService
     {
-        
+
         private static readonly Regex SummaryRegex = new(
             @"\b(summarize|summary|summarise|summarzie|summery|tl;dr|tldr|short\s+version|condense|brief\s+me|give\s+me\s+a\s+summary)\b",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
 
-        
+
         private const int MAX_EXCERPTS_TOTAL = 40;
         private const int MAX_EXCERPTS_PER_DOC = 30;
         private const int MAX_CONTEXT_CHARS = 80000;
