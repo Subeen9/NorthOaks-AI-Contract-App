@@ -511,16 +511,49 @@ User question:
                     : cleaned;
 
                 // Save sources
-                entity.SourcesJson = SerializeSources(
-                    filtered.Select(r => new ChatMessageSourceDto
+                var resultContractIds = filtered
+     .Select(r => r.ContractId)
+     .Distinct()
+     .ToList();
+
+                var allEmbeddings = await _context.ContractEmbeddings
+                    .AsNoTracking()
+                    .Where(e => resultContractIds.Contains(e.ContractId))
+                    .Select(e => new
+                    {
+                        e.ContractId,
+                        e.ChunkIndex,
+                        e.ChunkText,
+                        e.OriginalChunkText
+                    })
+                    .ToListAsync();
+
+                var embeddingLookup = allEmbeddings
+                    .ToDictionary(
+                        e => $"{e.ContractId}_{e.ChunkIndex}",
+                        e => e
+                    );
+
+                _logger.LogInformation("Fetched {Count} embeddings with original text", allEmbeddings.Count);
+
+                // Build sources with ORIGINAL text
+                var sources = filtered.Select(r =>
+                {
+                    var key = $"{r.ContractId}_{r.ChunkIndex}";
+                    var hasEmbedding = embeddingLookup.TryGetValue(key, out var embedding);
+
+                    return new ChatMessageSourceDto
                     {
                         ContractId = r.ContractId,
                         ChunkText = r.ChunkText,
+                        OriginalChunkText = hasEmbedding ? embedding.OriginalChunkText : r.ChunkText,
                         ChunkIndex = r.ChunkIndex,
                         PageNumber = r.PageNumber,
                         SimilarityScore = r.Score
-                    }).ToList()
-                );
+                    };
+                }).ToList();
+
+                entity.SourcesJson = SerializeSources(sources);
 
                 await _context.SaveChangesAsync();
 
