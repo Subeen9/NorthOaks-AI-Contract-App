@@ -107,7 +107,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                             vectors[i],
                             contractId,
                             chunks[i].ChunkIndex,
-                            chunks[i].ChunkText,
+                            chunks[i].ChunkText,  // Normalized text for searching
                             chunks[i].PageNumber
                         );
 >>>>>>> 94609dfa346784d138bb3f5a7826ad03f337f0a4
@@ -115,7 +115,8 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                         toInsert.Add(new ContractEmbedding
                         {
                             ContractId = contractId,
-                            ChunkText = chunks[i].ChunkText,
+                            ChunkText = chunks[i].ChunkText,  // Normalized text
+                            OriginalChunkText = chunks[i].OriginalChunkText,  // Original text for highlighting
                             ChunkIndex = chunks[i].ChunkIndex,
                             QdrantPointId = pointId
                         });
@@ -279,27 +280,44 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
 
             foreach (var pageText in pageTexts)
             {
+                var originalText = pageText.Text;
+                
                 var normalizedText = NormalizeText(pageText.Text);
 
                 if (string.IsNullOrWhiteSpace(normalizedText))
                     continue;
 
-                var sections = Regex.Split(normalizedText, @"(?=^\d+\.\s*[A-Z])", RegexOptions.Multiline)
+                var normalizedSections = Regex.Split(normalizedText, @"(?=^\d+\.\s*[A-Z])", RegexOptions.Multiline)
                                     .Where(s => !string.IsNullOrWhiteSpace(s))
                                     .ToList();
 
-                foreach (var sectionText in sections)
+                var originalSections = Regex.Split(originalText, @"(?=^\d+\.\s*[A-Z])", RegexOptions.Multiline)
+                                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                                    .ToList();
+
+                for (int sectionIndex = 0; sectionIndex < normalizedSections.Count; sectionIndex++)
                 {
-                    var match = Regex.Match(sectionText, @"^\d+\.\s*([A-Za-z\s]+)");
+                    var normalizedSection = normalizedSections[sectionIndex];
+                    var originalSection = sectionIndex < originalSections.Count 
+                        ? originalSections[sectionIndex] 
+                        : normalizedSection;
+
+                    var match = Regex.Match(normalizedSection, @"^\d+\.\s*([A-Za-z\s]+)");
                     string sectionTitle = match.Success ? match.Groups[1].Value.Trim() : "General";
 
-                    var adaptiveChunks = AdaptiveChunkSection(sectionText, minLen, maxLen, overlapRatio);
+                    var normalizedChunks = AdaptiveChunkSection(normalizedSection, minLen, maxLen, overlapRatio);
+                    var originalChunks = AdaptiveChunkSection(originalSection, minLen, maxLen, overlapRatio);
 
-                    foreach (var chunkText in adaptiveChunks)
+                    int chunkCount = Math.Max(normalizedChunks.Count, originalChunks.Count);
+
+                    for (int i = 0; i < chunkCount; i++)
                     {
                         allChunks.Add(new ContractChunk
                         {
-                            ChunkText = chunkText,
+                            ChunkText = i < normalizedChunks.Count ? normalizedChunks[i] : "",
+                            OriginalChunkText = i < originalChunks.Count 
+                                ? originalChunks[i] 
+                                : (i < normalizedChunks.Count ? normalizedChunks[i] : ""),
                             ChunkIndex = globalIndex++,
                             SectionTitle = sectionTitle,
                             PageNumber = pageText.PageNumber
@@ -308,6 +326,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                 }
             }
 
+            _logger.LogInformation("Created {ChunkCount} chunks with original text preserved", allChunks.Count);
             return allChunks;
         }
 
@@ -346,7 +365,8 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
 
         internal class ContractChunk
         {
-            public string ChunkText { get; set; } = "";
+            public string ChunkText { get; set; } = "";  
+            public string OriginalChunkText { get; set; } = ""; 
             public int ChunkIndex { get; set; }
             public string? SectionTitle { get; set; }
             public int PageNumber { get; set; }
