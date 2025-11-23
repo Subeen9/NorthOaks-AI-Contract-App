@@ -35,9 +35,22 @@
                     <div class="list-group list-group-flush">
                         @foreach (var contract in contracts)
                         {
-                            <div class= "list-group-item d-flex align-items-center gap-3">
-                                <div class="text-start">
-                                    <div class="fw-semibold">@CleanFileName(contract.FileName)</div>
+                            var isLeft = contract.Id == leftContract?.Id;
+                            var isRight = contract.Id == rightContract?.Id;
+
+                            <div class="list-group-item d-flex align-items-center gap-3">
+                                <div class="text-start flex-grow-1">
+                                    <div class="d-flex align-items-center gap-2">
+                                        @if (isLeft)
+                                        {
+                                            <span class="badge" style="background: #007bff; font-size: 0.7rem; padding: 2px 8px;">LEFT</span>
+                                        }
+                                        @if (isRight)
+                                        {
+                                            <span class="badge" style="background: #28a745; font-size: 0.7rem; padding: 2px 8px;">RIGHT</span>
+                                        }
+                                        <div class="fw-semibold">@CleanFileName(contract.FileName)</div>
+                                    </div>
                                     <small class="text-muted">@contract.UploadDate.ToShortDateString()</small>
                                 </div>
                             </div>
