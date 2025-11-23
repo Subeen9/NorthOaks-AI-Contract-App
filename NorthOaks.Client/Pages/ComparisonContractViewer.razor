@@ -82,6 +82,24 @@
                                      Url="@leftContract.FileUrl" />
                     }
                 </div>
+
+                <!-- Right PDF Viewer -->
+                <div class="pdf-viewer-container" style="flex: 1;">
+                    @if (rightContract == null)
+                    {
+                        <div class="text-center text-muted m-4">
+                            <i class="bi bi-file-earmark" style="font-size: 3rem;"></i>
+                            <p class="mt-3">Right contract loading...</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="pdf-viewer-header">
+                            <small class="text-muted">@CleanFileName(rightContract.FileName)</small>
+                        </div>
+                        <PdfJsViewer Class="pdf-frame"
+                                     Url="@rightContract.FileUrl" />
+                    }
                 </div>
             </div>
 
