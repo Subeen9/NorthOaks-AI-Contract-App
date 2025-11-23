@@ -19,7 +19,7 @@
                         @GetComparisonTitle()
                     </h6>
                     <small class="text-muted">
-                        @contracts.Count document@(contracts.Count == 1 ? "" : "s") selected
+                        of @contracts.Count document@(contracts.Count == 1 ? "" : "s") selected
                     </small>
                 </div>
 
@@ -60,9 +60,9 @@
             </div>
 
 
-            <div class="pdf-area" style="display: flex; gap: 0;">
+            <div class="pdf-area" style="display: flex; flex-direction: row; gap: 0; height: 100%;">
                 <!-- Left PDF Viewer -->
-                <div class="pdf-viewer-container" style="flex: 1; border-right: 1px solid #ddd;">
+                <div class="pdf-viewer-container" style="flex: 1; border-right: 1px solid #ddd; display: flex; flex-direction: column; height: 100%;">
                     @if (leftContract == null)
                     {
                         <div class="text-center text-muted m-4">
@@ -81,7 +81,7 @@
                 </div>
 
                 <!-- Right PDF Viewer -->
-                <div class="pdf-viewer-container" style="flex: 1;">
+                <div class="pdf-viewer-container" style="flex: 1; display: flex; flex-direction: column; height: 100%;">
                     @if (rightContract == null)
                     {
                         <div class="text-center text-muted m-4">
