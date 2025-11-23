@@ -165,7 +165,8 @@
     private List<Message> messages = new();
     private string newMessage = "";
     private bool isLoading = false;
-    private ContractReadDto? selectedContract = null;
+    private ContractReadDto? leftContract = null;
+    private ContractReadDto? rightContract = null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -183,10 +184,10 @@
                         contracts.Add(contract);
                     }
                 }
-
-                if (contracts.Any())
+                if (contracts.Count >= 2)
                 {
-                    selectedContract = contracts.First();
+                    leftContract = contracts[0];   // First
+                    rightContract = contracts[1];  // Second 
                 }
 
                 try
