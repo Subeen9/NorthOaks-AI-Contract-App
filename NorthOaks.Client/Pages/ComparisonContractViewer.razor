@@ -12,7 +12,7 @@
 <div class="contract-viewer-page">
     <div class="content">
         <div class="viewer-wrapper">
-            <div class="contracts-sidebar" style="width: 280px; border-right: 1px solid #ddd; background: #f8f9fa; overflow-y: auto;">
+            <div class="contracts-sidebar" id="contractsSidebar" style="width: 280px; border-right: 1px solid #ddd; background: #f8f9fa; flex-shrink: 0;">
                 <div style="padding: 16px; border-bottom: 1px solid #ddd;">
                     <h6 style="margin: 0 0 4px 0; color: var(--brand-blue); font-weight: 700;">
                         <i class="bi bi-files"></i>
@@ -59,6 +59,7 @@
                 }
             </div>
 
+            <div class="sidebar-resizer" @onmousedown="StartSidebarResize"></div>
 
             <div class="pdf-area" style="display: flex; flex-direction: row; gap: 0; height: 100%;">
                 <!-- Left PDF Viewer -->
@@ -326,8 +327,13 @@
     {
         JS.InvokeVoidAsync("startResizing");
     }
+    private void StartSidebarResize(MouseEventArgs e)
+    {
+        Console.WriteLine("StartSidebarResize called!");
+        JS.InvokeVoidAsync("startSidebarResizing", e.ClientX);
+    }
 
-    private string CleanFileName(string fileName, bool truncate = true)
+    private string CleanFileName(string fileName)
     {
         // remove prefix before "_" if present
         var index = fileName.IndexOf('_');
