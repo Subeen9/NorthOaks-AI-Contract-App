@@ -85,16 +85,11 @@ namespace CMPS4110_NorthOaksProj.Controller
         [HttpPost]
         public async Task<ActionResult<ChatSessionDto>> Create(CreateChatSessionDto dto)
         {
-
             if (dto.ContractIds is { Count: > 2 })
-            {
                 return BadRequest(new { error = "Maximum 2 contracts can be compared" });
-            }
 
-            // If client provides contracts, try to find an existing session for this user that already references any of those contracts.
-            // Only reuse existing sessions for single contracts (individual chats)
-            // For comparisons (multiple contracts), always create new session
-            if (dto.ContractIds is { Count:  1 })
+            // reuse single-doc sessions, but always create new for comparisons
+            if (dto.ContractIds is { Count: 1 })
             {
                 var existing = await _db.ChatSessions
                     .Include(s => s.Messages)
@@ -104,20 +99,24 @@ namespace CMPS4110_NorthOaksProj.Controller
 
                 if (existing != null)
                 {
-                    // Return the existing session (so messages remain)
                     var existingDto = new ChatSessionDto
                     {
                         Id = existing.Id,
                         UserId = existing.UserId,
                         CreatedDate = existing.CreatedDate,
                         MessageCount = existing.Messages.Count,
-                        ContractIds = existing.SessionContracts.Select(sc => sc.ContractId).ToList()
+                        ContractIds = existing.SessionContracts.Select(sc => sc.ContractId).ToList(),
+                        SessionType = (int)existing.SessionType
                     };
                     return Ok(existingDto);
                 }
             }
 
-            var entity = new ChatSession { UserId = dto.UserId };
+            var entity = new ChatSession
+            {
+                UserId = dto.UserId,
+                SessionType = (dto.ContractIds?.Count ?? 0) > 1 ? ChatSessionType.Comparison : ChatSessionType.Single
+            };
             _db.ChatSessions.Add(entity);
 
             if (dto.ContractIds is { Count: > 0 })
@@ -140,7 +139,8 @@ namespace CMPS4110_NorthOaksProj.Controller
                 UserId = entity.UserId,
                 CreatedDate = entity.CreatedDate,
                 MessageCount = 0,
-                ContractIds = dto.ContractIds ?? new List<int>()
+                ContractIds = dto.ContractIds ?? new List<int>(),
+                SessionType = (int)entity.SessionType
             };
 
             return CreatedAtAction(nameof(Get), new { id = entity.Id }, result);
