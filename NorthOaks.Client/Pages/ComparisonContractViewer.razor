@@ -325,11 +325,10 @@
 
     private void StartResize(MouseEventArgs e)
     {
-        JS.InvokeVoidAsync("startResizing");
+        JS.InvokeVoidAsync("startCompareChatResizing", e.ClientX);
     }
     private void StartSidebarResize(MouseEventArgs e)
     {
-        Console.WriteLine("StartSidebarResize called!");
         JS.InvokeVoidAsync("startSidebarResizing", e.ClientX);
     }
 
