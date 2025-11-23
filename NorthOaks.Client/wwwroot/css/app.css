@@ -2148,3 +2148,67 @@ clear-highlights-btn {
         opacity: 1;
     }
 }
+
+
+/* =========================================================
+        Side bar Resize Comparison Contracts
+========================================================= */
+
+.contracts-sidebar {
+    min-width: 200px;
+    max-width: 600px;
+    flex-shrink: 0;
+}
+
+.sidebar-resizer {
+    width: 6px;
+    background: #e9e9e9;
+    cursor: ew-resize;
+    transition: background .2s ease, width .2s ease;
+    flex-shrink: 0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+    .sidebar-resizer:hover {
+        background: #007bff;
+        width: 8px;
+    }
+
+    .sidebar-resizer:active {
+        background: #0056b3;
+        width: 8px;
+    }
+
+    .sidebar-resizer::before {
+        content: "";
+        position: absolute;
+        width: 4px;
+        height: 60px;
+        background-image: radial-gradient(circle, #999 1px, transparent 1px);
+        background-size: 4px 8px;
+        background-position: center;
+        background-repeat: repeat-y;
+        pointer-events: none;
+        transition: all .2s ease;
+        opacity: 0.6;
+    }
+
+    .sidebar-resizer:hover::before {
+        background-image: radial-gradient(circle, #fff 1.5px, transparent 1.5px);
+        height: 80px;
+        opacity: 1;
+    }
+
+    .sidebar-resizer.resizing {
+        background: #0056b3;
+        width: 10px;
+    }
+
+        .sidebar-resizer.resizing::before {
+            height: 120px;
+            background-image: radial-gradient(circle, #fff 2px, transparent 2px);
+            opacity: 1;
+        }
