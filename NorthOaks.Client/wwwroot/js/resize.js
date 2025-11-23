@@ -75,3 +75,47 @@ window.resetTextareaHeight = () => {
         textarea.style.height = '44px';
     }
 };
+
+window.startSidebarResizing = () => {
+    const resizer = document.querySelector(".sidebar-resizer");
+    const sidebar = document.getElementById("contractsSidebar");
+    let startX, startWidth;
+
+    startX = event.clientX;
+    startWidth = sidebar.offsetWidth;
+
+    resizer.classList.add("resizing");
+    document.body.style.cursor = "ew-resize";
+    document.body.style.userSelect = "none";
+
+    const iframes = document.querySelectorAll(".pdf-frame");
+    iframes.forEach(iframe => iframe.style.pointerEvents = "none");
+
+    document.addEventListener("mousemove", mouseMove);
+    document.addEventListener("mouseup", mouseUp);
+    event.preventDefault();
+
+    function mouseMove(e) {
+        const delta = e.clientX - startX;
+        const newWidth = startWidth + delta;
+        const minWidth = 200;
+        const maxWidth = 600;
+
+        if (newWidth >= minWidth && newWidth <= maxWidth) {
+            sidebar.style.width = `${newWidth}px`;
+        }
+        e.preventDefault();
+    }
+
+    function mouseUp() {
+        resizer.classList.remove("resizing");
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+
+        const iframes = document.querySelectorAll(".pdf-frame");
+        iframes.forEach(iframe => iframe.style.pointerEvents = "");
+
+        document.removeEventListener("mousemove", mouseMove);
+        document.removeEventListener("mouseup", mouseUp);
+    }
+};
