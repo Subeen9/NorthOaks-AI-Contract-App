@@ -15,11 +15,9 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 {
     public class ChatMessagesService : EntityBaseRepository<ChatMessage>, IChatMessagesService
     {
-
         private static readonly Regex SummaryRegex = new(
             @"\b(summarize|summary|summarise|summarzie|summery|tl;dr|tldr|short\s+version|condense|brief\s+me|give\s+me\s+a\s+summary)\b",
             RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
 
         private const int MAX_EXCERPTS_TOTAL = 40;
         private const int MAX_EXCERPTS_PER_DOC = 30;
@@ -53,12 +51,12 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 
             var comparisonPatterns = new[]
             {
-        @"\b(difference|differ|compare|comparison|contrast|versus|vs\.?)\b",
-        @"\bbetween\s+(these|the|both|two|multiple)\s+(document|contract|file)",
-        @"\bhow\s+do\s+(these|they|the\s+\w+)\s+(differ|compare)",
-        @"\bwhat\s+(distinguishes|sets\s+apart)",
-        @"\bsimilar(ities)?\s+(and|or)\s+difference"
-    };
+                @"\b(difference|differ|compare|comparison|contrast|versus|vs\.?)\b",
+                @"\bbetween\s+(these|the|both|two|multiple)\s+(document|contract|file)",
+                @"\bhow\s+do\s+(these|they|the\s+\w+)\s+(differ|compare)",
+                @"\bwhat\s+(distinguishes|sets\s+apart)",
+                @"\bsimilar(ities)?\s+(and|or)\s+difference"
+            };
 
             return comparisonPatterns.Any(pattern =>
                 Regex.IsMatch(text, pattern, RegexOptions.IgnoreCase));
@@ -68,7 +66,6 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
         {
             return Path.GetFileNameWithoutExtension(fileName) ?? "Document";
         }
-
 
         public async Task<IEnumerable<ChatMessageDto>> GetBySession(int sessionId)
         {
@@ -135,122 +132,127 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 
             return text;
         }
-        private async Task<string> HandleComparisonAsync(
-    int sessionId,
-    string userMessage,
-    List<int> contractIds)
+
+        // ==================== IMPROVED COMPARISON LOGIC ====================
+
+        private async Task<(string response, List<ChatMessageSourceDto> sources)> HandleComparisonAsync(
+            int sessionId,
+            string userMessage,
+            List<int> contractIds)
         {
             if (contractIds.Count > 4)
             {
-                return $"You selected {contractIds.Count} documents. Please select up to 4 documents for comparison.";
+                return ($"You selected {contractIds.Count} documents. Please select up to 4 documents for comparison.",
+                        new List<ChatMessageSourceDto>());
             }
 
-            _logger.LogInformation("Starting comparison for {Count} documents", contractIds.Count);
+            _logger.LogInformation("COMPARISON MODE: Starting for {Count} documents", contractIds.Count);
 
-            var documentChunks = new Dictionary<int, List<(int, string)>>();
+            var vector = await _messageEmbeddings.EmbedMessageAsync(userMessage);
+            var allResults = new List<VectorSearchResult>();
+            int chunksPerDoc = Math.Max(10, 30 / contractIds.Count);
 
             foreach (var contractId in contractIds)
             {
-                var totalChunks = await _context.ContractEmbeddings
-                    .Where(e => e.ContractId == contractId)
-                    .CountAsync();
-
-                if (totalChunks == 0)
-                {
-                    documentChunks[contractId] = new List<(int, string)>();
-                    continue;
-                }
-
-                // sample evenly across document  
-                int samplesNeeded = Math.Min(12, totalChunks);
-                int interval = Math.Max(1, totalChunks / samplesNeeded);
-
-                var chunkIndices = Enumerable.Range(0, samplesNeeded)
-                    .Select(i => i * interval)
-                    .Where(x => x < totalChunks)
-                    .ToList();
-
-                var chunks = await _context.ContractEmbeddings
-                    .AsNoTracking()
-                    .Where(e => e.ContractId == contractId && chunkIndices.Contains(e.ChunkIndex))
-                    .OrderBy(e => e.ChunkIndex)
-                    .Select(e => new { e.ChunkIndex, e.ChunkText })
-                    .ToListAsync();
-
-                documentChunks[contractId] = chunks
-                    .Select(c => (c.ChunkIndex, c.ChunkText ?? string.Empty))
-                    .ToList();
-
-                _logger.LogInformation(
-                    "Sampled {Count} chunks from {Total} total for Doc {DocId}",
-                    chunks.Count, totalChunks, contractId
+                var docResults = await _qdrantService.SearchSimilarAsync(
+                    vector,
+                    limit: chunksPerDoc,
+                    scoreThreshold: 0.12f,
+                    contractIds: new List<int> { contractId }
                 );
+                allResults.AddRange(docResults);
             }
 
-            // build context
-            var contextSb = new StringBuilder(MAX_CONTEXT_CHARS);
+            _logger.LogInformation("Found {Count} initial chunks for comparison context", allResults.Count);
+
+            if (allResults.Count == 0)
+            {
+                return ("I couldn't find relevant information to compare these documents.",
+                        new List<ChatMessageSourceDto>());
+            }
+
+            var topResults = allResults
+                .OrderByDescending(r => r.Score)
+                .Take(30)
+                .ToList();
 
             var contractNames = await _context.Contracts
                 .AsNoTracking()
                 .Where(c => contractIds.Contains(c.Id))
                 .ToDictionaryAsync(c => c.Id, c => c.FileName);
 
+            var docGroups = topResults
+                .GroupBy(r => r.ContractId)
+                .OrderBy(g => contractIds.IndexOf(g.Key))
+                .ToList();
+
+            var contextSb = new StringBuilder(MAX_CONTEXT_CHARS);
             int docNum = 1;
             int charCount = 0;
 
-            foreach (var contractId in contractIds)
+            foreach (var group in docGroups)
             {
-                var displayName = contractNames.TryGetValue(contractId, out var fn)
+                var displayName = contractNames.TryGetValue(group.Key, out var fn)
                     ? Path.GetFileNameWithoutExtension(fn)
                     : $"Document {docNum}";
 
                 contextSb.AppendLine($"\n=== Document {docNum}: {displayName} ===");
 
-                if (documentChunks.TryGetValue(contractId, out var chunks))
+                foreach (var result in group.OrderByDescending(r => r.Score))
                 {
-                    foreach (var (_, text) in chunks)
+                    var clean = result.ChunkText.Trim();
+                    if (clean.Length < MIN_CHUNK_LEN) continue;
+
+                    if (charCount + clean.Length > MAX_CONTEXT_CHARS)
                     {
-                        var clean = text.Trim();
-                        if (clean.Length < MIN_CHUNK_LEN) continue;
-
-                        if (charCount + clean.Length > MAX_CONTEXT_CHARS)
-                        {
-                            _logger.LogWarning("Stopped due to context size limit");
-                            break;
-                        }
-
-                        contextSb.AppendLine(clean);
-                        contextSb.AppendLine();
-                        charCount += clean.Length;
+                        _logger.LogWarning("Stopped due to context size limit");
+                        break;
                     }
+
+                    contextSb.AppendLine(clean);
+                    contextSb.AppendLine();
+                    charCount += clean.Length;
                 }
 
                 docNum++;
             }
 
             if (charCount < 150)
-                return "I couldn't extract enough useful text to compare the documents.";
+                return ("I couldn't extract enough useful text to compare the documents.",
+                        new List<ChatMessageSourceDto>());
 
             var systemPrompt = @"
-You are a professional document analyst. 
-Compare documents strictly based on the provided text.
+You are a professional contract analyst comparing documents.
 
-RULES:
-1. Refer to each document by 'Document 1', 'Document 2', etc.
-2. Identify differences in content, purpose, structure, tone.
-3. Identify similarities if they exist.
-4. DO NOT make up content.
-5. If documents are different genres (contract vs letter), explain clearly.
-6. Keep analysis concise but thorough.";
+CRITICAL INSTRUCTIONS:
+1. Always refer to documents as 'Document 1', 'Document 2', etc.
+2. For EVERY difference or similarity you mention, include specific searchable details:
+   - Exact numbers, amounts, dates, percentages
+   - Specific terms, phrases, or clause names from the documents
+   - Party names, vendor counts, durations, notice periods
+3. Use this format: 'Document X states [specific detail] while Document Y states [specific detail]'
+4. Be precise and factual - include actual values when comparing
+5. DO NOT invent content not present in the excerpts
+
+EXAMPLES OF GOOD OUTPUT:
+- 'Document 1 requires payment within 30 days, while Document 2 requires payment within 60 days.'
+- 'Document 1 mentions 2 approved vendors, whereas Document 2 lists 5 approved vendors.'
+- 'Document 1 specifies a $5,000 liability cap, but Document 2 has a $10,000 cap.'
+
+EXAMPLES OF BAD OUTPUT:
+- 'The payment terms differ between documents.'
+- 'One document has more vendors than the other.'";
 
             var userPrompt = $@"
 User request: {userMessage}
 
-Below are excerpts from {contractIds.Count} documents. 
-Compare them and list differences and similarities.
+Below are excerpts from {contractIds.Count} documents.
+Compare them thoroughly and explain differences/similarities with specific, searchable details.
 
 {contextSb}
 ";
+
+            string comparisonResponse;
 
             try
             {
@@ -259,13 +261,55 @@ Compare them and list differences and similarities.
                     systemPrompt: systemPrompt
                 );
 
-                return CleanGeneratedResponse(result);
+                comparisonResponse = CleanGeneratedResponse(result);
+                _logger.LogInformation("Generated comparison: {Length} chars", comparisonResponse.Length);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error in HandleComparisonAsync");
-                return "I encountered an error while comparing the documents.";
+                _logger.LogError(ex, "Error generating comparison response");
+                return ("I encountered an error while comparing the documents.",
+                        new List<ChatMessageSourceDto>());
             }
+
+            var sources = new List<ChatMessageSourceDto>();
+            var seenChunks = new HashSet<string>();
+
+            foreach (var contractId in contractIds)
+            {
+                var contractResults = topResults
+                    .Where(r => r.ContractId == contractId)
+                    .OrderByDescending(r => r.Score)
+                    .Take(4);
+
+                foreach (var result in contractResults)
+                {
+                    var chunkKey = $"{result.ContractId}_{result.ChunkIndex}";
+                    if (seenChunks.Contains(chunkKey))
+                        continue;
+
+                    seenChunks.Add(chunkKey);
+
+                    var embedding = await _context.ContractEmbeddings
+                        .AsNoTracking()
+                        .Where(e => e.ContractId == result.ContractId && e.ChunkIndex == result.ChunkIndex)
+                        .Select(e => e.OriginalChunkText)
+                        .FirstOrDefaultAsync();
+
+                    sources.Add(new ChatMessageSourceDto
+                    {
+                        ContractId = result.ContractId,
+                        ChunkIndex = result.ChunkIndex,
+                        PageNumber = result.PageNumber,
+                        ChunkText = result.ChunkText,
+                        OriginalChunkText = embedding ?? result.ChunkText,
+                        SimilarityScore = result.Score
+                    });
+                }
+            }
+
+            _logger.LogInformation("COMPARISON COMPLETE: {Sources} sources found", sources.Count);
+
+            return (comparisonResponse, sources);
         }
 
 
@@ -273,12 +317,10 @@ Compare them and list differences and similarities.
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
 
-            // 1. Validate session
             var exists = await _context.ChatSessions.AsNoTracking()
                 .AnyAsync(s => s.Id == dto.SessionId);
             if (!exists) return null;
 
-            // 2. Save user message
             var entity = new ChatMessage
             {
                 SessionId = dto.SessionId,
@@ -291,7 +333,6 @@ Compare them and list differences and similarities.
 
             try
             {
-                // 3. Check summary intent first
                 if (IsSummaryIntent(dto.Message))
                 {
                     sw.Restart();
@@ -304,7 +345,6 @@ Compare them and list differences and similarities.
                     return MapToDto(entity);
                 }
 
-                // 4. Load documents linked to this chat
                 sw.Restart();
                 var contractIds = await _context.ChatSessionContracts
                     .AsNoTracking()
@@ -323,29 +363,31 @@ Compare them and list differences and similarities.
                     return MapToDto(entity);
                 }
 
-                // 5. Check comparison intent (only for multi-document)
                 if (IsComparisonIntent(dto.Message) && contractIds.Count > 1)
                 {
                     sw.Restart();
-                    _logger.LogInformation("Comparison intent detected for {Count} documents",
-                        contractIds.Count);
+                    _logger.LogInformation("USING COMPARISON LOGIC for {Count} documents", contractIds.Count);
 
-                    var comparison = await HandleComparisonAsync(
+                    var (comparison, comparisonSources) = await HandleComparisonAsync(
                         dto.SessionId,
                         dto.Message,
                         contractIds
                     );
 
                     _logger.LogInformation("Comparison completed in {Ms}ms", sw.ElapsedMilliseconds);
+
                     entity.Response = comparison;
+                    entity.SourcesJson = SerializeSources(comparisonSources);
+
                     await _context.SaveChangesAsync();
-                    return MapToDto(entity);
+
+                    var responseDto = MapToDto(entity);
+                    responseDto.Sources = comparisonSources;
+                    return responseDto;
                 }
 
-                // 6. RAG PIPELINE with balanced multi-document support
                 sw.Restart();
-                _logger.LogInformation("Starting RAG pipeline for {Count} document(s)",
-                    contractIds.Count);
+                _logger.LogInformation("USING SINGLE PDF RAG LOGIC for {Count} document(s)", contractIds.Count);
 
                 var vector = await _messageEmbeddings.EmbedMessageAsync(dto.Message);
                 _logger.LogInformation("Embedding created in {Ms}ms", sw.ElapsedMilliseconds);
@@ -354,7 +396,6 @@ Compare them and list differences and similarities.
 
                 if (contractIds.Count == 1)
                 {
-                    // Single document: standard search
                     results = await _qdrantService.SearchSimilarAsync(
                         vector,
                         limit: 20,
@@ -366,7 +407,6 @@ Compare them and list differences and similarities.
                 }
                 else
                 {
-                    // Multiple documents: search each separately for fairness
                     results = new List<VectorSearchResult>();
                     int chunksPerDoc = Math.Max(8, 20 / contractIds.Count);
 
@@ -378,7 +418,7 @@ Compare them and list differences and similarities.
                         var docResults = await _qdrantService.SearchSimilarAsync(
                             vector,
                             limit: chunksPerDoc,
-                            scoreThreshold: 0.12f,  // Lower threshold for better coverage
+                            scoreThreshold: 0.12f,
                             contractIds: new List<int> { contractId }
                         );
                         results.AddRange(docResults);
@@ -395,7 +435,6 @@ Compare them and list differences and similarities.
                     return MapToDto(entity);
                 }
 
-                // Deduplicate
                 var deduped = ContextBuilder.DeduplicateChunks(
                     results.Select(r => r.ChunkText).ToList()
                 );
@@ -408,7 +447,6 @@ Compare them and list differences and similarities.
 
                 _logger.LogInformation("After dedup: {Count} chunks", filtered.Count);
 
-                //  Build context with document labels for multi-doc scenarios
                 var contractNames = await _context.Contracts
                     .AsNoTracking()
                     .Where(c => contractIds.Contains(c.Id))
@@ -426,7 +464,6 @@ Compare them and list differences and similarities.
                 {
                     if (contractIds.Count > 1)
                     {
-                        // Multi-doc: add document labels
                         var displayName = contractNames.TryGetValue(group.Key, out var fn)
                             ? CleanFileName(fn)
                             : $"Document {docIndex}";
@@ -498,7 +535,6 @@ User question:
 
 {evidenceInstruction}";
 
-                // Generate response
                 sw.Restart();
                 var raw = await _generationClient.GenerateAsync(userPrompt, systemPrompt);
                 var cleaned = CleanGeneratedResponse(raw);
@@ -510,11 +546,10 @@ User question:
                     ? "The model returned an empty response. Please try rephrasing your question."
                     : cleaned;
 
-                // Save sources
                 var resultContractIds = filtered
-     .Select(r => r.ContractId)
-     .Distinct()
-     .ToList();
+                    .Select(r => r.ContractId)
+                    .Distinct()
+                    .ToList();
 
                 var allEmbeddings = await _context.ContractEmbeddings
                     .AsNoTracking()
@@ -536,7 +571,6 @@ User question:
 
                 _logger.LogInformation("Fetched {Count} embeddings with original text", allEmbeddings.Count);
 
-                // Build sources with ORIGINAL text
                 var sources = filtered.Select(r =>
                 {
                     var key = $"{r.ContractId}_{r.ChunkIndex}";
@@ -557,10 +591,10 @@ User question:
 
                 await _context.SaveChangesAsync();
 
-                var responseDto = MapToDto(entity);
-                responseDto.Sources = DeserializeSources(entity.SourcesJson);
+                var ragResponseDto = MapToDto(entity);
+                ragResponseDto.Sources = DeserializeSources(entity.SourcesJson);
 
-                return responseDto;
+                return ragResponseDto;
             }
             catch (Exception ex)
             {
@@ -570,8 +604,6 @@ User question:
                 return MapToDto(entity);
             }
         }
-
-
 
         public async Task<bool> Delete(int id)
         {

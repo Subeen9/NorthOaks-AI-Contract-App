@@ -1,7 +1,7 @@
 ﻿@inject IJSRuntime JS
 
 <div class="pdf-viewer-container" style="width: 100%; height: 100%; position: relative;">
-    <iframe id="pdfViewer"
+    <iframe id="@ViewerId"
             class="@Class"
             src="@ViewerUrl"
             style="width: 100%; height: 100%; border: none;">
@@ -11,6 +11,7 @@
 @code {
     [Parameter] public string Url { get; set; } = "";
     [Parameter] public string Class { get; set; } = "";
+    [Parameter] public string ViewerId { get; set; } = "pdfViewer";
     [Parameter] public EventCallback OnDocumentLoaded { get; set; }
     [Parameter] public EventCallback<int> OnPageChanged { get; set; }
 
@@ -25,14 +26,12 @@
             try
             {
                 await Task.Delay(500);
-
-                await JS.InvokeVoidAsync("initPdfViewer");
-
+                await JS.InvokeVoidAsync("initPdfViewerWithId", ViewerId);
                 await OnDocumentLoaded.InvokeAsync();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error initializing PDF viewer: {ex.Message}");
+                Console.WriteLine($"Error initializing PDF viewer {ViewerId}: {ex.Message}");
             }
         }
     }

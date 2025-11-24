@@ -1,31 +1,35 @@
-﻿let pdfViewerWindow = null;
+﻿let pdfViewerWindows = {};
 
-window.initPdfViewer = function () {
-    const iframe = document.getElementById('pdfViewer');
+window.initPdfViewerWithId = function (viewerId) {
+    const iframe = document.getElementById(viewerId);
     if (!iframe) {
-        console.error('PDF viewer iframe not found');
+        console.error(`PDF viewer iframe '${viewerId}' not found`);
         return false;
     }
     iframe.onload = function () {
-        pdfViewerWindow = iframe.contentWindow;
-        console.log('PDF viewer iframe loaded');
+        pdfViewerWindows[viewerId] = iframe.contentWindow;
+        console.log(`PDF viewer iframe '${viewerId}' loaded`);
     };
     return true;
+};
+
+window.initPdfViewer = function () {
+    return initPdfViewerWithId('pdfViewer');
 };
 
 window.onPdfViewerLoaded = function () {
     const iframe = document.getElementById('pdfViewer');
     if (iframe && iframe.contentWindow) {
-        pdfViewerWindow = iframe.contentWindow;
+        pdfViewerWindows['pdfViewer'] = iframe.contentWindow;
         console.log('PDF viewer window reference updated');
     }
 };
 
-window.pdfViewerClearHighlights = function () {
+window.pdfViewerClearHighlights = function (viewerId = 'pdfViewer') {
     try {
-        const iframe = document.getElementById('pdfViewer');
+        const iframe = document.getElementById(viewerId);
         if (!iframe || !iframe.contentWindow) {
-            console.error('Cannot clear highlights: iframe not accessible');
+            console.error(`Cannot clear highlights: iframe '${viewerId}' not accessible`);
             return false;
         }
 
@@ -57,19 +61,19 @@ window.pdfViewerClearHighlights = function () {
             el.remove();
         });
 
-        console.log('All highlights cleared');
+        console.log(`All highlights cleared in '${viewerId}'`);
         return true;
     } catch (error) {
-        console.error('Error clearing highlights:', error);
+        console.error(`Error clearing highlights in '${viewerId}':`, error);
         return false;
     }
 };
 
-window.pdfViewerGoToPage = function (pageNumber) {
+window.pdfViewerGoToPage = function (pageNumber, viewerId = 'pdfViewer') {
     try {
-        const iframe = document.getElementById('pdfViewer');
+        const iframe = document.getElementById(viewerId);
         if (!iframe || !iframe.contentWindow) {
-            console.error('Cannot navigate: iframe not accessible');
+            console.error(`Cannot navigate: iframe '${viewerId}' not accessible`);
             return false;
         }
 
@@ -77,27 +81,27 @@ window.pdfViewerGoToPage = function (pageNumber) {
         const pdfViewer = iframeWindow.PDFViewerApplication?.pdfViewer;
 
         if (!pdfViewer) {
-            console.error('PDFViewerApplication.pdfViewer not available');
+            console.error(`PDFViewerApplication.pdfViewer not available in '${viewerId}'`);
             return false;
         }
 
         pdfViewer.currentPageNumber = pageNumber;
-        console.log(`✓ Navigated to page ${pageNumber}`);
+        console.log(`✓ Navigated to page ${pageNumber} in '${viewerId}'`);
         return true;
     } catch (error) {
-        console.error('Error navigating to page:', error);
+        console.error(`Error navigating to page in '${viewerId}':`, error);
         return false;
     }
 };
 
-window.pdfViewerHighlightText = function (searchText) {
-    console.log(`=== Starting highlight (${searchText.length} chars) ===`);
+window.pdfViewerHighlightText = function (searchText, viewerId = 'pdfViewer') {
+    console.log(`=== Starting highlight in '${viewerId}' (${searchText.length} chars) ===`);
     console.log(`Preview: "${searchText.substring(0, 80)}..."`);
 
     try {
-        const iframe = document.getElementById('pdfViewer');
+        const iframe = document.getElementById(viewerId);
         if (!iframe || !iframe.contentWindow) {
-            console.error('PDF viewer iframe not accessible');
+            console.error(`PDF viewer iframe '${viewerId}' not accessible`);
             return false;
         }
 
@@ -106,27 +110,23 @@ window.pdfViewerHighlightText = function (searchText) {
         const pdfViewer = iframeWindow.PDFViewerApplication?.pdfViewer;
 
         if (!pdfViewer) {
-            console.error('PDFViewerApplication not available');
+            console.error(`PDFViewerApplication not available in '${viewerId}'`);
             return false;
         }
 
         const currentPageNumber = pdfViewer.currentPageNumber;
-        console.log(`Current page: ${currentPageNumber}`);
+        console.log(`Current page: ${currentPageNumber} in '${viewerId}'`);
 
-        return smartParagraphHighlight(iframeDoc, currentPageNumber, searchText);
+        return smartParagraphHighlight(iframeDoc, currentPageNumber, searchText, viewerId);
 
     } catch (error) {
-        console.error('Error in pdfViewerHighlightText:', error);
+        console.error(`Error in pdfViewerHighlightText for '${viewerId}':`, error);
         console.error('Stack:', error.stack);
         return false;
     }
 };
 
-/**
- * Smart highlighting that preserves paragraph structure
- * Uses fuzzy matching to handle PDF text extraction quirks
- */
-function smartParagraphHighlight(iframeDoc, pageNumber, searchText) {
+function smartParagraphHighlight(iframeDoc, pageNumber, searchText, viewerId) {
     try {
         const pageDiv = iframeDoc.querySelector(`.page[data-page-number="${pageNumber}"]`);
         if (!pageDiv) {
@@ -136,156 +136,138 @@ function smartParagraphHighlight(iframeDoc, pageNumber, searchText) {
 
         const textLayer = pageDiv.querySelector('.textLayer');
         if (!textLayer) {
-            console.error('Text layer not found');
+            console.error(`Text layer not found`);
             return false;
         }
 
         const textSpans = Array.from(textLayer.querySelectorAll('span'));
-        if (textSpans.length === 0) {
-            console.error('No text spans found');
+
+        // DEBUG: Show all text spans on the page
+        console.log(`=== Analyzing ${textSpans.length} spans on page ===`);
+        textSpans.slice(0, 15).forEach((span, idx) => {
+            console.log(`Span ${idx}: "${span.textContent}" (length: ${span.textContent?.length || 0})`);
+        });
+
+        // Extract keywords
+        const keywords = searchText
+            .toLowerCase()
+            .split(/\W+/)
+            .filter(w => w.length > 5)
+            .slice(0, 5);
+
+        console.log(`Looking for keywords: ${keywords.join(', ')}`);
+
+        // Strategy 1: Look for section headers
+        console.log('--- Strategy 1: Looking for section header ---');
+        const headerSpan = findSectionHeader(textSpans, searchText);
+
+        if (headerSpan) {
+            const headerIndex = textSpans.indexOf(headerSpan);
+            console.log(`✓ Found section header at index ${headerIndex}: "${headerSpan.textContent}"`);
+
+            // Highlight header + following paragraph
+            const startIdx = headerIndex;
+            const endIdx = Math.min(textSpans.length, headerIndex + 25);
+
+            for (let i = startIdx; i < endIdx; i++) {
+                createHighlightOverlay(textSpans[i], pageDiv);
+            }
+
+            console.log(`✓ Highlighted section header + paragraph (${endIdx - startIdx} spans)`);
+            return true;
+        }
+
+        console.log('No section header found, trying Strategy 2...');
+
+        // Strategy 2: Keyword matching
+        const matchingSpans = [];
+        textSpans.forEach(span => {
+            const spanText = (span.textContent || '').toLowerCase();
+            const matchCount = keywords.filter(kw => spanText.includes(kw)).length;
+            if (matchCount > 0) {
+                matchingSpans.push({ span, matchCount });
+            }
+        });
+
+        if (matchingSpans.length === 0) {
+            console.log('No matching content found');
             return false;
         }
 
-        console.log(`Found ${textSpans.length} text spans on page`);
+        matchingSpans.sort((a, b) => b.matchCount - a.matchCount);
 
-        const pageTextData = buildPageTextMap(textSpans);
-        const { fullText, spanMap } = pageTextData;
+        const bestMatch = matchingSpans[0].span;
+        const bestIndex = textSpans.indexOf(bestMatch);
 
-        console.log(`Page text length: ${fullText.length} characters`);
+        console.log(`Best match at index ${bestIndex}: "${bestMatch.textContent}"`);
 
-        let matchResult = attemptExactMatch(fullText, searchText, spanMap);
+        // Look backwards for a section header
+        console.log('--- Looking for nearby header ---');
+        const nearbyHeader = findNearbyHeader(textSpans, bestIndex);
 
-        if (!matchResult) {
-            console.log('Exact match failed, trying fuzzy match...');
-            matchResult = attemptFuzzyMatch(fullText, searchText, spanMap);
+        if (nearbyHeader) {
+            const headerIndex = textSpans.indexOf(nearbyHeader);
+            console.log(`✓ Found nearby header at index ${headerIndex}: "${nearbyHeader.textContent}"`);
+
+            const startIdx = headerIndex;
+            const endIdx = Math.min(textSpans.length, headerIndex + 25);
+
+            for (let i = startIdx; i < endIdx; i++) {
+                createHighlightOverlay(textSpans[i], pageDiv);
+            }
+
+            console.log(`✓ Highlighted from header (${endIdx - startIdx} spans)`);
+            return true;
         }
 
-        if (!matchResult) {
-            console.log('Fuzzy match failed, trying sentence-based match...');
-            matchResult = attemptSentenceMatch(fullText, searchText, spanMap);
+        console.log('No nearby header found, using tight range');
+
+        // Strategy 3: Highlight tight range
+        const startIdx = Math.max(0, bestIndex - 2);
+        const endIdx = Math.min(textSpans.length, bestIndex + 8);
+
+        for (let i = startIdx; i < endIdx; i++) {
+            createHighlightOverlay(textSpans[i], pageDiv);
         }
 
-        if (!matchResult) {
-            console.log(' All matching strategies failed, using intelligent keyword fallback...');
-            return intelligentKeywordFallback(textSpans, searchText, pageDiv, spanMap);
-        }
-
-        console.log(`✓ Found match: ${matchResult.spansToHighlight.length} spans`);
-        matchResult.spansToHighlight.forEach(span => {
-            createHighlightOverlay(span, pageDiv);
-        });
-
+        console.log(`✓ Highlighted around best match (${endIdx - startIdx} spans)`);
         return true;
+
     } catch (error) {
-        console.error('Error in smart paragraph highlighting:', error);
+        console.error('Error highlighting:', error);
         return false;
     }
 }
 
-/**
- * Build a map of text spans preserving spacing and structure
- */
-function buildPageTextMap(textSpans) {
-    let fullText = '';
-    const spanMap = [];
+// Helper: Find section header in text spans
+function findSectionHeader(textSpans, searchText) {
+    const searchLower = searchText.toLowerCase();
 
-    textSpans.forEach((span, index) => {
-        const text = span.textContent || '';
-        spanMap.push({
-            span: span,
-            startIndex: fullText.length,
-            endIndex: fullText.length + text.length,
-            originalText: text,
-            index: index
-        });
-        fullText += text;
-    });
+    for (const span of textSpans) {
+        const text = (span.textContent || '').trim();
 
-    return { fullText, spanMap };
-}
+        // Skip empty or very short spans
+        if (text.length < 3) continue;
 
+        // Check if this looks like a header
+        const isHeader =
+            // Title Case pattern
+            /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/.test(text) ||
+            // All caps (but not single word)
+            (/^[A-Z\s]+$/.test(text) && text.split(/\s+/).length > 1) ||
+            // Contains common header words
+            /^(article|section|clause|provision|schedule|exhibit|appendix)/i.test(text);
 
-function attemptExactMatch(pageText, searchText, spanMap) {
-    let index = pageText.indexOf(searchText);
-    if (index !== -1) {
-        console.log('Found exact character match');
-        return getSpansForRange(index, index + searchText.length, spanMap);
-    }
+        if (isHeader) {
+            // Check if header text is in search text
+            const headerWords = text.toLowerCase().split(/\s+/);
+            const matchCount = headerWords.filter(word =>
+                word.length > 3 && searchLower.includes(word)
+            ).length;
 
-    const normalizedPageText = pageText.replace(/\s+/g, ' ');
-    const normalizedSearchText = searchText.replace(/\s+/g, ' ');
-
-    index = normalizedPageText.indexOf(normalizedSearchText);
-    if (index !== -1) {
-        console.log('Found match with normalized whitespace');
-        return getSpansForRange(index, index + normalizedSearchText.length, spanMap);
-    }
-
-    return null;
-}
-
-/**
- * Strategy 2: Fuzzy match - find match with slight variations
- */
-function attemptFuzzyMatch(pageText, searchText, spanMap) {
-    const quarterLength = Math.floor(searchText.length / 4);
-    const firstQuarter = searchText.substring(0, quarterLength);
-    const lastQuarter = searchText.substring(searchText.length - quarterLength);
-
-    const firstIndex = pageText.indexOf(firstQuarter);
-    const lastIndex = pageText.lastIndexOf(lastQuarter);
-
-    if (firstIndex !== -1 && lastIndex !== -1 && lastIndex >= firstIndex) {
-        console.log('Found fuzzy match using first and last quarters');
-        return getSpansForRange(firstIndex, lastIndex + lastQuarter.length, spanMap);
-    }
-
-    const halfLength = Math.floor(searchText.length / 2);
-    const firstHalf = searchText.substring(0, halfLength);
-    const firstHalfIndex = pageText.indexOf(firstHalf);
-
-    if (firstHalfIndex !== -1) {
-        console.log('Found fuzzy match using first half');
-       const remainingText = searchText.substring(halfLength);
-        const keywords = remainingText.split(/\s+/).slice(0, 5).filter(w => w.length > 3);
-
-        let endIndex = firstHalfIndex + firstHalf.length;
-        for (const keyword of keywords) {
-            const kwIndex = pageText.indexOf(keyword, firstHalfIndex);
-            if (kwIndex !== -1 && kwIndex < firstHalfIndex + searchText.length + 200) {
-                endIndex = kwIndex + keyword.length;
-            }
-        }
-
-        return getSpansForRange(firstHalfIndex, endIndex, spanMap);
-    }
-
-    return null;
-}
-
-
-function attemptSentenceMatch(pageText, searchText, spanMap) {
-    const firstSentence = extractFirstSentence(searchText);
-
-    if (firstSentence.length > 30) {  
-        const index = pageText.indexOf(firstSentence);
-        if (index !== -1) {
-            console.log(' Found match using first sentence');
-            const endIndex = Math.min(index + searchText.length, pageText.length);
-            return getSpansForRange(index, endIndex, spanMap);
-        }
-    }
-
-    
-    const numberedSectionMatch = searchText.match(/^(\d+\.\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/);
-    if (numberedSectionMatch) {
-        const sectionTitle = numberedSectionMatch[1];
-        if (sectionTitle.length >= 10) { 
-            const index = pageText.indexOf(sectionTitle);
-            if (index !== -1) {
-                console.log(`✓ Found match using numbered section: "${sectionTitle}"`);
-                const endIndex = Math.min(index + searchText.length, pageText.length);
-                return getSpansForRange(index, endIndex, spanMap);
+            if (matchCount >= 1) {
+                console.log(`Found matching header: "${text}"`);
+                return span;
             }
         }
     }
@@ -293,154 +275,40 @@ function attemptSentenceMatch(pageText, searchText, spanMap) {
     return null;
 }
 
-/**
- * Intelligent keyword fallback - highlights contextual phrases not random keywords
- */
-function intelligentKeywordFallback(textSpans, searchText, pageDiv, spanMap) {
-    const stopWords = new Set([
-        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
-        'is', 'was', 'are', 'were', 'be', 'been', 'this', 'that', 'these', 'those',
-        'from', 'by', 'as', 'into', 'through', 'during', 'before', 'after', 'above', 'below',
-        'then', 'when', 'where', 'who', 'what', 'which', 'how', 'his', 'her', 'their', 'have', 'has'
-    ]);
+// Helper: Find nearby header before the matched span
+function findNearbyHeader(textSpans, matchIndex) {
+    // Look backwards up to 10 spans
+    const searchStart = Math.max(0, matchIndex - 10);
 
-     
-    const keywords = searchText
-        .split(/[\s\n]+/)
-        .filter(w => {
-            const clean = w.toLowerCase().replace(/[^\w]/g, '');
-            return clean.length > 4 && !stopWords.has(clean);
-        })
-        .slice(0, 20)
-        .map(w => w.toLowerCase().replace(/[^\w]/g, ''));
+    for (let i = matchIndex - 1; i >= searchStart; i--) {
+        const span = textSpans[i];
+        const text = (span.textContent || '').trim();
 
-    if (keywords.length === 0) {
-        console.warn('Could not extract meaningful keywords');
-        return false;
-    }
+        if (text.length < 3) continue;
 
-    console.log(`Using ${keywords.length} key terms: ${keywords.slice(0, 5).join(', ')}...`);
+        const isHeader =
+            /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/.test(text) ||
+            /^[A-Z\s]+$/.test(text) ||
+            /^(article|section|clause|provision|schedule|exhibit|appendix)/i.test(text) ||
+            /^\d+\.\s+[A-Z]/.test(text); // Numbered sections like "1. Introduction"
 
-    const visibleSpans = textSpans.filter(span => {
-        const rect = span.getBoundingClientRect();
-        return rect.width > 0 && rect.height > 0;
-    });
-
-    console.log(`Filtered to ${visibleSpans.length} visible spans (from ${textSpans.length} total)`);
-
-    const highlightedSpans = new Set();
-    let currentGroup = [];
-    let groupKeywordCount = 0;
-
-    visibleSpans.forEach((span, idx) => {
-        const spanText = (span.textContent || '').toLowerCase().replace(/[^\w\s]/g, '');
-        const matchedKeywords = keywords.filter(kw => spanText.includes(kw));
-
-        if (matchedKeywords.length >= 1) {
-            currentGroup.push(span);
-            groupKeywordCount += matchedKeywords.length;
-        } else {
-            
-            if (groupKeywordCount >= 3 && currentGroup.length >= 2) {
-                currentGroup.forEach(s => highlightedSpans.add(s));
-            }
-            currentGroup = [];
-            groupKeywordCount = 0;
+        if (isHeader) {
+            console.log(`Found nearby header: "${text}"`);
+            return span;
         }
-    });
-
-    if (groupKeywordCount >= 3 && currentGroup.length >= 2) {
-        currentGroup.forEach(s => highlightedSpans.add(s));
     }
 
-    if (highlightedSpans.size === 0) {
-        console.warn('Fallback could not find matching text');
-        return false;
-    }
-
-    console.log(`Fallback highlighted ${highlightedSpans.size} spans`);
-    highlightedSpans.forEach(span => {
-        createHighlightOverlay(span, pageDiv);
-    });
-
-    return true;
+    return null;
 }
 
-function extractFirstSentence(text) {
-    const match = text.match(/^([^.!?]{20,}?[.!?])/);
-    return match ? match[1].trim() : text.substring(0, 100);
-}
-
-
-function extractTitleTerms(text) {
-    const terms = text
-        .split(/[\s\n]+/)
-        .filter(w => w.length > 3 && /^[A-Z]/.test(w))
-        .slice(0, 5)
-        .map(w => w.replace(/[^\w]/g, ''));
-
-    return terms.filter(t => t.length > 0);
-}
-
-function getSpansForRange(startIndex, endIndex, spanMap) {
-    const overlappingSpans = spanMap.filter(sm =>
-        sm.endIndex > startIndex && sm.startIndex < endIndex
-    );
-
-    if (overlappingSpans.length === 0) {
-        return null;
-    }
-
-    
-    const actualSpans = overlappingSpans.map(sm => sm.span).filter(span => {
-        const rect = span.getBoundingClientRect();
-        return rect.width > 0 && rect.height > 0;
-    });
-
-    if (actualSpans.length === 0) {
-        console.warn('All matched spans have zero dimensions, trying to expand range');
-
-        const expandedSpans = spanMap.filter(sm =>
-            sm.endIndex > startIndex - 100 && sm.startIndex < endIndex + 100
-        ).map(sm => sm.span).filter(span => {
-            const rect = span.getBoundingClientRect();
-            return rect.width > 0 && rect.height > 0;
-        });
-
-        if (expandedSpans.length > 0) {
-            console.log(`Expanded range found ${expandedSpans.length} visible spans`);
-            return {
-                spansToHighlight: expandedSpans,
-                startIndex,
-                endIndex,
-                spanCount: expandedSpans.length
-            };
-        }
-
-        return null;
-    }
-
-    return {
-        spansToHighlight: actualSpans,
-        startIndex,
-        endIndex,
-        spanCount: actualSpans.length
-    };
-}
-
-/**
- * Create visual highlight overlay with better positioning
- */
 function createHighlightOverlay(span, pageDiv) {
     try {
-        
         const textLayer = pageDiv.querySelector('.textLayer');
         if (!textLayer) {
             console.error('Text layer not found for highlight positioning');
             return;
         }
 
-       
         const spanRect = span.getBoundingClientRect();
         const pageRect = pageDiv.getBoundingClientRect();
 
@@ -449,7 +317,6 @@ function createHighlightOverlay(span, pageDiv) {
         const width = spanRect.width;
         const height = spanRect.height;
 
-        
         if (width <= 0 || height <= 0) {
             console.warn(`Skipping span with invalid dimensions: w=${width}, h=${height}`);
             return;

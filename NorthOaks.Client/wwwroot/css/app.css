@@ -614,12 +614,22 @@ clear-highlights-btn {
     text-decoration: none;
     margin-right: 4px;
     transition: color 0.2s ease;
+    border: none !important;
+    text-decoration: none !important;
 }
 
     .source-link:hover {
         color: var(--brand-gold);
-        text-decoration: underline;
+        text-decoration: none !important;
     }
+.sources-container {
+    border: none !important;
+}
+.source-link:active,
+.source-link:focus {
+    text-decoration: none !important;
+    outline: none;
+}
 
 .source-link-btn {
     display: none;
