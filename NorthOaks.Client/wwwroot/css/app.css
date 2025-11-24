@@ -772,7 +772,7 @@ clear-highlights-btn {
     grid-template-columns: 252px 1fr;
     gap: 20px;
     min-height: 100vh;
-    align-items: stretch;
+    align-items: start;
 }
 
 /* main column divider */
@@ -793,10 +793,10 @@ clear-highlights-btn {
     padding: 14px;
     display: flex;
     flex-direction: column;
-    height: 100%;
-    margin-left: 0;
-    margin-bottom: 0;
+    height: suto;
+    gap: 12px;
 }
+
 
 .sb-brand {
     display: flex;
@@ -820,7 +820,8 @@ clear-highlights-btn {
     flex-direction: column;
     gap: 8px;
     margin-top: 6px;
-    margin-bottom: auto;
+    margin-bottom: 0; /* remove flex spacer */
+    flex-shrink: 0;
 }
 
 .sb-link {
@@ -887,12 +888,7 @@ clear-highlights-btn {
     }
 
 .sb-panel {
-    margin-top: 12px;
-    padding: 12px;
-    border: 1px solid var(--stroke);
-    border-radius: 12px;
-    background: #fff;
-    box-shadow: var(--shadow-sm);
+    margin-top: 0;
 }
 
 .sb-sec-title {
@@ -988,6 +984,26 @@ clear-highlights-btn {
         background: #fff6e3;
         border-color: #f0e0b4;
     }
+
+
+.page-grid {
+    align-items: flex-start; 
+}
+
+.app-sidebar {
+    height: auto; 
+    align-self: flex-start;
+}
+
+.sb-nav {
+    margin-bottom: 12px; 
+}
+
+.sb-footer {
+    margin-top: 12px; 
+    padding-top: 10px;
+    border-top: 1px dashed var(--stroke);
+}
 
 /* responsive: stack rail */
 @media (max-width:992px) {
@@ -2251,3 +2267,61 @@ clear-highlights-btn {
             background-image: radial-gradient(circle, #fff 2px, transparent 2px);
             opacity: 1;
         }
+
+.page-with-sidebar {
+    --sidebar-w: 260px;
+    --topbar-h: 64px;
+    position: fixed;
+    top: var(--topbar-h);
+    left: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    padding-top: 16px;
+    padding-bottom: 16px;
+    box-sizing: border-box;
+}
+
+   
+    .page-with-sidebar .page-grid {
+        display: flex;
+        height: 100%;
+        align-items: stretch;
+    }
+
+  
+    .page-with-sidebar .app-sidebar {
+        width: var(--sidebar-w);
+        flex: 0 0 var(--sidebar-w);
+        height: 100%;
+        overflow: hidden; 
+        position: relative; 
+    }
+
+   
+    .page-with-sidebar .page-main {
+        flex: 1 1 auto;
+        min-width: 0;
+        height: 100%;
+        overflow-y: auto;
+        margin-left: 0; 
+        padding-right: 6px;
+        padding-bottom: 90px;
+        box-sizing: border-box;
+    }
+
+        
+        .page-with-sidebar .page-main::-webkit-scrollbar {
+            width: 0;
+            height: 0;
+        }
+        .page-with-sidebar .page-main nav[aria-label] {
+            margin-bottom: 24px;
+        }
+
+    .page-with-sidebar .page-main {
+        scrollbar-width: none;
+    }
+
