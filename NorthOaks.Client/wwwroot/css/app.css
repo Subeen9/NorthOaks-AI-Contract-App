@@ -799,7 +799,7 @@ clear-highlights-btn {
     padding: 14px;
     display: flex;
     flex-direction: column;
-    height: suto;
+    height: auto;
     gap: 12px;
 }
 
