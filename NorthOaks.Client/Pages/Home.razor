@@ -294,13 +294,14 @@
                                             <div class="card-body d-flex flex-column">
 
                                                 <!-- 3-dots menu (delete) -->
-                                                <button type="button"
+                                             <!--   <button type="button"
                                                         class="card-menu"
                                                         title="More actions"
                                                         @onclick="@(e => OnComparisonMenuClick(session.Id))"
                                                         @onclick:stopPropagation="true">
                                                     <i class="bi bi-three-dots-vertical"></i>
-                                                </button>
+                                                    </button>   -->
+                                                
 
                                                 <!-- title (same style as contracts) -->
                                                 <h5 class="card-title fw-bold contract-title mb-2">
@@ -367,26 +368,23 @@
                                      style="cursor:pointer"
                                      @onclick="@(() => Navigation.NavigateTo($"/compare-chat/{session.Id}"))">
 
-                                    <!-- 3-dots menu (delete) -->
+                                    <!-- LEFT comparison icon (2-contracts) -->
+                                    <div class="comparison-row-icon">
+                                        <i class="bi bi-files"></i>
+                                    </div>
+
+                                    <!-- 3-dots menu (delete) — stays in markup, we’ll move it right via CSS 
                                     <button type="button"
                                             class="card-menu comparison-menu"
                                             title="More actions"
                                             @onclick="@(e => OnComparisonMenuClick(session.Id))"
                                             @onclick:stopPropagation="true">
                                         <i class="bi bi-three-dots-vertical"></i>
-                                    </button>
-
-                                    <!-- Pin button (shows on hover, always visible when pinned) -->
-                                    <button type="button"
-                                            class="pin-btn comparison-pin @(IsComparisonPinned(session.Id) ? "pinned" : "")"
-                                            @onclick="@(e => ToggleComparisonPin(session.Id))"
-                                            @onclick:stopPropagation="true">
-                                        <i class="bi @(IsComparisonPinned(session.Id) ? "bi-pin-fill" : "bi-pin")"></i>
-                                    </button>
+                                    </button>-->
 
                                     <div class="comparison-row-body">
                                         <h6 class="mb-1 fw-semibold contract-title text-truncate">
-                                            Comparison between @BuildComparisonTitle(session)
+                                            @BuildComparisonTitle(session)
                                         </h6>
                                         <small class="contract-meta">
                                             Created @session.CreatedDate.ToShortDateString()
@@ -394,6 +392,7 @@
                                         </small>
                                     </div>
                                 </div>
+
                             }
                         </div>
                     }
