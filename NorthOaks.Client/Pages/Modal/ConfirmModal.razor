@@ -1,0 +1,44 @@
+﻿<div class="confirm-overlay" style="@(IsVisible ? "display:flex;" : "display:none;")">
+    <div class="confirm-box">
+        <h5 class="confirm-title">@Title</h5>
+        <p class="confirm-message">@Message</p>
+
+        <div class="confirm-actions">
+            <button class="btn btn-danger" @onclick="Confirm">Delete</button>
+            <button class="btn btn-secondary" @onclick="Cancel">Cancel</button>
+        </div>
+    </div>
+</div>
+
+@code {
+    private bool IsVisible = false;
+    private string Title = "";
+    private string Message = "";
+
+    private Action? OnConfirm;
+    private Action? OnCancel;
+
+    public Task Show(string title, string message, Action onConfirm, Action onCancel)
+    {
+        Title = title;
+        Message = message;
+        OnConfirm = onConfirm;
+        OnCancel = onCancel;
+        IsVisible = true;
+
+        StateHasChanged();
+        return Task.CompletedTask;
+    }
+
+    private void Confirm()
+    {
+        IsVisible = false;
+        OnConfirm?.Invoke();
+    }
+
+    private void Cancel()
+    {
+        IsVisible = false;
+        OnCancel?.Invoke();
+    }
+}

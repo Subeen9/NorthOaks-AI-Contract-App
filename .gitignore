@@ -11,3 +11,4 @@ CMPS4110-NorthOaksProj/Resources/
 
 # Ignore Qdrant storage collections
 CMPS4110-NorthOaksProj/qdrant_storage/collections/
+/qdrant_storage

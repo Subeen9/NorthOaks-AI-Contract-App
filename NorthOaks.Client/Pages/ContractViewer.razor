@@ -29,6 +29,7 @@
         <div id="chatPanel" class="chat-panel">
             <div class="chat-header">
                 <h5>Chat about this contract</h5>
+                <small class="text-muted">Ask anything, I’ll cite sources</small>
             </div>
 
             <div id="chatMessages" class="chat-messages">
@@ -75,7 +76,7 @@
 
                 @if (isLoading)
                 {
-                    <div class="message ai-message loading-message">
+                    <div class="loading-message">
                         <div class="loading-indicator">
                             <div class="loading-dots">
                                 <span></span>
@@ -138,7 +139,6 @@
                 return;
             }
 
-           
             var storageKey = $"session_{id}";
             var stored = await JS.InvokeAsync<string>("localStorage.getItem", storageKey);
             if (!string.IsNullOrWhiteSpace(stored) && int.TryParse(stored, out var parsedId))
@@ -148,7 +148,6 @@
             }
             else
             {
-
                 var sessionResponse = await Http.PostAsJsonAsync("/api/chatsessions",
                     new CreateChatSessionDto { ContractIds = new List<int> { id } });
 
@@ -168,7 +167,6 @@
                 messages.Add(new Message { Text = "Failed to create chat session. Please reload the page.", IsUser = false });
                 return;
             }
-
             else
             {
                 var rawMessages = await Http.GetFromJsonAsync<List<ChatMessageDto>>($"/api/chatmessages/session/{currentSessionId}");
@@ -178,7 +176,6 @@
 
                     foreach (var m in rawMessages)
                     {
-                        
                         if (!string.IsNullOrWhiteSpace(m.Message))
                         {
                             messages.Add(new Message
@@ -199,7 +196,6 @@
                     }
                 }
             }
-
         }
         catch (Exception ex)
         {
@@ -315,24 +311,40 @@
             .ToList();
 
         if (index < 0 || index >= relevantSources.Count)
+        {
+            Console.WriteLine($"Invalid index {index} for {relevantSources.Count} relevant sources");
             return;
+        }
 
         var source = relevantSources[index];
 
         try
         {
-            Console.WriteLine($"Jumping to source {index + 1}: Page {source.PageNumber}");
+            Console.WriteLine($"=== Jumping to source {index + 1} ===");
+            Console.WriteLine($"Page: {source.PageNumber}");
+            Console.WriteLine($"Similarity Score: {source.SimilarityScore:F3}");
 
             await JS.InvokeVoidAsync("pdfViewerClearHighlights");
-            await Task.Delay(200);
-
-            Console.WriteLine($"Going to page {source.PageNumber}");
+            await Task.Delay(100);
+            Console.WriteLine($"Navigating to page {source.PageNumber}...");
             await JS.InvokeVoidAsync("pdfViewerGoToPage", source.PageNumber);
-            await Task.Delay(1000);
+            await Task.Delay(2000);
+            var textToHighlight = !string.IsNullOrWhiteSpace(source.OriginalChunkText)
+                ? source.OriginalChunkText
+                : source.ChunkText;
 
-            var searchPhrase = ExtractBestSearchPhrase(source.ChunkText);
-            Console.WriteLine($"Highlighting: '{searchPhrase.Substring(0, Math.Min(60, searchPhrase.Length))}'");
+            if (string.IsNullOrWhiteSpace(textToHighlight))
+            {
+                Console.WriteLine("No text available for highlighting");
+                return;
+            }
 
+            var searchPhrase = ExtractBestSearchPhrase(textToHighlight);
+
+            Console.WriteLine($"Text to highlight (first 100 chars): '{textToHighlight.Substring(0, Math.Min(100, textToHighlight.Length))}...'");
+            Console.WriteLine($"Search phrase (first 60 chars): '{searchPhrase.Substring(0, Math.Min(60, searchPhrase.Length))}...'");
+
+            
             await JS.InvokeVoidAsync("pdfViewerHighlightText", searchPhrase);
 
             Console.WriteLine("Highlighting complete");
@@ -340,6 +352,7 @@
         catch (Exception ex)
         {
             Console.WriteLine($"Error jumping to source: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
         }
     }
 
@@ -349,8 +362,13 @@
             return "";
 
         chunkText = System.Text.RegularExpressions.Regex.Replace(chunkText, @"\s+", " ").Trim();
-        var words = chunkText.Split(' ').Take(50).ToArray();
-        return string.Join(" ", words);
+
+        var words = chunkText.Split(' ', StringSplitOptions.RemoveEmptyEntries).Take(50).ToArray();
+        var searchPhrase = string.Join(" ", words);
+
+        Console.WriteLine($"Extracted search phrase: {searchPhrase.Length} characters, {words.Length} words");
+
+        return searchPhrase;
     }
 
     private void StartResize(MouseEventArgs e)

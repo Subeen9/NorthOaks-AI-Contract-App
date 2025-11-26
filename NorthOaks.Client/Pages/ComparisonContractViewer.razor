@@ -12,14 +12,14 @@
 <div class="contract-viewer-page">
     <div class="content">
         <div class="viewer-wrapper">
-            <div class="contracts-sidebar" style="width: 280px; border-right: 1px solid #ddd; background: #f8f9fa; overflow-y: auto;">
+            <div class="contracts-sidebar" id="contractsSidebar" style="width: 280px; border-right: 1px solid #ddd; background: #f8f9fa; flex-shrink: 0;">
                 <div style="padding: 16px; border-bottom: 1px solid #ddd;">
                     <h6 style="margin: 0 0 4px 0; color: var(--brand-blue); font-weight: 700;">
                         <i class="bi bi-files"></i>
                         @GetComparisonTitle()
                     </h6>
                     <small class="text-muted">
-                        @contracts.Count document@(contracts.Count == 1 ? "" : "s") selected
+                        of @contracts.Count document@(contracts.Count == 1 ? "" : "s") selected
                     </small>
                 </div>
 
@@ -35,19 +35,28 @@
                     <div class="list-group list-group-flush">
                         @foreach (var contract in contracts)
                         {
-                            <button class="list-group-item list-group-item-action d-flex align-items-center gap-3 @(selectedContract?.Id == contract.Id ? "active" : "")"
-                                    style="border: none; cursor: pointer; transition: all 0.2s ease;"
-                                    @onclick="() => SelectContract(contract)">
-                                <i class="bi bi-file-earmark-pdf text-danger" style="font-size: 1.5rem;"></i>
-                                <div class="text-start">
-                                    <div class="fw-semibold">@CleanFileName(contract.FileName)</div>
+                            var isLeft = contract.Id == leftContract?.Id;
+                            var isRight = contract.Id == rightContract?.Id;
+
+                            <div class="list-group-item d-flex align-items-center gap-3">
+                                <div class="text-start flex-grow-1">
+                                    <div class="d-flex align-items-center gap-2">
+                                        @if (isLeft)
+                                        {
+                                            <span class="badge" style="background: #007bff; font-size: 0.7rem; padding: 2px 8px;">LEFT</span>
+                                        }
+                                        @if (isRight)
+                                        {
+                                            <span class="badge" style="background: #28a745; font-size: 0.7rem; padding: 2px 8px;">RIGHT</span>
+                                        }
+                                        <div class="fw-semibold">@CleanFileName(contract.FileName)</div>
+                                    </div>
                                     <small class="text-muted">@contract.UploadDate.ToShortDateString()</small>
                                 </div>
-                            </button>
+                            </div>
                         }
                     </div>
 
-                    
                     <div class="m-3 p-3 rounded" style="background:#eef5ff; border:1px solid #d4e1ff;">
                         <div class="d-flex align-items-center mb-1">
                             <i class="bi bi-activity me-2" style="color:#003768;"></i>
@@ -62,25 +71,50 @@
                 }
             </div>
 
-           
-            <div class="pdf-area">
-                @if (selectedContract == null)
-                {
-                    <div class="text-center text-muted m-4">
-                        <i class="bi bi-file-earmark" style="font-size: 4rem;"></i>
-                        <p class="mt-3">Select a contract to view</p>
-                    </div>
-                }
-                else
-                {
-                    <PdfJsViewer Class="pdf-frame"
-                                 Url="@selectedContract.FileUrl" />
-                }
+            <div class="sidebar-resizer" @onmousedown="StartSidebarResize"></div>
+
+            <div class="pdf-area" style="display: flex; flex-direction: row; gap: 0; height: 100%;">
+                <div class="pdf-viewer-container" style="flex: 1; border-right: 1px solid #ddd; display: flex; flex-direction: column; height: 100%;">
+                    @if (leftContract == null)
+                    {
+                        <div class="text-center text-muted m-4">
+                            <i class="bi bi-file-earmark" style="font-size: 3rem;"></i>
+                            <p class="mt-3">Left contract loading...</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="pdf-viewer-header" style="padding: 8px 12px; background: #f8f9fa; border-bottom: 1px solid #ddd; word-wrap: break-word;">
+                            <small class="text-muted" style="font-weight: 600;">@CleanFileName(leftContract.FileName)</small>
+                        </div>
+                        <PdfJsViewer Class="pdf-frame"
+                                     ViewerId="leftPdfViewer"
+                                     Url="@leftContract.FileUrl" />
+                    }
+                </div>
+
+                <div class="pdf-viewer-container" style="flex: 1; display: flex; flex-direction: column; height: 100%;">
+                    @if (rightContract == null)
+                    {
+                        <div class="text-center text-muted m-4">
+                            <i class="bi bi-file-earmark" style="font-size: 3rem;"></i>
+                            <p class="mt-3">Right contract loading...</p>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="pdf-viewer-header" style="padding: 8px 12px; background: #f8f9fa; border-bottom: 1px solid #ddd; word-wrap: break-word;">
+                            <small class="text-muted" style="font-weight: 600;">@CleanFileName(rightContract.FileName)</small>
+                        </div>
+                        <PdfJsViewer Class="pdf-frame"
+                                     ViewerId="rightPdfViewer"
+                                     Url="@rightContract.FileUrl" />
+                    }
+                </div>
             </div>
 
             <div class="resizer" @onmousedown="StartResize"></div>
 
-           
             <div id="chatPanel" class="chat-panel">
                 <div class="chat-header">
                     <div class="d-flex flex-column">
@@ -108,7 +142,66 @@
                         {
                             <div class="message @(msg.IsUser ? "user-message" : "ai-message")">
                                 <strong>@(msg.IsUser ? "You" : "AI"):</strong>
-                                <div class="message-content">@msg.Text</div>
+                                <div class="message-content">
+                                    @msg.Text
+
+                                    @if (!msg.IsUser && msg.Sources != null && msg.Sources.Count > 0)
+                                    {
+                                        var relevantSources = msg.Sources
+                                        .Where(s => s.SimilarityScore >= SIMILARITY_THRESHOLD)
+                                        .OrderByDescending(s => s.SimilarityScore)
+                                        .ToList();
+
+                                        var leftSources = relevantSources
+                                        .Where(s => s.ContractId == leftContract?.Id)
+                                        .Take(3)
+                                        .ToList();
+
+                                        var rightSources = relevantSources
+                                        .Where(s => s.ContractId == rightContract?.Id)
+                                        .Take(3)
+                                        .ToList();
+
+                                        @if (leftSources.Count > 0 || rightSources.Count > 0)
+                                        {
+                                            <div class="sources-container" style="margin-top: 12px; display: flex; gap: 16px; font-size: 0.9rem; border:none;">
+                                                @if (leftSources.Count > 0)
+                                                {
+                                                    <div class="pdf-sources" style="flex: 1;">
+                                                        <div style="font-weight: 600; font-size: 0.8rem; color: #007bff; margin-bottom: 8px;">
+                                                            LEFT PDF
+                                                        </div>
+                                                        @for (int i = 0; i < leftSources.Count; i++)
+                                                        {
+                                                            var source = leftSources[i];
+                                                            var sourceIndex = msg.Sources.IndexOf(source);
+                                                            <a class="source-link" @onclick="() => JumpToComparisonSource(msg.Sources, sourceIndex)" style="display: block; margin-bottom: 4px;">
+                                                                @(i + 1) (Page @source.PageNumber)
+                                                            </a>
+                                                        }
+                                                    </div>
+                                                }
+
+                                                @if (rightSources.Count > 0)
+                                                {
+                                                    <div class="pdf-sources" style="flex: 1;">
+                                                        <div style="font-weight: 600; font-size: 0.8rem; color: #28a745; margin-bottom: 8px;">
+                                                            RIGHT PDF
+                                                        </div>
+                                                        @for (int i = 0; i < rightSources.Count; i++)
+                                                        {
+                                                            var source = rightSources[i];
+                                                            var sourceIndex = msg.Sources.IndexOf(source);
+                                                            <a class="source-link" @onclick="() => JumpToComparisonSource(msg.Sources, sourceIndex)" style="display: block; margin-bottom: 4px;">
+                                                                @(leftSources.Count + i + 1) (Page @source.PageNumber)
+                                                            </a>
+                                                        }
+                                                    </div>
+                                                }
+                                            </div>
+                                        }
+                                    }
+                                </div>
                             </div>
                         }
                     }
@@ -165,7 +258,10 @@
     private List<Message> messages = new();
     private string newMessage = "";
     private bool isLoading = false;
-    private ContractReadDto? selectedContract = null;
+    private ContractReadDto? leftContract = null;
+    private ContractReadDto? rightContract = null;
+
+    private const double SIMILARITY_THRESHOLD = 0.20;
 
     protected override async Task OnInitializedAsync()
     {
@@ -183,10 +279,10 @@
                         contracts.Add(contract);
                     }
                 }
-
-                if (contracts.Any())
+                if (contracts.Count >= 2)
                 {
-                    selectedContract = contracts.First();
+                    rightContract  = contracts[0];
+                    leftContract = contracts[1];
                 }
 
                 try
@@ -203,7 +299,12 @@
                             }
                             if (!string.IsNullOrWhiteSpace(m.Response))
                             {
-                                messages.Add(new Message { Text = m.Response, IsUser = false });
+                                messages.Add(new Message
+                                {
+                                    Text = m.Response,
+                                    IsUser = false,
+                                    Sources = m.Sources ?? new List<ChatMessageSourceDto>()
+                                });
                             }
                         }
                     }
@@ -269,8 +370,11 @@
                     messages.Add(new Message
                     {
                         Text = result.Response ?? "Empty response",
-                        IsUser = false
+                        IsUser = false,
+                        Sources = result.Sources ?? new List<ChatMessageSourceDto>()
                     });
+
+                    Console.WriteLine($"Received AI response with {result.Sources?.Count ?? 0} sources");
                 }
             }
             else
@@ -299,49 +403,139 @@
         }
     }
 
+    private async Task JumpToComparisonSource(List<ChatMessageSourceDto> sources, int index)
+    {
+        if (sources == null || sources.Count == 0)
+        {
+            Console.WriteLine("No sources available");
+            return;
+        }
+
+        if (index < 0 || index >= sources.Count)
+        {
+            Console.WriteLine($"Invalid index {index} for {sources.Count} sources");
+            return;
+        }
+
+        var source = sources[index];
+
+        try
+        {
+            string viewerId = "leftPdfViewer";
+
+            if (source.ContractId == leftContract?.Id)
+            {
+                viewerId = "leftPdfViewer";
+                Console.WriteLine($"Source is from LEFT contract (ID: {source.ContractId})");
+            }
+            else if (source.ContractId == rightContract?.Id)
+            {
+                viewerId = "rightPdfViewer";
+                Console.WriteLine($"Source is from RIGHT contract (ID: {source.ContractId})");
+            }
+            else
+            {
+                Console.WriteLine($"Warning: Source contract ID {source.ContractId} doesn't match left ({leftContract?.Id}) or right ({rightContract?.Id})");
+            }
+
+            Console.WriteLine($"=== Jumping to source {index + 1} in {viewerId} ===");
+            Console.WriteLine($"Page: {source.PageNumber}");
+            Console.WriteLine($"Similarity Score: {source.SimilarityScore:F3}");
+
+            await JS.InvokeVoidAsync("pdfViewerClearHighlights", "leftPdfViewer");
+            await JS.InvokeVoidAsync("pdfViewerClearHighlights", "rightPdfViewer");
+            await Task.Delay(100);
+
+            Console.WriteLine($"Navigating to page {source.PageNumber} in {viewerId}...");
+            await JS.InvokeVoidAsync("pdfViewerGoToPage", source.PageNumber, viewerId);
+            await Task.Delay(3000);
+
+            var textToHighlight = !string.IsNullOrWhiteSpace(source.ChunkText)
+                ? source.ChunkText
+                : source.OriginalChunkText;
+
+            if (string.IsNullOrWhiteSpace(textToHighlight))
+            {
+                Console.WriteLine("No text available for highlighting");
+                return;
+            }
+
+            var searchPhrase = ExtractBestSearchPhrase(textToHighlight);
+
+            Console.WriteLine($"Text to highlight (first 100 chars): '{textToHighlight.Substring(0, Math.Min(100, textToHighlight.Length))}...'");
+            Console.WriteLine($"Search phrase (first 60 chars): '{searchPhrase.Substring(0, Math.Min(60, searchPhrase.Length))}...'");
+
+            await JS.InvokeVoidAsync("pdfViewerHighlightText", searchPhrase, viewerId);
+
+            Console.WriteLine($"✓ Highlighting complete in {viewerId}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error jumping to comparison source: {ex.Message}");
+            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+        }
+    }
+
+    private string ExtractBestSearchPhrase(string chunkText)
+    {
+        if (string.IsNullOrWhiteSpace(chunkText))
+            return "";
+
+        chunkText = System.Text.RegularExpressions.Regex.Replace(chunkText, @"\s+", " ").Trim();
+
+        // If starts with lowercase, skip first word (it's cut off)
+        if (chunkText.Length > 0 && char.IsLower(chunkText[0]))
+        {
+            var firstSpaceIndex = chunkText.IndexOf(' ');
+            if (firstSpaceIndex > 0 && firstSpaceIndex < chunkText.Length - 1)
+            {
+                chunkText = chunkText.Substring(firstSpaceIndex + 1).Trim();
+                Console.WriteLine($"Skipped incomplete first word");
+            }
+        }
+
+        // Use 100 characters for better matching
+        var searchLength = Math.Min(100, chunkText.Length);
+        var searchPhrase = chunkText.Substring(0, searchLength);
+
+        Console.WriteLine($"Search phrase: {searchPhrase.Length} chars, starts with: '{searchPhrase.Substring(0, Math.Min(50, searchPhrase.Length))}'");
+
+        return searchPhrase;
+    }
+
     private void StartResize(MouseEventArgs e)
     {
-        JS.InvokeVoidAsync("startResizing");
+        JS.InvokeVoidAsync("startCompareChatResizing", e.ClientX);
+    }
+
+    private void StartSidebarResize(MouseEventArgs e)
+    {
+        JS.InvokeVoidAsync("startSidebarResizing", e.ClientX);
     }
 
     private string CleanFileName(string fileName)
     {
-        // remove prefix before "_" if present
         var index = fileName.IndexOf('_');
         var cleaned = index >= 0 ? fileName[(index + 1)..] : fileName;
 
-        // drop extension
         var dot = cleaned.LastIndexOf('.');
         if (dot > 0)
         {
             cleaned = cleaned[..dot];
         }
-
-        // shorten long names for UI
-        if (cleaned.Length > 32)
-        {
-            cleaned = cleaned[..29] + "...";
-        }
-
         return cleaned;
     }
 
     private string GetComparisonTitle()
     {
-        
         return "Contract Comparison";
-    }
-
-    private void SelectContract(ContractReadDto contract)
-    {
-        selectedContract = contract;
-        StateHasChanged();
     }
 
     public class Message
     {
         public string Text { get; set; } = "";
         public bool IsUser { get; set; }
+        public List<ChatMessageSourceDto> Sources { get; set; } = new();
     }
 
     public class ChatSessionDto
@@ -357,11 +551,22 @@
         public string Message { get; set; } = "";
         public string Response { get; set; } = "";
         public DateTime CreatedAt { get; set; }
+        public List<ChatMessageSourceDto> Sources { get; set; } = new();
     }
 
     public class CreateChatMessageDto
     {
         public int SessionId { get; set; }
         public string Message { get; set; } = "";
+    }
+
+    public class ChatMessageSourceDto
+    {
+        public int ContractId { get; set; }
+        public string ChunkText { get; set; } = "";
+        public string OriginalChunkText { get; set; } = "";
+        public int ChunkIndex { get; set; }
+        public int PageNumber { get; set; }
+        public double SimilarityScore { get; set; }
     }
 }
