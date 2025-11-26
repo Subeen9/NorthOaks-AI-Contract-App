@@ -1,0 +1,199 @@
+﻿@page "/register"
+
+@using NorthOaks.Shared.Model.Users
+@using Microsoft.AspNetCore.Components
+@using Microsoft.AspNetCore.Components.Forms
+@using System.ComponentModel.DataAnnotations
+@using System.Net.Http.Json
+
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject ToastService ToastService
+
+<div class="auth-page">
+    <div class="auth-card register-card">
+        <div class="text-center mb-3">
+            <img src="images/NorthOaks.jpg" alt="North Oaks Logo" width="72" height="72" class="mb-2 auth-logo" />
+            <h2 class="auth-title">Create an Account</h2>
+            <p class="auth-sub">Set up access to the contract library</p>
+        </div>
+
+        <EditForm Model="@registerModel" OnValidSubmit="HandleValidSubmit">
+            <DataAnnotationsValidator />
+            <ValidationSummary />
+
+            <div class="row">
+                <div class="col-12 col-md-6 mb-3">
+                    <label for="firstName" class="form-label auth-label">First Name</label>
+                    <InputText id="firstName" class="form-control auth-input" @bind-Value="registerModel.FirstName" />
+                    <ValidationMessage For="@(() => registerModel.FirstName)" />
+                </div>
+
+                <div class="col-12 col-md-6 mb-3">
+                    <label for="lastName" class="form-label auth-label">Last Name</label>
+                    <InputText id="lastName" class="form-control auth-input" @bind-Value="registerModel.LastName" />
+                    <ValidationMessage For="@(() => registerModel.LastName)" />
+                </div>
+            </div>
+
+            <div class="mb-3">
+                <label for="email" class="form-label auth-label">Email</label>
+                <InputText id="email" type="email" class="form-control auth-input" @bind-Value="registerModel.Email" />
+                <ValidationMessage For="@(() => registerModel.Email)" />
+            </div>
+
+            <div class="mb-3">
+                <label for="username" class="form-label auth-label">Username</label>
+                <InputText id="username" class="form-control auth-input" @bind-Value="registerModel.UserName" />
+                <ValidationMessage For="@(() => registerModel.UserName)" />
+            </div>
+
+            <div class="mb-3">
+                <label for="password" class="form-label auth-label mb-0">Password</label>
+
+                <div class="auth-field">
+                    <InputText id="password"
+                               class="form-control auth-input pe-5"
+                               @bind-Value="registerModel.Password"
+                               Type="@(showPassword ? "text" : "password")" />
+                    <button type="button"
+                            class="btn btn-sm auth-eye"
+                            @onclick="ToggleShowPassword"
+                            aria-label="Toggle password visibility">
+                        <i class="bi @(showPassword ? "bi-eye-slash" : "bi-eye")"></i>
+                    </button>
+                </div>
+
+                <ValidationMessage For="@(() => registerModel.Password)" />
+            </div>
+
+            <div class="mb-3">
+                <label for="confirmPassword" class="form-label auth-label mb-0">Confirm Password</label>
+
+                <div class="auth-field">
+                    <InputText id="confirmPassword"
+                               class="form-control auth-input pe-5"
+                               @bind-Value="registerModel.ConfirmPassword"
+                               Type="@(showConfirmPassword ? "text" : "password")" />
+                    <button type="button"
+                            class="btn btn-sm auth-eye"
+                            @onclick="ToggleShowConfirmPassword"
+                            aria-label="Toggle confirm password visibility">
+                        <i class="bi @(showConfirmPassword ? "bi-eye-slash" : "bi-eye")"></i>
+                    </button>
+                </div>
+
+                <ValidationMessage For="@(() => registerModel.ConfirmPassword)" />
+            </div>
+
+            <button type="submit" class="btn auth-cta w-100" disabled="@isLoading" aria-busy="@isLoading">
+                @if (isLoading)
+                {
+                    <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <span>Creating account...</span>
+                }
+                else
+                {
+                    <span>Sign Up</span>
+                }
+            </button>
+        </EditForm>
+
+        <p class="auth-foot text-center mt-3">
+            Already have an account?
+            <a class="auth-link" href="/">Sign in</a>
+        </p>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div class="alert alert-danger mt-3 mb-0">@errorMessage</div>
+        }
+    </div>
+</div>
+
+@code {
+    
+    private RegisterViewModel registerModel = new();
+
+    private string? errorMessage;
+    private bool isLoading = false;
+    private bool showPassword = false;
+    private bool showConfirmPassword = false;
+
+    private void ToggleShowPassword() => showPassword = !showPassword;
+    private void ToggleShowConfirmPassword() => showConfirmPassword = !showConfirmPassword;
+
+    private async Task HandleValidSubmit()
+    {
+        errorMessage = string.Empty;
+        isLoading = true;
+
+        try
+        {
+            
+            var dto = new UserDto
+            {
+                Id = 0, 
+                FirstName = registerModel.FirstName,
+                LastName = registerModel.LastName,
+                UserName = registerModel.UserName,
+                Email = registerModel.Email,
+                Password = registerModel.Password
+            };
+
+            var response = await Http.PostAsJsonAsync("api/Users", dto);
+
+            if (response.IsSuccessStatusCode)
+            {
+                ToastService.Notify(new(ToastType.Success, "Account created successfully. You can now sign in."));
+                Navigation.NavigateTo("/");
+            }
+            else
+            {
+                var apiError = await response.Content.ReadAsStringAsync();
+                errorMessage = string.IsNullOrWhiteSpace(apiError)
+                    ? "Sign up failed. Please try again."
+                    : apiError;
+
+                ToastService.Notify(new(ToastType.Danger, "Sign up failed. Please check your details."));
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error during sign up: {ex.Message}";
+            ToastService.Notify(new(ToastType.Danger, "An unexpected error occurred."));
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+  
+    private class RegisterViewModel
+    {
+        [Required]
+        [MaxLength(50)]
+        public string FirstName { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(50)]
+        public string LastName { get; set; } = string.Empty;
+
+        [Required]
+        [MaxLength(50)]
+        public string UserName { get; set; } = string.Empty;
+
+        [Required]
+        [EmailAddress]
+        public string Email { get; set; } = string.Empty;
+
+        [Required]
+        [MinLength(6)]
+        public string Password { get; set; } = string.Empty;
+
+        [Required]
+        [Compare("Password", ErrorMessage = "Passwords do not match")]
+        public string ConfirmPassword { get; set; } = string.Empty;
+    }
+}
