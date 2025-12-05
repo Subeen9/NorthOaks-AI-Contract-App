@@ -100,9 +100,9 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                 {
                     try
                     {
-<<<<<<< HEAD
-                        var pointId = await _qdrantService.InsertVectorAsync(vectors[i], contractId, i, chunks[i], -1);
-=======
+
+                        //var pointId = await _qdrantService.InsertVectorAsync(vectors[i], contractId, i, chunks[i], -1);
+
                         var pointId = await _qdrantService.InsertVectorAsync(
                             vectors[i],
                             contractId,
@@ -110,7 +110,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                             chunks[i].ChunkText,  // Normalized text for searching
                             chunks[i].PageNumber
                         );
->>>>>>> 94609dfa346784d138bb3f5a7826ad03f337f0a4
+
 
                         toInsert.Add(new ContractEmbedding
                         {
