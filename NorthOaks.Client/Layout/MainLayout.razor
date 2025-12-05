@@ -100,21 +100,14 @@
                                     @initials
                                 </button>
 
-                                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="userMenu" style="min-width:260px;">
-                                    <!-- Profile summary -->
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="userMenu" style="min-width:220px;">
+
+                                    <!-- Profile summary (Full Name ONLY) -->
                                     <li class="px-3 py-2 border-bottom">
                                         <div class="fw-semibold">@fullName</div>
-                                        @if (!string.IsNullOrWhiteSpace(userName))
-                                        {
-                                            <div class="text-muted small">@userName</div>
-                                        }
-                                        @if (!string.IsNullOrWhiteSpace(email))
-                                        {
-                                            <div class="text-muted small">@email</div>
-                                        }
                                     </li>
 
-                                    <!-- Optional: View profile page -->
+                                    <!-- View profile -->
                                     <li>
                                         <button class="dropdown-item" @onclick="NavigateToProfile">
                                             <i class="bi bi-person me-2"></i> View Profile
