@@ -16,7 +16,7 @@
 @implements IDisposable
 
 
-<div class="container-fluid mt-4 mb-4 page-with-sidebar no-pad">
+<div class="container-fluid mt-4 mb-4 page-with-sidebar no-pad" style="padding-top: 3rem;">
     <div class="page-grid">
         <!-- Sidebar -->
         <aside class="app-sidebar">
@@ -193,10 +193,10 @@
             {
                 /* =================== CONTRACTS FILTER + SORT =================== */
                 var filtered = contracts
-                    .Where(c => string.IsNullOrEmpty(searchTerm)
-                                || CleanFileName(c.FileName).Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
-                                || (c.UploadedBy ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
-                    .ToList();
+                .Where(c => string.IsNullOrEmpty(searchTerm)
+                || CleanFileName(c.FileName).Contains(searchTerm, StringComparison.OrdinalIgnoreCase)
+                || (c.UploadedBy ?? "").Contains(searchTerm, StringComparison.OrdinalIgnoreCase))
+                .ToList();
 
                 if (pinOnly)
                     filtered = filtered.Where(c => IsPinned(c.Id)).ToList();
@@ -243,7 +243,7 @@
                     {
                         "uploaded_asc" or "uploaded_desc" => s => s.CreatedDate,
                         "name_asc" or "name_desc" or "uploader_asc" or "uploader_desc"
-                            => s => BuildComparisonTitle(s),
+                        => s => BuildComparisonTitle(s),
                         _ => s => s.CreatedDate
                     };
 
@@ -279,9 +279,9 @@
                         @if (activeTab == "comparisons")
                         {
                             var paginatedSessions = comparisonFiltered
-                                .Skip((currentPage - 1) * pageSize)
-                                .Take(pageSize)
-                                .ToList();
+                            .Skip((currentPage - 1) * pageSize)
+                            .Take(pageSize)
+                            .ToList();
 
                             @foreach (var session in paginatedSessions)
                             {
@@ -293,15 +293,14 @@
                                         <div class="card shadow-sm mb-3 h-100">
                                             <div class="card-body d-flex flex-column">
 
-                                                <!-- 3-dots menu (delete) -->
-                                             <!--   <button type="button"
+                                                <button type="button"
                                                         class="card-menu"
                                                         title="More actions"
                                                         @onclick="@(e => OnComparisonMenuClick(session.Id))"
                                                         @onclick:stopPropagation="true">
                                                     <i class="bi bi-three-dots-vertical"></i>
-                                                    </button>   -->
-                                                
+                                                </button>
+
 
                                                 <!-- title (same style as contracts) -->
                                                 <h5 class="card-title fw-bold contract-title mb-2">
@@ -373,14 +372,14 @@
                                         <i class="bi bi-files"></i>
                                     </div>
 
-                                    <!-- 3-dots menu (delete) — stays in markup, we’ll move it right via CSS 
+
                                     <button type="button"
                                             class="card-menu comparison-menu"
                                             title="More actions"
                                             @onclick="@(e => OnComparisonMenuClick(session.Id))"
                                             @onclick:stopPropagation="true">
                                         <i class="bi bi-three-dots-vertical"></i>
-                                    </button>-->
+                                    </button>
 
                                     <div class="comparison-row-body">
                                         <h6 class="mb-1 fw-semibold contract-title text-truncate">
@@ -668,7 +667,7 @@
 
     private async Task OnComparisonMenuClick(int sessionId)
     {
-        var ok = await JS.InvokeAsync<bool>("Delete Comparison?", "Are you sure you want to delete this comparison?");
+        var ok = await ShowConfirm("Delete Comparison?", "Are you sure you want to delete this comparison session?");
         if (!ok) return;
 
         await DeleteComparisonSession(sessionId);
