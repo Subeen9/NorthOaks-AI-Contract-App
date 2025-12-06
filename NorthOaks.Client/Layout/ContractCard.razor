@@ -53,15 +53,30 @@
     <!-- Card content -->
     <div class="card-body d-flex flex-column mt-4" style="@(IsSelected ? "color:#fff !important;" : "")">
         <h5 class="card-title fw-bold contract-title text-truncate"
-            style="@(IsSelected ? "color:#fff !important;" : "")">@FileName</h5>
+            style="@(IsSelected ? "color:#fff !important;" : "")">
+            @FileName
+        </h5>
 
-        <p class="@(IsSelected ? "text-white" : "text-muted") mb-1">
-            Uploaded by <strong>@UploadedBy</strong>
-        </p>
+        @if (Type == CardType.Contract)
+        {
+            <p class="@(IsSelected ? "text-white" : "text-muted") mb-1">
+                Uploaded by <strong>@UploadedBy</strong>
+            </p>
 
-        <small class="@(IsSelected ? "text-white" : "text-muted")">
-            Uploaded: @UploadDate.ToShortDateString()
-        </small>
+            <small class="@(IsSelected ? "text-white" : "text-muted")">
+                Uploaded: @UploadDate.ToShortDateString()
+            </small>
+        }
+        else if (Type == CardType.Comparison)
+        {
+            <p class="@(IsSelected ? "text-white" : "text-muted") mb-1">
+                Created: <strong>@UploadDate.ToShortDateString()</strong>
+            </p>
+
+            <small class="@(IsSelected ? "text-white" : "text-muted")">
+                @MessageCount message@(MessageCount == 1 ? "" : "s")
+            </small>
+        }
     </div>
 </div>
 
@@ -75,6 +90,12 @@
     [Parameter] public bool IsSelected { get; set; }      // new-dev
     [Parameter] public bool IsPublic { get; set; }        // feat-prop
     [Parameter] public bool IsPinned { get; set; }
+    public enum CardType { Contract, Comparison }
+
+    [Parameter] public CardType Type { get; set; } = CardType.Contract;
+
+    [Parameter] public string? ComparisonTitle { get; set; }
+    [Parameter] public int? MessageCount { get; set; }
 
     [Parameter] public EventCallback<int> OnDelete { get; set; }
     [Parameter] public EventCallback<int> OnToggleVisibility { get; set; }
