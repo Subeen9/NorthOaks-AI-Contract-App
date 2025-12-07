@@ -288,23 +288,20 @@
                                 <div class="col-xxl-4 col-xl-4 col-lg-6"
                                      @onclick="@(() => Navigation.NavigateTo($"/compare-chat/{session.Id}"))"
                                      style="cursor: pointer;">
-                                 <div class="col-xxl-4 col-xl-4 col-lg-6"
-     @onclick="@(() => Navigation.NavigateTo($"/compare-chat/{session.Id}"))"
-     style="cursor:pointer;">
 
-                                        <ContractCard Id="@session.Id"
-                                                      FileName="@BuildComparisonTitle(session)"
-                                                      UploadDate="@session.CreatedDate"
-                                                      UploadedBy="null"
-                                                      Type="ContractCard.CardType.Comparison"
-                                                      MessageCount="@session.MessageCount"
-                                                      IsPinned="IsComparisonPinned(session.Id)"
-                                                      OnTogglePin="() => ToggleComparisonPin(session.Id)"
-                                                      IsPublic="session.IsPublic"
-                                                      OnToggleVisibility="() => ToggleComparisonVisibility(session.Id)"
-                                                      IsSelected="false"
-                                                      OnDelete="() => DeleteComparisonSession(session.Id)" />
-</div>
+                                    <ContractCard Id="@session.Id"
+                                                  FileName="@BuildComparisonTitle(session)"
+                                                  UploadDate="@session.CreatedDate"
+                                                  UploadedBy="null"
+                                                  Type="ContractCard.CardType.Comparison"
+                                                  MessageCount="@session.MessageCount"
+                                                  IsPinned="IsComparisonPinned(session.Id)"
+                                                  OnTogglePin="() => ToggleComparisonPin(session.Id)"
+                                                  IsPublic="session.IsPublic"
+                                                  OnToggleVisibility="() => ToggleComparisonVisibility(session.Id)"
+                                                  IsSelected="false"
+                                                  OnDelete="() => DeleteComparisonSession(session.Id)" />
+
                                 </div>
                             }
                         }
@@ -336,9 +333,9 @@
                     if (activeTab == "comparisons")
                     {
                         var comparisonPage = comparisonFiltered
-                            .Skip((currentPage - 1) * pageSize)
-                            .Take(pageSize)
-                            .ToList();
+                        .Skip((currentPage - 1) * pageSize)
+                        .Take(pageSize)
+                        .ToList();
 
                         <div class="list-group">
                             @foreach (var session in comparisonPage)
@@ -387,7 +384,7 @@
                                                   UploadedBy="@c.UploadedBy"
                                                   IsPublic="@c.IsPublic"
                                                   OnToggleVisibility="ToggleVisibility"
-                                                 OnDelete="DeleteContract" />
+                                                  OnDelete="DeleteContract" />
                                 </div>
                             }
                         </div>
@@ -519,7 +516,7 @@
     protected override async Task OnInitializedAsync()
     {
         try
-        { 
+        {
             // Load contracts and pins first
             contracts = await Http.GetFromJsonAsync<List<ContractReadDto>>("/api/contracts") ?? new();
             await LoadPinsAsync();
@@ -669,6 +666,26 @@
         else
         {
             ToastService.Notify(new(ToastType.Danger, "Failed to delete comparison"));
+        }
+    }
+
+    private async Task ToggleComparisonVisibility(int id)
+    {
+        var session = comparisonSessions.FirstOrDefault(s => s.Id == id);
+        if (session == null) return;
+
+        var newVisibility = !session.IsPublic;
+        var res = await Http.PutAsync($"/api/chatsessions/{id}/visibility?isPublic={newVisibility}", null);
+
+        if (res.IsSuccessStatusCode)
+        {
+            session.IsPublic = newVisibility;
+            ToastService.Notify(new(ToastType.Info, newVisibility ? "Comparison is now Public" : "Comparison is now Private"));
+            StateHasChanged();
+        }
+        else
+        {
+            ToastService.Notify(new(ToastType.Danger, "Failed to update comparison visibility"));
         }
     }
 
