@@ -80,15 +80,24 @@
 
         if (user.Identity?.IsAuthenticated == true)
         {
-            fullName = user.FindFirst("name")?.Value ?? "";
-            username = user.FindFirst("preferred_username")?.Value
-                       ?? user.Identity.Name
-                       ?? "";
-            email = user.FindFirst("email")?.Value ?? "";
+            // Same logic as in navigation
+            var firstName = user.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? "";
+            var lastName = user.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value ?? "";
 
-            initials = GetInitials(fullName);
+            fullName = $"{firstName} {lastName}".Trim();
+
+            email = user.Claims.FirstOrDefault(c => c.Type == "email")?.Value
+                    ?? user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value
+                    ?? "";
+
+            username = user.Claims.FirstOrDefault(c => c.Type == "preferred_username")?.Value
+                       ?? user.Identity?.Name
+                       ?? "";
+
+            initials = GetInitials(fullName); // or GetInitials(firstName, lastName) if you change it
         }
     }
+
 
     private string GetInitials(string name)
     {
