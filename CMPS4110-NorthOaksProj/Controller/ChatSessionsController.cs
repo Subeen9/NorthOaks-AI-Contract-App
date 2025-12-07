@@ -1,7 +1,10 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using CMPS4110_NorthOaksProj.Data;
+﻿using CMPS4110_NorthOaksProj.Data;
+using CMPS4110_NorthOaksProj.Hubs;
 using CMPS4110_NorthOaksProj.Models.Chat;
+using CMPS4110_NorthOaksProj.Models.Notifications;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
+using Microsoft.EntityFrameworkCore;
 //using CMPS4110_NorthOaksProj.Models.Chat.Dtos;
 using NorthOaks.Shared.Model.Chat;
 
@@ -12,9 +15,14 @@ namespace CMPS4110_NorthOaksProj.Controller
     public class ChatSessionsController : ControllerBase
     {
         private readonly DataContext _db;
-        public ChatSessionsController(DataContext db) => _db = db;
+        private readonly IHubContext<NotificationHub> _notificationHub;
+        public ChatSessionsController(DataContext db, IHubContext<NotificationHub> notificationHub)
+        {
+            _db = db;
+            _notificationHub = notificationHub;
+        }
 
-        
+
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ChatSessionDto>>> GetAll()
         {
@@ -27,7 +35,8 @@ namespace CMPS4110_NorthOaksProj.Controller
                     UserId = s.UserId,
                     CreatedDate = s.CreatedDate,
                     MessageCount = s.Messages.Count,
-                    ContractIds = s.SessionContracts.Select(sc => sc.ContractId).ToList()
+                    ContractIds = s.SessionContracts.Select(sc => sc.ContractId).ToList(),
+                    IsPublic = s.IsPublic
                 })
                 .ToListAsync();
 
@@ -51,7 +60,8 @@ namespace CMPS4110_NorthOaksProj.Controller
                 UserId = s.UserId,
                 CreatedDate = s.CreatedDate,
                 MessageCount = s.Messages.Count,
-                ContractIds = s.SessionContracts.Select(sc => sc.ContractId).ToList()
+                ContractIds = s.SessionContracts.Select(sc => sc.ContractId).ToList(),
+                IsPublic = s.IsPublic
             };
         }
 
@@ -75,7 +85,8 @@ namespace CMPS4110_NorthOaksProj.Controller
                     {
                         Id = sc.Contract.Id,
                         FileName = sc.Contract.FileName
-                    }).ToList()
+                    }).ToList(),
+                    IsPublic = s.IsPublic
                 })
                 .ToListAsync();
 
@@ -106,7 +117,8 @@ namespace CMPS4110_NorthOaksProj.Controller
                         CreatedDate = existing.CreatedDate,
                         MessageCount = existing.Messages.Count,
                         ContractIds = existing.SessionContracts.Select(sc => sc.ContractId).ToList(),
-                        SessionType = (int)existing.SessionType
+                        SessionType = (int)existing.SessionType,
+                        IsPublic = existing.IsPublic
                     };
                     return Ok(existingDto);
                 }
@@ -144,6 +156,81 @@ namespace CMPS4110_NorthOaksProj.Controller
             };
 
             return CreatedAtAction(nameof(Get), new { id = entity.Id }, result);
+        }
+
+        [HttpPut("comparisons/{id:int}/visibility")]
+        public async Task<IActionResult> SetComparisonVisibility(int id, [FromQuery] bool isPublic)
+        {
+            var currentUserName = User.Identity?.Name?.ToLower() ?? "unknown_user";
+
+            // Get the current user
+            var currentUser = await _db.Users
+                .FirstOrDefaultAsync(u => u.UserName.ToLower() == currentUserName);
+
+            if (currentUser == null)
+                return Unauthorized();
+
+            // Get the comparison session with contracts
+            var session = await _db.ChatSessions
+                .Include(s => s.SessionContracts)
+                    .ThenInclude(sc => sc.Contract)
+                .FirstOrDefaultAsync(s => s.Id == id);
+
+            if (session == null)
+                return NotFound("Comparison session not found.");
+
+            // Ensure this is a comparison session
+            if (session.SessionType != ChatSessionType.Comparison)
+                return BadRequest("This endpoint only modifies comparison sessions.");
+
+            // Ensure only the owner can change visibility
+            if (session.UserId != currentUser.Id)
+                return Forbid("Cannot modify another user's comparison session.");
+
+            bool wasPrivate = !session.IsPublic;
+            session.IsPublic = isPublic;
+            await _db.SaveChangesAsync();
+
+            // Notify others if it just became public
+            if (wasPrivate && isPublic)
+            {
+                var title = session.SessionContracts.Any()
+                    ? string.Join(" vs ", session.SessionContracts.Select(sc => sc.Contract.FileName))
+                    : "Contract Comparison";
+
+                var ownerName = $"{currentUser.FirstName} {currentUser.LastName}";
+
+                var targetUsers = await _db.Users
+                    .Where(u => u.Id != currentUser.Id)
+                    .ToListAsync();
+
+                foreach (var user in targetUsers)
+                {
+                    _db.Notifications.Add(new Notification
+                    {
+                        Message = $"Comparison '{title}' is now PUBLIC (by {ownerName}).",
+                        TargetUserId = user.Id,
+                        CreatedAt = DateTime.UtcNow,
+                        IsRead = false
+                    });
+                }
+
+                await _db.SaveChangesAsync();
+
+                var targetGroups = targetUsers.Select(u => u.UserName.Trim().ToLower()).ToList();
+
+                await _notificationHub.Clients.Groups(targetGroups).SendAsync("ReceiveNotification", new
+                {
+                    Message = $"Comparison '{title}' is now PUBLIC.",
+                    UserId = currentUserName,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+
+            return Ok(new
+            {
+                message = $"Visibility updated to {(isPublic ? "PUBLIC" : "PRIVATE")}"
+            });
         }
 
 
