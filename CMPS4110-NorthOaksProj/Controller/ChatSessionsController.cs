@@ -43,7 +43,7 @@ namespace CMPS4110_NorthOaksProj.Controller
             return Ok(sessions);
         }
 
-       
+
         [HttpGet("{id:int}")]
         public async Task<ActionResult<ChatSessionDto>> Get(int id)
         {
@@ -241,9 +241,24 @@ namespace CMPS4110_NorthOaksProj.Controller
             var session = await _db.ChatSessions.FindAsync(id);
             if (session == null) return NotFound();
 
+            // Get current user's username from claims
+            var currentUserName = User.Identity?.Name?.ToLower() ?? "unknown_user";
+
+            var currentUser = await _db.Users
+                .FirstOrDefaultAsync(u => u.UserName.ToLower() == currentUserName);
+
+            if (currentUser == null)
+                return Unauthorized();
+
+            // Check if the current user is the owner
+            if (session.UserId != currentUser.Id)
+                return Forbid("You cannot delete another user's session.");
+
             _db.ChatSessions.Remove(session);
             await _db.SaveChangesAsync();
+
             return NoContent();
         }
+
     }
 }
