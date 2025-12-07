@@ -93,6 +93,35 @@ namespace CMPS4110_NorthOaksProj.Controller
             return Ok(sessions);
         }
 
+        [HttpGet("public")]
+        public async Task<ActionResult<IEnumerable<ChatSessionDto>>> GetPublicComparisons()
+        {
+            var sessions = await _db.ChatSessions
+                .AsNoTracking()
+                .Include(s => s.SessionContracts)
+                    .ThenInclude(sc => sc.Contract)
+                .Include(s => s.Messages)
+                .Where(s => s.IsPublic && s.SessionType == ChatSessionType.Comparison)
+                .OrderByDescending(s => s.CreatedDate)
+                .Select(s => new ChatSessionDto
+                {
+                    Id = s.Id,
+                    UserId = s.UserId,
+                    CreatedDate = s.CreatedDate,
+                    MessageCount = s.Messages.Count,
+                    ContractIds = s.SessionContracts.Select(sc => sc.ContractId).ToList(),
+                    Contracts = s.SessionContracts.Select(sc => new ContractInfoDto
+                    {
+                        Id = sc.Contract.Id,
+                        FileName = sc.Contract.FileName
+                    }).ToList(),
+                    IsPublic = s.IsPublic
+                })
+                .ToListAsync();
+
+            return Ok(sessions);
+        }
+
         [HttpPost]
         public async Task<ActionResult<ChatSessionDto>> Create(CreateChatSessionDto dto)
         {
