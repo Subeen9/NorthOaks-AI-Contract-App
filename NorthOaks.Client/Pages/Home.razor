@@ -675,7 +675,7 @@
         if (session == null) return;
 
         var newVisibility = !session.IsPublic;
-        var res = await Http.PutAsync($"/api/chatsessions/{id}/visibility?isPublic={newVisibility}", null);
+        var res = await Http.PutAsync($"/api/chatsessions/comparisons/{id}/visibility?isPublic={newVisibility}", null);
 
         if (res.IsSuccessStatusCode)
         {
@@ -795,7 +795,6 @@
 
             allSessions = await Http.GetFromJsonAsync<List<ChatSessionDto>>($"/api/chatsessions/user/{userId}") ?? new();
 
-            // comparison sessions are those with exactly 2 contracts (for now)
             comparisonSessions = allSessions.Where(s => s.ContractIds.Count == 2).ToList();
         }
         catch (Exception ex)
