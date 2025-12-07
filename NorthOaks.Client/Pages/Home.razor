@@ -288,43 +288,23 @@
                                 <div class="col-xxl-4 col-xl-4 col-lg-6"
                                      @onclick="@(() => Navigation.NavigateTo($"/compare-chat/{session.Id}"))"
                                      style="cursor: pointer;">
-                                    <!-- Make comparison cards visually identical to contract cards -->
-                                    <div class="contract-card contract-hover position-relative home-card comparison-card">
-                                        <div class="card shadow-sm mb-3 h-100">
-                                            <div class="card-body d-flex flex-column">
+                                 <div class="col-xxl-4 col-xl-4 col-lg-6"
+     @onclick="@(() => Navigation.NavigateTo($"/compare-chat/{session.Id}"))"
+     style="cursor:pointer;">
 
-                                                <button type="button"
-                                                        class="card-menu"
-                                                        title="More actions"
-                                                        @onclick="@(e => OnComparisonMenuClick(session.Id))"
-                                                        @onclick:stopPropagation="true">
-                                                    <i class="bi bi-three-dots-vertical"></i>
-                                                </button>
-
-
-                                                <!-- title (same style as contracts) -->
-                                                <h5 class="card-title fw-bold contract-title mb-2">
-                                                    @BuildComparisonTitle(session)
-                                                </h5>
-
-                                                <!-- footer meta: date + message count stacked -->
-                                                <small class="contract-meta d-block">
-                                                    Created @session.CreatedDate.ToShortDateString()
-                                                </small>
-                                                <small class="contract-meta d-block">
-                                                    @session.MessageCount message@(session.MessageCount == 1 ? "" : "s")
-                                                </small>
-
-                                                <!-- pin button bottom-right -->
-                                                <button type="button"
-                                                        class="pin-btn @(IsComparisonPinned(session.Id) ? "pinned" : "")"
-                                                        @onclick="@(e => ToggleComparisonPin(session.Id))"
-                                                        @onclick:stopPropagation="true">
-                                                    <i class="bi @(IsComparisonPinned(session.Id) ? "bi-pin-fill" : "bi-pin")"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
+                                        <ContractCard Id="@session.Id"
+                                                      FileName="@BuildComparisonTitle(session)"
+                                                      UploadDate="@session.CreatedDate"
+                                                      UploadedBy="null"
+                                                      Type="ContractCard.CardType.Comparison"
+                                                      MessageCount="@session.MessageCount"
+                                                      IsPinned="IsComparisonPinned(session.Id)"
+                                                      OnTogglePin="() => ToggleComparisonPin(session.Id)"
+                                                      IsPublic="session.IsPublic"
+                                                      OnToggleVisibility="() => ToggleComparisonVisibility(session.Id)"
+                                                      IsSelected="false"
+                                                      OnDelete="() => DeleteComparisonSession(session.Id)" />
+</div>
                                 </div>
                             }
                         }
