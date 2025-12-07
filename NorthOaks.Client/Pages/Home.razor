@@ -793,9 +793,19 @@
             if (string.IsNullOrEmpty(userId))
                 return;
 
-            allSessions = await Http.GetFromJsonAsync<List<ChatSessionDto>>($"/api/chatsessions/user/{userId}") ?? new();
+            var userSessions = await Http.GetFromJsonAsync<List<ChatSessionDto>>($"/api/chatsessions/user/{userId}") ?? new();
+        var publicSessions = await Http.GetFromJsonAsync<List<ChatSessionDto>>("/api/chatsessions/public") ?? new();
 
-            comparisonSessions = allSessions.Where(s => s.ContractIds.Count == 2).ToList();
+    
+        var merged = new List<ChatSessionDto>(userSessions);
+        foreach (var ps in publicSessions)
+        {
+            if (!merged.Any(ms => ms.Id == ps.Id))
+                merged.Add(ps);
+        }
+
+        allSessions = merged;
+        comparisonSessions = allSessions.Where(s => s.ContractIds.Count == 2).ToList();
         }
         catch (Exception ex)
         {
