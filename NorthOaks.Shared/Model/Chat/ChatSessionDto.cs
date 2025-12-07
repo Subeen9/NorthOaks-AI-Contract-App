@@ -12,5 +12,6 @@ namespace NorthOaks.Shared.Model.Chat
         public List<int> ContractIds { get; set; } = new();
         public int SessionType { get; set; } = 0;
         public List<ContractInfoDto> Contracts { get; set; } = new();
+        public bool IsPublic { get; set; } = false;
     }
 }
