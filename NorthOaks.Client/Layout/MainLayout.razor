@@ -100,14 +100,31 @@
                                     @initials
                                 </button>
 
-                                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="userMenu">
+                                <ul class="dropdown-menu dropdown-menu-end shadow-sm" aria-labelledby="userMenu" style="min-width:220px;">
+
+                                    <!-- Profile summary (Full Name ONLY) -->
+                                    <li class="px-3 py-2 border-bottom">
+                                        <div class="fw-semibold">@fullName</div>
+                                    </li>
+
+                                    <!-- View profile -->
                                     <li>
-                                        <button class="dropdown-item" @onclick="Logout">
+                                        <button class="dropdown-item" @onclick="NavigateToProfile">
+                                            <i class="bi bi-person me-2"></i> View Profile
+                                        </button>
+                                    </li>
+
+                                    <li><hr class="dropdown-divider" /></li>
+
+                                    <!-- Logout -->
+                                    <li>
+                                        <button class="dropdown-item text-danger" @onclick="Logout">
                                             <i class="bi bi-box-arrow-right me-2"></i> Logout
                                         </button>
                                     </li>
                                 </ul>
                             </div>
+
                         </div>
                     </div>
                 </header>
@@ -129,6 +146,10 @@
     private int unreadCount = 0;
     private string? currentUserId;
 
+    private string fullName = "";
+    private string email = "";
+    private string userName = "";
+
     private void NavigateToHome() => Navigation.NavigateTo("/home");
 
     protected override async Task OnInitializedAsync()
@@ -141,11 +162,21 @@
             if (user?.Identity?.IsAuthenticated == true)
             {
                 currentUserId = user.Claims.FirstOrDefault(c => c.Type == "sub")?.Value
-                ?? user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
-                ?? string.Empty;
+                    ?? user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.NameIdentifier)?.Value
+                    ?? string.Empty;
 
                 var firstName = user.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? "";
                 var lastName = user.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value ?? "";
+
+                // fill profile info
+                fullName = $"{firstName} {lastName}".Trim();
+                email = user.Claims.FirstOrDefault(c => c.Type == "email")?.Value
+                        ?? user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value
+                        ?? "";
+                userName = user.Claims.FirstOrDefault(c => c.Type == "preferred_username")?.Value
+                           ?? user.Claims.FirstOrDefault(c => c.Type == "unique_name")?.Value
+                           ?? currentUserId ?? "";
+
                 initials = GetInitials(firstName, lastName);
 
                 await Notifications.InitializeAsync(currentUserId);
@@ -163,6 +194,13 @@
             ToastService.Notify(new(ToastType.Danger, "Failed to initialize notifications."));
         }
     }
+    private void NavigateToProfile()
+    {
+        
+        Navigation.NavigateTo("/profile");
+    }
+
+
 
     private void UpdateUnreadCount()
     {

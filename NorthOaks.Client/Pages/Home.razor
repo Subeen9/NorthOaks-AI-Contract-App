@@ -28,7 +28,7 @@
                 <button type="button" class="sb-link sb-button-link" @onclick="OpenUploadModal">
                     <i class="bi bi-upload"></i><span>Upload</span>
                 </button>
-                <NavLink href="/settings" class="sb-link" Match="NavLinkMatch.Prefix">
+                <NavLink href="/profile" class="sb-link" Match="NavLinkMatch.Prefix">
                     <i class="bi bi-gear"></i><span>Settings</span>
                 </NavLink>
             </nav>
@@ -400,12 +400,14 @@
                         <div class="list-group">
                             @foreach (var c in page)
                             {
-                                <div class="contract-row mb-2 position-relative">
+                                <div class="contract-row mb-4 position-relative">
                                     <ContractList Id="@c.Id"
                                                   FileName="@CleanFileName(c.FileName)"
                                                   UploadDate="@c.UploadDate"
                                                   UploadedBy="@c.UploadedBy"
-                                                  OnDelete="DeleteContract" />
+                                                  IsPublic="@c.IsPublic"
+                                                  OnToggleVisibility="ToggleVisibility"
+                                                 OnDelete="DeleteContract" />
                                 </div>
                             }
                         </div>
