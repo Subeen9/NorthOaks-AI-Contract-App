@@ -123,6 +123,44 @@ namespace CMPS4110_NorthOaksProj.Controllers
             return CreatedAtAction(nameof(GetById), new { id = savedContract.Id }, ToReadDto(savedContract));
         }
 
+        [HttpGet("comparison/{sessionId:int}/contract/{contractId:int}")]
+        public async Task<ActionResult<ContractReadDto>> GetComparisonContract(int sessionId, int contractId)
+        {
+            var currentUserName = User.Identity?.Name?.ToLower() ?? "unknown_user";
+
+            var currentUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.UserName.ToLower() == currentUserName);
+
+            if (currentUser == null)
+                return Unauthorized();
+
+            // Get the session with its contracts
+            var session = await _context.ChatSessions
+                .Include(s => s.SessionContracts)
+                .FirstOrDefaultAsync(s => s.Id == sessionId);
+
+            if (session == null)
+                return NotFound("Session not found");
+
+            // Only allow access if session is public OR user owns the session
+            if (!session.IsPublic && session.UserId != currentUser.Id)
+                return Forbid("Cannot access private comparison");
+
+            // Verify contract is part of this session (security check)
+            if (!session.SessionContracts.Any(sc => sc.ContractId == contractId))
+                return NotFound("Contract not in this session");
+
+            // Get the contract (even if it's private, we allow access via public comparison)
+            var contract = await _context.Contracts
+                .Include(c => c.User)
+                .FirstOrDefaultAsync(c => c.Id == contractId);
+
+            if (contract == null)
+                return NotFound("Contract not found");
+
+            return Ok(ToReadDto(contract));
+        }
+
 
         // ====================================================================
         //  DELETE contract

@@ -9,6 +9,17 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Data\Base\NewFolder\**" />
+    <Compile Remove="NewFolder\**" />
+    <Content Remove="Data\Base\NewFolder\**" />
+    <Content Remove="NewFolder\**" />
+    <EmbeddedResource Remove="Data\Base\NewFolder\**" />
+    <EmbeddedResource Remove="NewFolder\**" />
+    <None Remove="Data\Base\NewFolder\**" />
+    <None Remove="NewFolder\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.9" NoWarn="NU1605" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="9.0.9" NoWarn="NU1605" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Authentication" Version="9.0.10" />
@@ -42,8 +53,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Data\Base\NewFolder\" />
-    <Folder Include="NewFolder\" />
     <Folder Include="UploadedContracts\" />
   </ItemGroup>
 

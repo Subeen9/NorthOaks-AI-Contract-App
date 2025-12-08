@@ -265,7 +265,7 @@
             {
                 foreach (var contractId in session.ContractIds)
                 {
-                    var contract = await Http.GetFromJsonAsync<ContractReadDto>($"/api/contracts/{contractId}");
+                    var contract = await Http.GetFromJsonAsync<ContractReadDto>($"/api/contracts/comparison/{sessionId}/contract/{contractId}");
                     if (contract != null)
                     {
                         contracts.Add(contract);

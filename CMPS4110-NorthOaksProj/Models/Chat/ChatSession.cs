@@ -18,5 +18,6 @@ namespace CMPS4110_NorthOaksProj.Models.Chat
         public ChatSessionType SessionType { get; set; } = ChatSessionType.Single;
         public ICollection<ChatSessionContract> SessionContracts { get; set; } = new List<ChatSessionContract>();
         public ICollection<ChatMessage> Messages { get; set; } = new List<ChatMessage>();
+        public bool IsPublic { get; set; } = false;
     }
 }
