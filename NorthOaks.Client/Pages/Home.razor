@@ -292,7 +292,8 @@
                                     <ContractCard Id="@session.Id"
                                                   FileName="@BuildComparisonTitle(session)"
                                                   UploadDate="@session.CreatedDate"
-                                                  UploadedBy="null"
+                                                  UserId="@session.UserId"
+                                                  UploadedBy="@session.UserId.ToString()"
                                                   Type="ContractCard.CardType.Comparison"
                                                   MessageCount="@session.MessageCount"
                                                   IsPinned="IsComparisonPinned(session.Id)"
@@ -301,7 +302,6 @@
                                                   OnToggleVisibility="() => ToggleComparisonVisibility(session.Id)"
                                                   IsSelected="false"
                                                   OnDelete="() => OnComparisonMenuClick(session.Id)" />
-
                                 </div>
                             }
                         }
@@ -382,6 +382,7 @@
                                                   FileName="@CleanFileName(c.FileName)"
                                                   UploadDate="@c.UploadDate"
                                                   UploadedBy="@c.UploadedBy"
+                                                  UserId="@c.UserId"
                                                   IsPublic="@c.IsPublic"
                                                   OnToggleVisibility="ToggleVisibility"
                                                   OnDelete="DeleteContract" />
