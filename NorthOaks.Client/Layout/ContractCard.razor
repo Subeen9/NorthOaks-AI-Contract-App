@@ -1,36 +1,39 @@
-@inject NavigationManager Navigation
+﻿@inject NavigationManager Navigation
+@inject HttpClient Http
 
 <div class="card shadow-sm mb-3 h-100 contract-hover position-relative @(IsSelected ? "selected-for-comparison" : "")"
      style="border-radius:14px; overflow:hidden; @(IsSelected ? "background: var(--brand-gold) !important;" : "")"
      @ondblclick="@(() => Navigation.NavigateTo($"/contract/{Id}"))">
 
-
-    <!-- Options dropdown -->
-    <div class="dropdown position-absolute top-0 end-0 m-2">
-        <button class="btn btn-sm btn-light p-1" type="button" id="dropdownMenuButton-@Id"
-                data-bs-toggle="dropdown" aria-expanded="false" @onclick:stopPropagation="true">
-            <i class="bi bi-three-dots-vertical" style="color:black"></i>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end shadow-sm"
-            aria-labelledby="dropdownMenuButton-@Id"
-            style="border-radius: 8px; font-size: 0.9rem;">
-            <li>
-                <button class="dropdown-item text-danger"
-                        @onclick:stopPropagation="true"
-                        @onclick="OpenDelete">
-                    <i class="bi bi-trash me-2"></i> Delete Contract
-                </button>
-            </li>
-            <li>
-                <button class="dropdown-item"
-                        @onclick:stopPropagation="true"
-                        @onclick="ToggleVisibility">
-                    <i class="bi @(IsPublic ? "bi-lock-fill" : "bi-globe-americas") me-2"></i>
-                    @(IsPublic ? "Make Private" : "Make Public")
-                </button>
-            </li>
-        </ul>
-    </div>
+    <!-- Options dropdown - ONLY SHOW IF OWNER -->
+    @if (IsOwner)
+    {
+        <div class="dropdown position-absolute top-0 end-0 m-2">
+            <button class="btn btn-sm btn-light p-1" type="button" id="dropdownMenuButton-@Id"
+                    data-bs-toggle="dropdown" aria-expanded="false" @onclick:stopPropagation="true">
+                <i class="bi bi-three-dots-vertical" style="color:black"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm"
+                aria-labelledby="dropdownMenuButton-@Id"
+                style="border-radius: 8px; font-size: 0.9rem;">
+                <li>
+                    <button class="dropdown-item text-danger"
+                            @onclick:stopPropagation="true"
+                            @onclick="OpenDelete">
+                        <i class="bi bi-trash me-2"></i> Delete Contract
+                    </button>
+                </li>
+                <li>
+                    <button class="dropdown-item"
+                            @onclick:stopPropagation="true"
+                            @onclick="ToggleVisibility">
+                        <i class="bi @(IsPublic ? "bi-lock-fill" : "bi-globe-americas") me-2"></i>
+                        @(IsPublic ? "Make Private" : "Make Public")
+                    </button>
+                </li>
+            </ul>
+        </div>
+    }
 
     <!-- Pin button -->
     <button type="button"
@@ -86,9 +89,8 @@
     [Parameter] public int UserId { get; set; }
     [Parameter] public string? UploadedBy { get; set; }
     [Parameter] public DateTime UploadDate { get; set; }
-
-    [Parameter] public bool IsSelected { get; set; }      // new-dev
-    [Parameter] public bool IsPublic { get; set; }        // feat-prop
+    [Parameter] public bool IsSelected { get; set; }
+    [Parameter] public bool IsPublic { get; set; }
     [Parameter] public bool IsPinned { get; set; }
     public enum CardType { Contract, Comparison }
 
@@ -101,6 +103,32 @@
     [Parameter] public EventCallback<int> OnToggleVisibility { get; set; }
     [Parameter] public EventCallback OnTogglePin { get; set; }
 
+    private static int? _currentUserId = null;
+    private bool IsOwner => _currentUserId.HasValue && UserId == _currentUserId.Value;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Only fetch once per session (static field caches it)
+        if (_currentUserId == null)
+        {
+            try
+            {
+                var response = await Http.GetFromJsonAsync<UserDto>("/api/users/me");
+                if (response != null)
+                {
+                    _currentUserId = response.Id;
+                    Console.WriteLine($"✓ Current User ID: {_currentUserId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting current user: {ex.Message}");
+            }
+        }
+
+        Console.WriteLine($"Contract {Id}: Owner={UserId}, Current={_currentUserId}, IsOwner={IsOwner}");
+    }
+
     private async Task OpenDelete()
     {
         if (OnDelete.HasDelegate)
@@ -111,5 +139,14 @@
     {
         if (OnToggleVisibility.HasDelegate)
             await OnToggleVisibility.InvokeAsync(Id);
+    }
+
+    public class UserDto
+    {
+        public int Id { get; set; }
+        public string UserName { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
     }
 }
