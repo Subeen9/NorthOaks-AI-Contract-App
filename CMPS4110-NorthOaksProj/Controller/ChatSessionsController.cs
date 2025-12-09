@@ -7,6 +7,8 @@ using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 //using CMPS4110_NorthOaksProj.Models.Chat.Dtos;
 using NorthOaks.Shared.Model.Chat;
+using CMPS4110_NorthOaksProj.Data.Services.Contracts;
+
 
 namespace CMPS4110_NorthOaksProj.Controller
 {
@@ -16,10 +18,13 @@ namespace CMPS4110_NorthOaksProj.Controller
     {
         private readonly DataContext _db;
         private readonly IHubContext<NotificationHub> _notificationHub;
-        public ChatSessionsController(DataContext db, IHubContext<NotificationHub> notificationHub)
+        private readonly IContractsService _contractsService;
+
+        public ChatSessionsController(DataContext db, IHubContext<NotificationHub> notificationHub, IContractsService contractsService)
         {
             _db = db;
             _notificationHub = notificationHub;
+            _contractsService = contractsService;
         }
 
 
@@ -223,8 +228,15 @@ namespace CMPS4110_NorthOaksProj.Controller
             // Notify others if it just became public
             if (wasPrivate && isPublic)
             {
-                var title = session.SessionContracts.Any()
-                    ? string.Join(" vs ", session.SessionContracts.Select(sc => sc.Contract.FileName))
+                // Use the same helper as ContractsController to strip GUID prefixes
+                var contractTitles = session.SessionContracts.Any()
+                    ? session.SessionContracts
+                        .Select(sc => _contractsService.GetOriginalFileName(sc.Contract.FileName))
+                        .ToList()
+                    : new List<string>();
+
+                var title = contractTitles.Any()
+                    ? string.Join(" vs ", contractTitles)
                     : "Contract Comparison";
 
                 var ownerName = $"{currentUser.FirstName} {currentUser.LastName}";
@@ -246,7 +258,9 @@ namespace CMPS4110_NorthOaksProj.Controller
 
                 await _db.SaveChangesAsync();
 
-                var targetGroups = targetUsers.Select(u => u.UserName.Trim().ToLower()).ToList();
+                var targetGroups = targetUsers
+                    .Select(u => u.UserName.Trim().ToLower())
+                    .ToList();
 
                 await _notificationHub.Clients.Groups(targetGroups).SendAsync("ReceiveNotification", new
                 {
@@ -254,7 +268,9 @@ namespace CMPS4110_NorthOaksProj.Controller
                     UserId = currentUserName,
                     CreatedAt = DateTime.UtcNow
                 });
-            }
+            
+
+        }
 
             return Ok(new
             {
