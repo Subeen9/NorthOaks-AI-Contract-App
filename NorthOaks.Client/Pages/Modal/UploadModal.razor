@@ -107,6 +107,8 @@
         }
     }
     [Parameter] public EventCallback OnClose { get; set; }
+    [Parameter] public EventCallback OnUploaded { get; set; }
+
     [Inject] protected ToastService ToastService { get; set; } = default!;
     private IBrowserFile? selectedFile;
     private bool isFileSelected = false;
@@ -200,7 +202,10 @@
                     {
                         await hubConnection.SendAsync("JoinContractProcessing", uploadedContract.Id);
                     }
-
+                    if (OnUploaded.HasDelegate)
+                    {
+                        await OnUploaded.InvokeAsync();
+                    }
                     isProcessing = true;
                     uploadProgress = 0;
                     statusMessage = "Upload complete, processing...";
