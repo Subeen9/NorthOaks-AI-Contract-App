@@ -640,36 +640,6 @@ clear-highlights-btn {
 .source-link-btn {
     display: none;
 }
-/* =========================================================
-   CONTRACT CARD HOVER
-========================================================= */
-.contract-hover {
-    transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease, color .2s ease;
-    cursor: pointer;
-}
-
-.contract-title {
-    color: var(--brand-blue);
-    transition: color .18s ease;
-}
-
-.contract-hover:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(0,0,0,.1);
-    background-color: var(--brand-gold) !important;
-    color: #fff !important;
-}
-
-    .contract-hover:hover .text-muted,
-    .contract-hover:hover i,
-    .contract-hover:hover .contract-title,
-    .contract-hover:hover .file-icon {
-        color: #fff !important;
-    }
-
-    .contract-hover:hover .bi-three-dots-vertical {
-        color: #000 !important;
-    }
 
 /* =========================================================
    RESPONSIVE
@@ -1133,22 +1103,6 @@ clear-highlights-btn {
         padding: 20px 22px !important;
     }
 
-/* list-view rows stay the same */
-.list-group .contract-row {
-    border: 1px solid var(--stroke);
-    border-radius: 12px;
-    padding: 14px 16px;
-    background: #fff;
-    box-shadow: var(--shadow-sm);
-    transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease;
-}
-
-    .list-group .contract-row:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
-        background: #fff5e0;
-    }
-
 
 
 /* normalize component-in-card (prevents "double card" look) */
@@ -1185,22 +1139,6 @@ clear-highlights-btn {
 
     .home-card .card-body {
         padding: 20px 22px !important;
-    }
-
-/* list-view rows */
-.list-group .contract-row {
-    border: 1px solid var(--stroke);
-    border-radius: 12px;
-    padding: 14px 16px;
-    background: #fff;
-    box-shadow: var(--shadow-sm);
-    transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease;
-}
-
-    .list-group .contract-row:hover {
-        transform: translateY(-2px);
-        box-shadow: var(--shadow-md);
-        background: #fff5e0;
     }
 
 /* pagination (brand) */
