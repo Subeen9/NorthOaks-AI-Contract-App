@@ -157,16 +157,7 @@ a, .btn-link {
 }
 
 
-.pdf-area {
-    flex: 1 1 auto;
-    display: flex;
-    flex-direction: column;
-    background: #fff;
-    border-right: 1px solid #ddd;
-    overflow: hidden; 
-    min-width: 300px;
-    min-height: 0;
-}
+
 body.resizing,
 body.resizing * {
     user-select: none !important;
@@ -179,15 +170,6 @@ body.resizing * {
     transition: width 0.05s ease-out;
 }
 
-
-.pdf-frame {
-    flex: 1 1 auto;
-    width: 100%;
-    border: none;
-    background: #fff;
-    border-radius: 4px;
-    overflow: auto; 
-}
 
 .resizer {
     width: 6px;
@@ -1569,24 +1551,7 @@ clear-highlights-btn {
 }
 
 
-/* =========================================================
-   PDF HIGHLIGHTING
-========================================================= */
-.custom-text-highlight {
-    position: absolute;
-    background-color: rgba(255, 255, 0, 0.6);
-    pointer-events: none;
-    z-index: 10;
-    mix-blend-mode: multiply;
-    border-radius: 2px;
-    box-shadow: 0 0 4px rgba(255, 200, 0, 0.8);
-    border: 1px solid rgba(255, 200, 0, 0.9);
-    transition: background-color 0.2s ease;
-}
 
-    .custom-text-highlight:hover {
-        background-color: rgba(255, 255, 0, 0.75);
-    }
 /* =========================================================
    AI LOADING INDICATOR
 ========================================================= */
