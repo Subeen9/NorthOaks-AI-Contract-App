@@ -1576,28 +1576,6 @@ clear-highlights-btn {
     }
 }
 
-    /* ============================
-   PROFILE PAGE STYLES
-============================ */
-
-.profile-avatar {
-    width: 56px;
-    height: 56px;
-    border-radius: 50%;
-    background: #003768;
-    color: #fff;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: 700;
-    font-size: 1.1rem;
-}
-
-.logout-btn {
-    padding: 8px 18px;
-    font-weight: 600;
-    border-radius: 10px;
-}
 
 /* =========================================================
    NOTIFICATIONS
