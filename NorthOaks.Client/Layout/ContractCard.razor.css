@@ -211,3 +211,19 @@
     .comparison-card.contract-hover:hover .card-menu i {
         color: #4b5563 !important;
     }
+
+/* 2) On card hover → FORCE DARK ICON COLOR */
+.contract-card:hover .pin-btn i,
+.home-card:hover .pin-btn i,
+.comparison-card:hover .pin-btn i,
+.contract-row:hover .pin-btn i,
+.comparison-row:hover .pin-btn i {
+    color: #222 !important; /* super visible on gold + white */
+    opacity: 1 !important;
+}
+
+/* 3) On GOLD card hover → even darker icon for contrast */
+.contract-card.contract-hover:hover .pin-btn i,
+.home-card.contract-hover:hover .pin-btn i {
+    color: #111 !important;
+}
