@@ -1102,95 +1102,6 @@ clear-highlights-btn {
     row-gap: 22px;
 }
 
-/* ---- contract card look ---- */
-.contract-card {
-    border: 1px solid var(--stroke);
-    background: var(--card-bg);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-sm);
-    transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease, color .18s ease;
-    min-height: 124px;
-}
-
-    /* uniform padding for cards */
-    .contract-card .card-body {
-        padding: 16px 18px;
-    }
-
-    /* 3-dots menu button in top-right */
-    .contract-card .card-menu {
-        position: absolute;
-        top: 12px;
-        right: 12px;
-        width: 36px;
-        height: 36px;
-        border-radius: 10px;
-        border: 1px solid var(--stroke);
-        background: #ffffff;
-        color: #9ca3af;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0;
-        line-height: 0;
-        box-shadow: var(--shadow-sm);
-        cursor: pointer;
-        transition: transform .12s ease, background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
-    }
-
-        .contract-card .card-menu i {
-            font-size: 18px;
-        }
-
-        /* hover on the button itself */
-        .contract-card .card-menu:hover {
-            background: #ffffff;
-            color: #4b5563;
-            border-color: #f0e0b4;
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-md);
-        }
-
-/* meta text */
-.contract-meta {
-    color: #6b7280;
-    font-size: .9rem;
-}
-
-/* main hover: card goes gold */
-.contract-card.contract-hover:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-    background: var(--brand-gold) !important;
-    color: #fff !important;
-}
-
-    /* on hover or selected, make title/meta white */
-    .contract-card.contract-hover:hover .contract-title,
-    .contract-card.contract-hover:hover .contract-meta,
-    .contract-card.contract-hover:hover .file-icon,
-    .contract-card.selected-for-comparison .contract-title,
-    .contract-card.selected-for-comparison .contract-meta,
-    .contract-card.selected-for-comparison .file-icon {
-        color: #fff !important;
-    }
-
-    /* on hover keep 3-dots visible */
-    .contract-card.contract-hover:hover .card-menu {
-        background: #ffffff !important;
-        border-color: #f0e0b4 !important;
-        color: #111827 !important;
-        box-shadow: var(--shadow-md);
-    }
-
-/* Selected state (same as hover, but permanent) */
-.contract-card.selected-for-comparison {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
-    background: var(--brand-gold) !important;
-    color: #fff !important;
-}
-
 /* normalize component-in-card (prevents "double card" look) */
 .home-card {
     border: 0 !important;
@@ -1354,42 +1265,6 @@ clear-highlights-btn {
         transform: translateY(-1px);
     }
 
-.contract-card:hover .pin-btn:not(.pinned) {
-    background: rgba(255,255,255,.96);
-    color: #7a5600;
-    border-color: #f0e0b4;
-    box-shadow: var(--shadow-md);
-}
-
-.pin-btn:active {
-    transform: scale(.96);
-    box-shadow: 0 4px 10px rgba(0,0,0,.08);
-}
-
-.pin-btn.pinned {
-    background: var(--brand-gold);
-    border-color: var(--brand-gold);
-    color: #fff;
-}
-
-    .pin-btn.pinned i {
-        transform: rotate(-18deg);
-        transition: transform .15s ease;
-    }
-
-.contract-card.contract-hover:hover .pin-btn {
-    background: rgba(255,255,255,.96) !important;
-    border-color: #f0e0b4 !important;
-    box-shadow: var(--shadow-md);
-}
-
-    .contract-card.contract-hover:hover .pin-btn i {
-        color: #7a5600 !important;
-    }
-
-.pin-btn:hover:not(.pinned) i {
-    color: #9a6b00 !important;
-}
 
 /* =========================================================
    NOTIFICATIONS
@@ -1531,39 +1406,6 @@ clear-highlights-btn {
 }
 
 
-.home-grid .contract-card.contract-hover:hover,
-.home-grid .contract-card.contract-hover:hover > *,
-.home-grid .contract-card.contract-hover:hover .card {
-    background: var(--brand-gold) !important;
-    color: #fff !important;
-    box-shadow: var(--shadow-md) !important;
-    transform: translateY(-2px);
-}
-
-    /* make text + icons white on hover */
-    .home-grid .contract-card.contract-hover:hover .contract-title,
-    .home-grid .contract-card.contract-hover:hover .contract-meta,
-    .home-grid .contract-card.contract-hover:hover .card-title,
-    .home-grid .contract-card.contract-hover:hover small,
-    .home-grid .contract-card.contract-hover:hover .text-muted,
-    .home-grid .contract-card.contract-hover:hover i:not(.bi-three-dots-vertical),
-    .home-grid .contract-card.contract-hover:hover .file-icon {
-        color: #fff !important;
-    }
-
-
-    /* keep badge readable on gold */
-    .home-grid .contract-card.contract-hover:hover .badge {
-        background: rgba(255,255,255,0.22) !important;
-        color: #fff !important;
-    }
-
-    /* nuke any blur/fade on hover */
-    .home-grid .contract-card.contract-hover:hover * {
-        opacity: 1 !important;
-        filter: none !important;
-    }
-
 
 
 
@@ -1602,48 +1444,7 @@ clear-highlights-btn {
     color: var(--muted);
 }
 
-/* Ensure pin icon always visible on gold hover (contracts + comparisons) */
-.home-grid .contract-card.contract-hover:hover .pin-btn,
-.contract-card.contract-hover:hover .pin-btn {
-    background: rgba(255,255,255,.96) !important;
-    border-color: #f0e0b4 !important;
-    box-shadow: var(--shadow-md);
-}
 
-    .home-grid .contract-card.contract-hover:hover .pin-btn i,
-    .contract-card.contract-hover:hover .pin-btn i {
-        color: #7a5600 !important;
-    }
-
-.contract-card .card-menu,
-.comparison-card .card-menu {
-    opacity: 1 !important;
-    visibility: visible !important;
-    display: flex !important;
-    z-index: 999 !important;
-}
-
-    /* ensure icon is visible no matter the hover colors */
-    .contract-card .card-menu i,
-    .comparison-card .card-menu i {
-        color: #9ca3af !important;
-        opacity: 1 !important;
-    }
-
-/* on hover (gold background), keep delete button visible */
-.contract-card.contract-hover:hover .card-menu,
-.comparison-card.contract-hover:hover .card-menu {
-    background: #ffffff !important;
-    border: 1px solid #e5e7eb !important;
-    box-shadow: 0 3px 8px rgba(0,0,0,.15) !important;
-    opacity: 1 !important;
-}
-
-    /* on hover: keep the icon readable */
-    .contract-card.contract-hover:hover .card-menu i,
-    .comparison-card.contract-hover:hover .card-menu i {
-        color: #4b5563 !important;
-    }
 
 /* fix position in comparison cards */
 
