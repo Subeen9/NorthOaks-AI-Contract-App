@@ -255,6 +255,7 @@
 .library-header {
     gap: 16px;
     margin-bottom: 20px !important;
+    flex-shrink: 0; 
 }
 
 .library-title {
@@ -330,7 +331,37 @@
     margin-top: -4px;
     margin-bottom: 10px;
     font-size: .95rem;
+    flex-shrink: 0; 
 }
+
+
+.contracts-scroll-area {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overflow-x: visible;
+    padding-bottom: 40px;
+    padding-right: 12px;
+    min-height: 0;
+}
+
+
+    .contracts-scroll-area::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .contracts-scroll-area::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+
+    .contracts-scroll-area::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 10px;
+    }
+
+        .contracts-scroll-area::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
 
 .home-grid {
     row-gap: 22px;
@@ -427,6 +458,7 @@
     .list-group .contract-row.comparison-row + .contract-row.comparison-row {
         margin-top: 10px;
     }
+
 .list-group {
     overflow: visible !important;
 }
@@ -581,7 +613,6 @@
     pointer-events: all !important;
 }
 
-
 .comparison-icon-pill {
     width: 32px;
     height: 32px;
@@ -676,11 +707,12 @@
         flex: 1 1 auto;
         min-width: 0;
         height: 100%;
-        overflow-y: auto;
-        overflow-x: visible !important;
+        display: flex; 
+        flex-direction: column; 
+        overflow: hidden;
         margin-left: 0;
         padding-right: 6px;
-        padding-bottom: 90px;
+        padding-bottom: 0; 
         box-sizing: border-box;
     }
 
@@ -701,6 +733,7 @@
 .container-fluid {
     overflow-x: hidden !important;
 }
+
 .list-group .contract-row.comparison-row:has(.dropdown-menu.show) {
     transform: none !important;
     background: #fff !important;
@@ -715,8 +748,9 @@
     }
 
     .list-group .contract-row.comparison-row:has(.dropdown-menu.show) i:not(.bi-three-dots-vertical) {
-        color: var(--brand-blue) !important; 
+        color: var(--brand-blue) !important;
     }
+
     .list-group .contract-row.comparison-row:has(.dropdown-menu.show) .comparison-row-icon {
         background: rgba(0, 55, 104, 0.06) !important;
     }
