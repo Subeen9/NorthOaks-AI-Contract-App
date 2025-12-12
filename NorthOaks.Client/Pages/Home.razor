@@ -22,13 +22,13 @@
         <aside class="app-sidebar">
 
             <nav class="sb-nav">
-                <NavLink href="/home" class="sb-link" active">
+                <NavLink href="/home" class="sb-link" Match="NavLinkMatch.All">
                     <i class="bi bi-collection"></i><span>Library</span>
                 </NavLink>
                 <button type="button" class="sb-link sb-button-link" @onclick="OpenUploadModal">
                     <i class="bi bi-upload"></i><span>Upload</span>
                 </button>
-                <NavLink href="/profile" class="sb-link">
+                <NavLink href="/profile" class="sb-link" Match="NavLinkMatch.Prefix">
                     <i class="bi bi-gear"></i><span>Settings</span>
                 </NavLink>
             </nav>
@@ -288,22 +288,23 @@
 
                             @foreach (var session in paginatedSessions)
                             {
-                                <div class="col-xxl-4 col-xl-4 col-lg-6" @onclick="@(() => Navigation.NavigateTo($"/compare-chat/{session.Id}"))">
-                                    <div class="contract-card contract-hover position-relative home-card comparison-card">
-                                        <ContractCard Id="@session.Id"
-                                                      FileName="@BuildComparisonTitle(session)"
-                                                      UploadDate="@session.CreatedDate"
-                                                      UserId="@session.UserId"
-                                                      UploadedBy="@session.UserId.ToString()"
-                                                      Type="ContractCard.CardType.Comparison"
-                                                      MessageCount="@session.MessageCount"
-                                                      IsPinned="IsComparisonPinned(session.Id)"
-                                                      OnTogglePin="() => ToggleComparisonPin(session.Id)"
-                                                      IsPublic="session.IsPublic"
-                                                      OnToggleVisibility="() => ToggleComparisonVisibility(session.Id)"
-                                                      IsSelected="false"
-                                                      OnDelete="() => OnComparisonMenuClick(session.Id)" />
-                                    </div>
+                                <div class="col-xxl-4 col-xl-4 col-lg-6"
+                                     @onclick="@(() => Navigation.NavigateTo($"/compare-chat/{session.Id}"))"
+                                     style="cursor: pointer;">
+
+                                    <ContractCard Id="@session.Id"
+                                                  FileName="@BuildComparisonTitle(session)"
+                                                  UploadDate="@session.CreatedDate"
+                                                  UserId="@session.UserId"
+                                                  UploadedBy="@session.UserId.ToString()"
+                                                  Type="ContractCard.CardType.Comparison"
+                                                  MessageCount="@session.MessageCount"
+                                                  IsPinned="IsComparisonPinned(session.Id)"
+                                                  OnTogglePin="() => ToggleComparisonPin(session.Id)"
+                                                  IsPublic="session.IsPublic"
+                                                  OnToggleVisibility="() => ToggleComparisonVisibility(session.Id)"
+                                                  IsSelected="false"
+                                                  OnDelete="() => OnComparisonMenuClick(session.Id)" />
                                 </div>
                             }
                         }
@@ -352,13 +353,37 @@
                                     </div>
 
 
-                                    <button type="button"
-                                            class="card-menu comparison-menu"
-                                            title="More actions"
-                                            @onclick="@(e => OnComparisonMenuClick(session.Id))"
-                                            @onclick:stopPropagation="true">
-                                        <i class="bi bi-three-dots-vertical"></i>
-                                    </button>
+                                    <div class="dropdown position-absolute" style="right: 18px; top: 50%; transform: translateY(-50%);">
+                                        <button class="card-menu comparison-menu"
+                                                type="button"
+                                                id="comparisonMenu-@session.Id"
+                                                data-bs-toggle="dropdown"
+                                                aria-expanded="false"
+                                                @onclick:stopPropagation="true">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
+
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm"
+                                            aria-labelledby="comparisonMenu-@session.Id"
+                                            style="border-radius: 8px; font-size: 0.9rem;">
+                                            <li>
+                                                <button class="dropdown-item"
+                                                        @onclick:stopPropagation="true"
+                                                        @onclick="() => ToggleComparisonVisibility(session.Id)">
+                                                    <i class="bi @(session.IsPublic ? "bi-lock-fill" : "bi-globe-americas") me-2"></i>
+                                                    @(session.IsPublic ? "Make Private" : "Make Public")
+                                                </button>
+                                            </li>
+                                            <li>
+                                                <button class="dropdown-item text-danger"
+                                                        @onclick:stopPropagation="true"
+                                                        @onclick="() => OnComparisonMenuClick(session.Id)">
+                                                    <i class="bi bi-trash me-2"></i>
+                                                    Delete Comparison
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
 
                                     <div class="comparison-row-body">
                                         <h6 class="mb-1 fw-semibold contract-title text-truncate">
@@ -813,18 +838,18 @@
                 return;
 
             var userSessions = await Http.GetFromJsonAsync<List<ChatSessionDto>>($"/api/chatsessions/user/{userId}") ?? new();
-        var publicSessions = await Http.GetFromJsonAsync<List<ChatSessionDto>>("/api/chatsessions/public") ?? new();
+            var publicSessions = await Http.GetFromJsonAsync<List<ChatSessionDto>>("/api/chatsessions/public") ?? new();
 
-    
-        var merged = new List<ChatSessionDto>(userSessions);
-        foreach (var ps in publicSessions)
-        {
-            if (!merged.Any(ms => ms.Id == ps.Id))
-                merged.Add(ps);
-        }
 
-        allSessions = merged;
-        comparisonSessions = allSessions.Where(s => s.ContractIds.Count == 2).ToList();
+            var merged = new List<ChatSessionDto>(userSessions);
+            foreach (var ps in publicSessions)
+            {
+                if (!merged.Any(ms => ms.Id == ps.Id))
+                    merged.Add(ps);
+            }
+
+            allSessions = merged;
+            comparisonSessions = allSessions.Where(s => s.ContractIds.Count == 2).ToList();
         }
         catch (Exception ex)
         {
