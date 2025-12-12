@@ -2,7 +2,7 @@
     border: 1px solid var(--stroke);
     background: var(--card-bg);
     border-radius: var(--radius);
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
     transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease, color .18s ease;
     min-height: 124px;
 }
@@ -53,15 +53,17 @@
     }
 
     .pin-btn.pinned {
-        background: var(--brand-gold);
-        border-color: var(--brand-gold);
-        color: #fff;
+        background: #ffffff !important;
+        border-color: #d1d5db !important;
+        border: 2px solid #ba8e0b !important;
+        color: #ba8e0b;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
     }
 
         .pin-btn.pinned i {
-            transform: rotate(-25deg);
+            transform: rotate(-45deg);
             transition: transform .15s ease;
-            color: #fff !important;
+            color: #ba8e0b !important;
         }
 
 .contract-card.contract-hover:hover .pin-btn:not(.pinned) {
@@ -74,13 +76,18 @@
         color: #ba8e0b !important;
     }
 
-.contract-card.contract-hover:hover .pin-btn.pinned {
-    background: var(--brand-gold) !important;
-    border-color: var(--brand-gold) !important;
+.contract-card.contract-hover:hover .pin-btn.pinned,
+.comparison-card.contract-hover:hover .pin-btn.pinned,
+.home-card.contract-hover:hover .pin-btn.pinned {
+    background: #ffffff !important;
+    border-color: #d1d5db !important;
+    box-shadow: var(--shadow-md);
 }
 
-    .contract-card.contract-hover:hover .pin-btn.pinned i {
-        color: #fff !important;
+    .contract-card.contract-hover:hover .pin-btn.pinned i,
+    .comparison-card.contract-hover:hover .pin-btn.pinned i,
+    .home-card.contract-hover:hover .pin-btn.pinned i {
+        color: #ba8e0b !important;
     }
 
 .home-card.contract-hover:hover .pin-btn:not(.pinned) {
@@ -158,7 +165,7 @@
 
 .contract-card.contract-hover:hover {
     transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
     background: var(--brand-gold) !important;
     color: #fff !important;
 }
@@ -174,7 +181,7 @@
 .home-grid .contract-card.contract-hover:hover .card {
     background: var(--brand-gold) !important;
     color: #fff !important;
-    box-shadow: var(--shadow-md) !important;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12) !important;
     transform: translateY(-2px);
 }
 
