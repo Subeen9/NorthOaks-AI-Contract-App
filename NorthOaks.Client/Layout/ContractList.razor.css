@@ -12,14 +12,17 @@
         transform: translateY(-2px);
         box-shadow: var(--shadow-md);
         background: #fff5e0;
+        z-index: 10;
     }
 
 /* =========================================================
    CONTRACT CARD HOVER
 ========================================================= */
 .contract-hover {
+    position: relative;
     transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease, color .2s ease;
     cursor: pointer;
+    overflow: visible !important;
 }
 
 .contract-title {
@@ -32,6 +35,8 @@
     box-shadow: 0 6px 15px rgba(0,0,0,.1);
     background-color: var(--brand-gold) !important;
     color: #fff !important;
+    overflow: visible !important;
+    z-index: 10;
 }
 
     .contract-hover:hover .text-muted,
