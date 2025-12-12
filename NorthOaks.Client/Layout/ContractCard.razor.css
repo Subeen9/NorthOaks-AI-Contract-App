@@ -109,7 +109,7 @@
 }
 
     .pin-btn.pinned i {
-        transform: rotate(-18deg);
+        transform: rotate(-25deg);
         transition: transform .15s ease;
     }
 
@@ -165,7 +165,30 @@
         filter: none !important;
     }
 
+.pin-btn {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1px solid var(--stroke);
+    background: #ffffff;
+    color: #6b7280;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    z-index: 10;
+}
 
+    .pin-btn i {
+        font-size: 16px;
+        opacity: 1 !important;
+        color: #555 !important;
+    }
 
 
 
@@ -188,6 +211,11 @@
     visibility: visible !important;
     display: flex !important;
     z-index: 999 !important;
+}
+
+.comparison-card .card-title {
+    padding-right: 48px;
+    padding-bottom: 8px;
 }
 
     /* ensure icon is visible no matter the hover colors */
