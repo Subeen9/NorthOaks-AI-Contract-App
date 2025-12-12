@@ -37,9 +37,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
             _context = context;
         }
 
-        // ====================================================================
-        //  POST: Upload contract
-        // ====================================================================
+  
         [HttpPost("upload")]
         public async Task<ActionResult<ContractReadDto>> Upload(
             [FromForm] ContractUploadDto dto,
@@ -83,9 +81,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
 
             var uploadedBy = $"{uploader.FirstName} {uploader.LastName}";
 
-            // ============================================================
-            //  NOTIFY ONLY IF PUBLIC
-            // ============================================================
+       
             if (!savedContract.IsPublic)
             {
                 Console.WriteLine("[UPLOAD] Private contract → No notifications sent.");
@@ -123,10 +119,46 @@ namespace CMPS4110_NorthOaksProj.Controllers
             return CreatedAtAction(nameof(GetById), new { id = savedContract.Id }, ToReadDto(savedContract));
         }
 
+        [HttpGet("comparison/{sessionId:int}/contract/{contractId:int}")]
+        public async Task<ActionResult<ContractReadDto>> GetComparisonContract(int sessionId, int contractId)
+        {
+            var currentUserName = User.Identity?.Name?.ToLower() ?? "unknown_user";
 
-        // ====================================================================
-        //  DELETE contract
-        // ====================================================================
+            var currentUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.UserName.ToLower() == currentUserName);
+
+            if (currentUser == null)
+                return Unauthorized();
+
+            // Get the session with its contracts
+            var session = await _context.ChatSessions
+                .Include(s => s.SessionContracts)
+                .FirstOrDefaultAsync(s => s.Id == sessionId);
+
+            if (session == null)
+                return NotFound("Session not found");
+
+            // Only allow access if session is public OR user owns the session
+            if (!session.IsPublic && session.UserId != currentUser.Id)
+                return Forbid("Cannot access private comparison");
+
+            // Verify contract is part of this session (security check)
+            if (!session.SessionContracts.Any(sc => sc.ContractId == contractId))
+                return NotFound("Contract not in this session");
+
+            // Get the contract (even if it's private, we allow access via public comparison)
+            var contract = await _context.Contracts
+                .Include(c => c.User)
+                .FirstOrDefaultAsync(c => c.Id == contractId);
+
+            if (contract == null)
+                return NotFound("Contract not found");
+
+            return Ok(ToReadDto(contract));
+        }
+
+
+     
         [HttpDelete("{id:int}")]
         public async Task<ActionResult> Delete(int id)
         {
@@ -154,13 +186,10 @@ namespace CMPS4110_NorthOaksProj.Controllers
             var fileName = _contractsService.GetOriginalFileName(contract.FileName);
             var deletedBy = $"{deletor.FirstName} {deletor.LastName}";
 
-            // Perform delete
             var action = await _contractsService.DeleteContract(id, _env.ContentRootPath);
             if (!action) return BadRequest("Delete action failed.");
 
-            // ============================================================
-            //  PRIVATE → Skip notifications
-            // ============================================================
+           
             if (!contract.IsPublic)
             {
                 Console.WriteLine("[DELETE] Private contract → No notifications sent.");
@@ -199,9 +228,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
         }
 
 
-        // ====================================================================
-        //  TOGGLE VISIBILITY (private <-> public)
-        // ====================================================================
+      
         [HttpPut("{id:int}/visibility")]
         public async Task<ActionResult> SetVisibility(int id, [FromQuery] bool isPublic)
         {
@@ -225,9 +252,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
             contract.IsPublic = isPublic;
             await _context.SaveChangesAsync();
 
-            // ======================================================
-            //  If contract JUST NOW became PUBLIC → Notify everyone
-            // ======================================================
+      
             if (wasPrivate && isPublic)
             {
                 var fileName = _contractsService.GetOriginalFileName(contract.FileName);
@@ -267,9 +292,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
         }
 
 
-        // ====================================================================
-        //  GET CONTRACT BY ID
-        // ====================================================================
+      
         [HttpGet("{id:int}")]
         public async Task<ActionResult<ContractReadDto>> GetById(int id)
         {
@@ -287,9 +310,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
         }
 
 
-        // ====================================================================
-        //  GET ALL CONTRACTS
-        // ====================================================================
+     
         [HttpGet]
         public async Task<ActionResult<IEnumerable<ContractReadDto>>> GetAll()
         {
@@ -305,9 +326,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
         }
 
 
-        // ====================================================================
-        //  Helper: Convert Contract → DTO
-        // ====================================================================
+    
         private static ContractReadDto ToReadDto(Contract contract)
         {
             return new ContractReadDto

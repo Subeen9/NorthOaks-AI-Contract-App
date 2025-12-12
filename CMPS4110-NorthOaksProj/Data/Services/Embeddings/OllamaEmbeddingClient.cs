@@ -33,17 +33,16 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Embeddings
             _logger = logger;
         }
 
-        // Ollama's actual API format
         private sealed class EmbedReq
         {
             public string model { get; set; } = default!;
-            public string prompt { get; set; } = default!;  // Changed: single string only
+            public string prompt { get; set; } = default!; 
         }
 
         private sealed class EmbedRes
         {
             public string model { get; set; } = default!;
-            public List<float> embedding { get; set; } = default!;  // Changed: single embedding
+            public List<float> embedding { get; set; } = default!; 
         }
 
         public async Task<float[]> EmbedAsync(string text, CancellationToken ct = default)
@@ -73,7 +72,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Embeddings
 
             var results = new List<float[]>();
 
-            // Ollama doesn't support batch - do sequential calls
+            // sequential calls as ollama doesn't support batch embedding natively
             for (int i = 0; i < textArray.Length; i++)
             {
                 try

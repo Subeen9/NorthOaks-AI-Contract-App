@@ -5,7 +5,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
 {
     public static class ContextBuilder
     {
-        // --- 1. Deduplication (Jaccard similarity) ---
+        //  Deduplication (Jaccard similarity)
         private static double JaccardSimilarity(string a, string b)
         {
             var setA = new HashSet<string>(a.Split(' ', StringSplitOptions.RemoveEmptyEntries));

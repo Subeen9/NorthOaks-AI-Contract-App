@@ -1,0 +1,110 @@
+﻿.list-group-item.contract-hover {
+    border: 1px solid var(--stroke);
+    border-radius: 12px;
+    padding: 14px 16px;
+    background: #fff;
+    box-shadow: var(--shadow-sm);
+    transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease;
+    position: relative;
+}
+
+    .list-group-item.contract-hover:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+        background: var(--brand-gold) !important;
+        z-index: 10;
+    }
+
+        .list-group-item.contract-hover:hover .contract-title,
+        .list-group-item.contract-hover:hover .text-muted,
+        .list-group-item.contract-hover:hover small,
+        .list-group-item.contract-hover:hover .file-icon {
+            color: #fff !important;
+        }
+
+.contract-title {
+    color: var(--brand-blue);
+    transition: color .18s ease;
+}
+
+.file-icon {
+    color: var(--brand-blue);
+    font-size: 1.5rem;
+    transition: color .18s ease;
+}
+
+.card-menu {
+    background: #ffffff !important;
+    border: 1px solid var(--stroke) !important;
+    border-radius: 8px;
+    padding: 4px 8px !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    opacity: 1 !important;
+    visibility: visible !important;
+    z-index: 999 !important;
+    transition: all .15s ease;
+}
+
+    .card-menu i {
+        color: #111827 !important;
+        opacity: 1 !important;
+    }
+
+    .card-menu:hover {
+        background: #ffffff !important;
+        border-color: #d1d5db !important;
+        transform: translateY(-1px);
+        box-shadow: 0 2px 8px rgba(0,0,0,.1);
+    }
+
+        .card-menu:hover i {
+            color: #111827 !important;
+        }
+
+.list-group-item.contract-hover:hover .card-menu {
+    background: #ffffff !important;
+    border: 1px solid #d1d5db !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,.15) !important;
+}
+
+    .list-group-item.contract-hover:hover .card-menu i {
+        color: #111827 !important;
+    }
+
+.dropdown-menu {
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,.1) !important;
+    border-radius: 10px !important;
+    z-index: 9999 !important;
+}
+
+.dropdown-item {
+    color: #111827 !important;
+    padding: 0.5rem 1rem !important;
+    background: #ffffff !important;
+}
+
+    .dropdown-item:hover {
+        background: #f3f4f6 !important;
+        color: #111827 !important;
+    }
+
+    .dropdown-item i {
+        color: #111827 !important;
+    }
+
+    .dropdown-item.text-danger {
+        color: #dc2626 !important;
+    }
+
+        .dropdown-item.text-danger:hover {
+            background: #fef2f2 !important;
+            color: #dc2626 !important;
+        }
+
+        .dropdown-item.text-danger i {
+            color: #dc2626 !important;
+        }

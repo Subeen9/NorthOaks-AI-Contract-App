@@ -164,39 +164,31 @@
 
                                         @if (leftSources.Count > 0 || rightSources.Count > 0)
                                         {
-                                            <div class="sources-container" style="margin-top: 12px; display: flex; gap: 16px; font-size: 0.9rem; border:none;">
+                                            <div class="source-links-inline">
                                                 @if (leftSources.Count > 0)
                                                 {
-                                                    <div class="pdf-sources" style="flex: 1;">
-                                                        <div style="font-weight: 600; font-size: 0.8rem; color: #007bff; margin-bottom: 8px;">
-                                                            LEFT PDF
-                                                        </div>
-                                                        @for (int i = 0; i < leftSources.Count; i++)
-                                                        {
-                                                            var source = leftSources[i];
-                                                            var sourceIndex = msg.Sources.IndexOf(source);
-                                                            <a class="source-link" @onclick="() => JumpToComparisonSource(msg.Sources, sourceIndex)" style="display: block; margin-bottom: 4px;">
-                                                                @(i + 1) (Page @source.PageNumber)
-                                                            </a>
-                                                        }
-                                                    </div>
+                                                    <span class="source-label" style="color: #007bff;">Left:</span>
+                                                    @for (int i = 0; i < leftSources.Count; i++)
+                                                    {
+                                                        var source = leftSources[i];
+                                                        var sourceIndex = msg.Sources.IndexOf(source);
+                                                        <a class="source-link" @onclick="() => JumpToComparisonSource(msg.Sources, sourceIndex)">
+                                                            @(i + 1) (Page @source.PageNumber)@(i < leftSources.Count - 1 ? "," : "")
+                                                        </a>
+                                                    }
                                                 }
 
                                                 @if (rightSources.Count > 0)
                                                 {
-                                                    <div class="pdf-sources" style="flex: 1;">
-                                                        <div style="font-weight: 600; font-size: 0.8rem; color: #28a745; margin-bottom: 8px;">
-                                                            RIGHT PDF
-                                                        </div>
-                                                        @for (int i = 0; i < rightSources.Count; i++)
-                                                        {
-                                                            var source = rightSources[i];
-                                                            var sourceIndex = msg.Sources.IndexOf(source);
-                                                            <a class="source-link" @onclick="() => JumpToComparisonSource(msg.Sources, sourceIndex)" style="display: block; margin-bottom: 4px;">
-                                                                @(leftSources.Count + i + 1) (Page @source.PageNumber)
-                                                            </a>
-                                                        }
-                                                    </div>
+                                                    <span class="source-label" style="color: #28a745; margin-left: 12px;">Right:</span>
+                                                    @for (int i = 0; i < rightSources.Count; i++)
+                                                    {
+                                                        var source = rightSources[i];
+                                                        var sourceIndex = msg.Sources.IndexOf(source);
+                                                        <a class="source-link" @onclick="() => JumpToComparisonSource(msg.Sources, sourceIndex)">
+                                                            @(leftSources.Count + i + 1) (Page @source.PageNumber)@(i < rightSources.Count - 1 ? "," : "")
+                                                        </a>
+                                                    }
                                                 }
                                             </div>
                                         }
@@ -208,7 +200,7 @@
 
                     @if (isLoading)
                     {
-                        <div class="message ai-message loading-message">
+                        <div class="message loading-message">
                             <div class="loading-indicator">
                                 <div class="loading-dots">
                                     <span></span>
@@ -273,7 +265,7 @@
             {
                 foreach (var contractId in session.ContractIds)
                 {
-                    var contract = await Http.GetFromJsonAsync<ContractReadDto>($"/api/contracts/{contractId}");
+                    var contract = await Http.GetFromJsonAsync<ContractReadDto>($"/api/contracts/comparison/{sessionId}/contract/{contractId}");
                     if (contract != null)
                     {
                         contracts.Add(contract);

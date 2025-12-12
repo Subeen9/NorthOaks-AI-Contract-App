@@ -2,8 +2,10 @@
 using CMPS4110_NorthOaksProj.Models.Users;
 using NorthOaks.Shared.Model.Users;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace CMPS4110_NorthOaksProj.Controllers
 {
@@ -52,6 +54,37 @@ namespace CMPS4110_NorthOaksProj.Controllers
                 FirstName = user.FirstName,
                 LastName = user.LastName,
                 Email = user.Email,
+            };
+
+            return Ok(userDto);
+        }
+
+        // Get current authenticated user
+        [HttpGet("me")]
+        [Authorize]
+        public async Task<ActionResult<UserDto>> GetCurrentUser()
+        {
+            var currentUserName =
+                User.FindFirstValue("preferred_username") ??
+                User.FindFirstValue("unique_name") ??
+                User.FindFirstValue(ClaimTypes.NameIdentifier) ??
+                User.FindFirstValue("sub") ??
+                User.Identity?.Name ??
+                "unknown_user";
+
+            var user = await _context.Users
+                .FirstOrDefaultAsync(u => u.UserName.ToLower() == currentUserName.ToLower());
+
+            if (user == null)
+                return Unauthorized("User not found");
+
+            var userDto = new UserDto
+            {
+                Id = user.Id,
+                UserName = user.UserName,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Email = user.Email
             };
 
             return Ok(userDto);

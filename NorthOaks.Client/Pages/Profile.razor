@@ -1,0 +1,124 @@
+﻿@page "/profile"
+@attribute [Authorize]
+
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Authorization
+@using System.Security.Claims
+
+@inject AuthenticationStateProvider AuthProvider
+@inject NavigationManager Navigation
+@inject HttpClient Http
+@inject IJSRuntime JS
+
+<div class="container mt-4">
+    <div class="card shadow-sm border-0 p-4">
+
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+                <h4 class="fw-bold" style="color:#003768;">My Profile</h4>
+                <p class="text-muted mb-0">User Information</p>
+            </div>
+
+            <button class="btn btn-outline-secondary btn-sm" @onclick="GoBack">
+                <i class="bi bi-arrow-left me-1"></i> Back
+            </button>
+        </div>
+
+        <!-- Avatar + Name -->
+        <div class="d-flex align-items-center mb-3">
+            <div class="profile-avatar me-3">@initials</div>
+
+            <div>
+                <h5 class="fw-semibold mb-0">@fullName</h5>
+                <span class="text-muted">@username</span>
+            </div>
+        </div>
+
+        <hr />
+
+        <!-- User Details -->
+        <div class="mb-3">
+            <label class="text-uppercase text-muted small fw-semibold">Full Name</label>
+            <div class="fw-semibold">@fullName</div>
+        </div>
+
+        <div class="mb-3">
+            <label class="text-uppercase text-muted small fw-semibold">Username</label>
+            <div>@username</div>
+        </div>
+
+        <div class="mb-3">
+            <label class="text-uppercase text-muted small fw-semibold">Email</label>
+            <div>@email</div>
+        </div>
+
+        <p class="text-muted small mt-3">
+            For any account changes (name, username, or email), please contact the NorthOaks administrator.
+        </p>
+
+        <div class="d-flex justify-content-end mt-4">
+            <button class="btn btn-danger logout-btn" @onclick="HandleLogout">
+                <i class="bi bi-box-arrow-right me-2"></i> Logout
+            </button>
+        </div>
+
+    </div>
+</div>
+
+@code {
+    private string initials = "";
+    private string fullName = "";
+    private string username = "";
+    private string email = "";
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            var firstName = user.Claims.FirstOrDefault(c => c.Type == "name")?.Value ?? "";
+            var lastName = user.Claims.FirstOrDefault(c => c.Type == "family_name")?.Value ?? "";
+
+            fullName = $"{firstName} {lastName}".Trim();
+
+            email = user.Claims.FirstOrDefault(c => c.Type == "email")?.Value
+                    ?? user.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Email)?.Value
+                    ?? "";
+
+            username = user.Claims.FirstOrDefault(c => c.Type == "preferred_username")?.Value
+                       ?? user.Identity?.Name
+                       ?? "";
+
+            initials = GetInitials(fullName); 
+        }
+    }
+
+
+    private string GetInitials(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "";
+
+        var parts = name.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length == 1)
+            return parts[0][0].ToString().ToUpper();
+
+        return $"{parts[0][0]}{parts[^1][0]}".ToUpper();
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/home");
+    }
+
+    private async Task HandleLogout()
+    {
+        await Http.PostAsync("/api/Auth/logout", null);
+        await JS.InvokeVoidAsync("localStorage.removeItem", "authToken");
+        (AuthProvider as CustomAuthStateProvider)?.NotifyUserLogout();
+        Navigation.NavigateTo("/", forceLoad: true);
+    }
+}

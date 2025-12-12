@@ -17,7 +17,7 @@ public class CustomAuthStateProvider : AuthenticationStateProvider
         var token = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", "authToken");
 
         if (string.IsNullOrWhiteSpace(token))
-            return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity())); // not logged in
+            return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity())); 
 
         var jwt = new JwtSecurityTokenHandler().ReadJwtToken(token);
 

@@ -1,38 +1,110 @@
 ﻿@inject NavigationManager Navigation
+@inject HttpClient Http
 
 <div class="list-group-item d-flex align-items-center justify-content-between mb-3 contract-hover"
      style="cursor:pointer; border-radius:8px; transition: transform .15s ease, box-shadow .15s ease;"
-     @onclick="@(() => Navigation.NavigateTo($"/contract/{Id}"))"
-     onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 15px rgba(0,0,0,0.08)'"
-     onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+     @onclick="@(() => Navigation.NavigateTo($"/contract/{Id}"))">
 
-    <!-- Left: File Icon -->
     <i class="bi bi-file-earmark-text-fill file-icon me-3" style="font-size: 1.5rem;"></i>
 
-    <!-- Middle: File Info -->
     <div class="flex-grow-1">
         <strong class="contract-title">@FileName</strong><br />
-        <small class="text-muted">Uploaded by @(UploadedBy ?? "Unknown") • @UploadDate.ToShortDateString()</small>
+        <small class="text-muted">
+            Uploaded by @(UploadedBy ?? "Unknown") • @UploadDate.ToShortDateString()
+        </small>
     </div>
 
-    <button class="btn btn-sm btn-light"
-            @onclick:stopPropagation="true"
-            @onclick="OpenDelete">
-        <i class="bi bi-three-dots-vertical" style="color:black"></i>
-    </button>
+    @if (IsOwner)
+    {
+        <div class="dropdown ms-2">
+            <button class="btn btn-sm btn-light p-1 card-menu"
+                    type="button"
+                    id="listMenu-@Id"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                    @onclick:stopPropagation="true">
+                <i class="bi bi-three-dots-vertical" style="color:black"></i>
+            </button>
+
+            <ul class="dropdown-menu dropdown-menu-end shadow-sm"
+                aria-labelledby="listMenu-@Id"
+                style="border-radius: 8px; font-size: 0.9rem;">
+
+                <li>
+                    <button class="dropdown-item"
+                            @onclick:stopPropagation="true"
+                            @onclick="ToggleVisibility">
+                        <i class="bi @(IsPublic ? "bi-lock-fill" : "bi-globe-americas") me-2"></i>
+                        @(IsPublic ? "Make Private" : "Make Public")
+                    </button>
+                </li>
+
+                <li>
+                    <button class="dropdown-item text-danger"
+                            @onclick:stopPropagation="true"
+                            @onclick="OpenDelete">
+                        <i class="bi bi-trash me-2"></i>
+                        Delete Contract
+                    </button>
+                </li>
+            </ul>
+        </div>
+    }
 </div>
 
 @code {
     [Parameter] public int Id { get; set; }
     [Parameter] public string FileName { get; set; } = string.Empty;
+    [Parameter] public int UserId { get; set; }
     [Parameter] public string? UploadedBy { get; set; }
     [Parameter] public DateTime UploadDate { get; set; }
+    [Parameter] public bool IsPublic { get; set; }
     [Parameter] public EventCallback<int> OnDelete { get; set; }
+    [Parameter] public EventCallback<int> OnToggleVisibility { get; set; }
+
+    private static int? _currentUserId = null;
+    private bool IsOwner => _currentUserId.HasValue && UserId == _currentUserId.Value;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (_currentUserId == null)
+        {
+            try
+            {
+                var response = await Http.GetFromJsonAsync<UserDto>("/api/users/me");
+                if (response != null)
+                {
+                    _currentUserId = response.Id;
+                    Console.WriteLine($"✓ Current User ID: {_currentUserId}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error getting current user: {ex.Message}");
+            }
+        }
+
+        Console.WriteLine($"ContractList {Id}: Owner={UserId}, Current={_currentUserId}, IsOwner={IsOwner}");
+    }
 
     private async Task OpenDelete()
     {
         if (OnDelete.HasDelegate)
             await OnDelete.InvokeAsync(Id);
+    }
 
+    private async Task ToggleVisibility()
+    {
+        if (OnToggleVisibility.HasDelegate)
+            await OnToggleVisibility.InvokeAsync(Id);
+    }
+
+    public class UserDto
+    {
+        public int Id { get; set; }
+        public string UserName { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
     }
 }
