@@ -438,6 +438,7 @@
     align-items: center;
     background: #fff;
     box-shadow: var(--shadow-sm);
+    overflow: visible !important;
 }
 
     .list-group .contract-row.comparison-row + .contract-row.comparison-row {
@@ -477,7 +478,7 @@
     border-radius: 10px;
     border: 1px solid var(--stroke) !important;
     background: #ffffff !important;
-    color: #9ca3af;
+    color: #111827;
     display: inline-flex !important;
     align-items: center;
     justify-content: center;
@@ -487,37 +488,129 @@
     cursor: pointer;
     transition: transform .12s ease, background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
     margin: 0 !important;
+    z-index: 1000 !important;
 }
 
-    .list-group .contract-row.comparison-row .card-menu i {
+    .list-group .contract-row.comparison-row .card-menu i,
+    .list-group .contract-row.comparison-row .card-menu i.bi-three-dots-vertical {
         font-size: 18px;
-        color: #9ca3af !important;
+        color: #111827 !important;
+        opacity: 1 !important;
     }
 
     .list-group .contract-row.comparison-row .card-menu:hover {
         background: #ffffff !important;
-        color: #4b5563 !important;
-        border-color: #f0e0b4 !important;
+        color: #111827 !important;
+        border-color: #d1d5db !important;
         transform: translateY(-50%) translateY(-1px) !important;
         box-shadow: var(--shadow-md) !important;
     }
 
-        .list-group .contract-row.comparison-row .card-menu:hover i {
-            color: #4b5563 !important;
+        .list-group .contract-row.comparison-row .card-menu:hover i,
+        .list-group .contract-row.comparison-row .card-menu:hover i.bi-three-dots-vertical {
+            color: #111827 !important;
         }
 
 .list-group .contract-row.comparison-row:hover .card-menu {
     background: #ffffff !important;
-    border-color: #f0e0b4 !important;
+    border-color: #d1d5db !important;
     box-shadow: var(--shadow-md) !important;
 }
 
-    .list-group .contract-row.comparison-row:hover .card-menu i {
-        color: #4b5563 !important;
+    .list-group .contract-row.comparison-row:hover .card-menu i,
+    .list-group .contract-row.comparison-row:hover .card-menu i.bi-three-dots-vertical {
+        color: #111827 !important;
     }
 
-.list-group .contract-row.comparison-row .pin-btn {
-    display: none !important;
+.comparison-row.contract-hover:hover i.bi-three-dots-vertical {
+    color: #111827 !important;
+}
+
+/* DROPDOWN POSITIONING FIX */
+.list-group .contract-row.comparison-row .dropdown {
+    position: absolute !important;
+    right: 18px !important;
+    top: 50% !important;
+    transform: translateY(-50%) !important;
+    z-index: 1001 !important;
+}
+
+.list-group .contract-row.comparison-row .dropdown-menu {
+    position: absolute !important;
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,.2) !important;
+    border-radius: 10px !important;
+    z-index: 99999 !important;
+    min-width: 200px !important;
+    margin-top: 8px !important;
+    right: 0 !important;
+    left: auto !important;
+    transform: none !important;
+    padding: 0.5rem 0 !important;
+    pointer-events: all !important;
+}
+
+    .list-group .contract-row.comparison-row .dropdown-menu li {
+        list-style: none !important;
+    }
+
+.list-group .contract-row.comparison-row .dropdown-item {
+    color: #111827 !important;
+    padding: 0.5rem 1rem !important;
+    background: #ffffff !important;
+    border: none !important;
+    width: 100% !important;
+    text-align: left !important;
+    display: block !important;
+    cursor: pointer !important;
+}
+
+    .list-group .contract-row.comparison-row .dropdown-item:hover {
+        background: #f3f4f6 !important;
+        color: #111827 !important;
+    }
+
+    .list-group .contract-row.comparison-row .dropdown-item i {
+        color: #111827 !important;
+    }
+
+    .list-group .contract-row.comparison-row .dropdown-item.text-danger {
+        color: #dc2626 !important;
+    }
+
+        .list-group .contract-row.comparison-row .dropdown-item.text-danger:hover {
+            background: #fef2f2 !important;
+            color: #dc2626 !important;
+        }
+
+        .list-group .contract-row.comparison-row .dropdown-item.text-danger i {
+            color: #dc2626 !important;
+        }
+
+/* Prevent dropdown from being hidden on row hover */
+.list-group .contract-row.comparison-row.show .dropdown-menu,
+.list-group .contract-row.comparison-row .dropdown-menu.show {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    pointer-events: all !important;
+}
+
+/* Ensure dropdown stays visible during hover */
+.comparison-row.contract-hover:hover .dropdown-menu {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Keep dropdown button clickable during hover */
+.comparison-row.contract-hover:hover .dropdown {
+    pointer-events: all !important;
+}
+
+.comparison-row.contract-hover:hover .card-menu {
+    pointer-events: all !important;
 }
 
 .comparison-icon-pill {
