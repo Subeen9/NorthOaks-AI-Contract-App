@@ -22,15 +22,15 @@
         <aside class="app-sidebar">
 
             <nav class="sb-nav">
-                <NavLink href="/home" class="sb-link" Match="NavLinkMatch.All">
+                <div class="sb-link active">
                     <i class="bi bi-collection"></i><span>Library</span>
-                </NavLink>
-                <button type="button" class="sb-link sb-button-link" @onclick="OpenUploadModal">
+                </div>
+                <button type="button" class="sb-link" @onclick="OpenUploadModal">
                     <i class="bi bi-upload"></i><span>Upload</span>
                 </button>
-                <NavLink href="/profile" class="sb-link" Match="NavLinkMatch.Prefix">
+                <button type="button" class="sb-link" @onclick='() => Navigation.NavigateTo("/profile")'>
                     <i class="bi bi-gear"></i><span>Settings</span>
-                </NavLink>
+                </button>
             </nav>
 
             <!-- SORT + PIN + PAGE SIZE -->
