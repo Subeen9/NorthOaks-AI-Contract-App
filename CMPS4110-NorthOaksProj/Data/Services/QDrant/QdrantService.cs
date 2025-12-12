@@ -148,7 +148,6 @@ namespace CMPS4110_NorthOaksProj.Data.Services
                     if (ids.Count > 0)
                     {
                         payloadFilter = new Filter();
-                        // OR any of the contract ids
                         foreach (var id in ids)
                         {
                             payloadFilter.Should.Add(new Condition

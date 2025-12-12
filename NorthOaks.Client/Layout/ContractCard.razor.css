@@ -1,0 +1,304 @@
+﻿.contract-card {
+    border: 1px solid var(--stroke);
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: transform .18s ease, box-shadow .18s ease, background-color .18s ease, color .18s ease;
+    min-height: 124px;
+}
+
+    .contract-card .card-body {
+        padding: 16px 18px;
+    }
+
+.contract-meta {
+    color: #6b7280;
+    font-size: .9rem;
+}
+
+.pin-btn {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1px solid var(--stroke);
+    background: #ffffff;
+    color: #6b7280;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    z-index: 10;
+}
+
+    .pin-btn i {
+        font-size: 16px;
+        color: #555 !important;
+        opacity: 1 !important;
+        transition: color .15s ease-in-out;
+    }
+
+    .pin-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+
+    .pin-btn:active {
+        transform: scale(.96);
+        box-shadow: 0 4px 10px rgba(0,0,0,.08);
+    }
+
+    .pin-btn.pinned {
+        background: #ffffff !important;
+        border-color: #d1d5db !important;
+        border: 2px solid #ba8e0b !important;
+        color: #ba8e0b;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    }
+
+        .pin-btn.pinned i {
+            transform: rotate(-45deg);
+            transition: transform .15s ease;
+            color: #ba8e0b !important;
+        }
+
+.contract-card.contract-hover:hover .pin-btn:not(.pinned) {
+    background: #ffffff !important;
+    border-color: #d1d5db !important;
+    box-shadow: var(--shadow-md);
+}
+
+    .contract-card.contract-hover:hover .pin-btn:not(.pinned) i {
+        color: #ba8e0b !important;
+    }
+
+.contract-card.contract-hover:hover .pin-btn.pinned,
+.comparison-card.contract-hover:hover .pin-btn.pinned,
+.home-card.contract-hover:hover .pin-btn.pinned {
+    background: #ffffff !important;
+    border-color: #d1d5db !important;
+    box-shadow: var(--shadow-md);
+}
+
+    .contract-card.contract-hover:hover .pin-btn.pinned i,
+    .comparison-card.contract-hover:hover .pin-btn.pinned i,
+    .home-card.contract-hover:hover .pin-btn.pinned i {
+        color: #ba8e0b !important;
+    }
+
+.home-card.contract-hover:hover .pin-btn:not(.pinned) {
+    background: #ffffff !important;
+    border-color: #d1d5db !important;
+    box-shadow: var(--shadow-md);
+}
+
+    .home-card.contract-hover:hover .pin-btn:not(.pinned) i {
+        color: #ba8e0b !important;
+    }
+
+.contract-card .card-menu,
+.comparison-card .card-menu {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    border: 1px solid var(--stroke);
+    background: #ffffff;
+    color: #9ca3af;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 0;
+    box-shadow: var(--shadow-sm);
+    cursor: pointer;
+    opacity: 1;
+    visibility: visible;
+    z-index: 999;
+    transition: transform .12s ease, background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+    .contract-card .card-menu i,
+    .comparison-card .card-menu i {
+        font-size: 18px;
+        color: #111827 !important;
+        opacity: 1 !important;
+    }
+
+    .contract-card .card-menu:hover,
+    .comparison-card .card-menu:hover {
+        background: #ffffff;
+        color: #4b5563;
+        border-color: #d1d5db;
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+
+        .contract-card .card-menu:hover i,
+        .comparison-card .card-menu:hover i {
+            color: #111827 !important;
+        }
+
+.contract-card.contract-hover:hover .card-menu,
+.comparison-card.contract-hover:hover .card-menu,
+.home-card.contract-hover:hover .card-menu {
+    background: #ffffff !important;
+    border: 1px solid #d1d5db !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,.15) !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+    .contract-card.contract-hover:hover .card-menu i,
+    .comparison-card.contract-hover:hover .card-menu i,
+    .home-card.contract-hover:hover .card-menu i {
+        color: #111827 !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+    }
+
+.contract-card.contract-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12);
+    background: var(--brand-gold) !important;
+    color: #fff !important;
+}
+
+    .contract-card.contract-hover:hover .contract-title,
+    .contract-card.contract-hover:hover .contract-meta,
+    .contract-card.contract-hover:hover .file-icon {
+        color: #fff !important;
+    }
+
+.home-grid .contract-card.contract-hover:hover,
+.home-grid .contract-card.contract-hover:hover > *,
+.home-grid .contract-card.contract-hover:hover .card {
+    background: var(--brand-gold) !important;
+    color: #fff !important;
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.12) !important;
+    transform: translateY(-2px);
+}
+
+    .home-grid .contract-card.contract-hover:hover .contract-title,
+    .home-grid .contract-card.contract-hover:hover .contract-meta,
+    .home-grid .contract-card.contract-hover:hover .card-title,
+    .home-grid .contract-card.contract-hover:hover small,
+    .home-grid .contract-card.contract-hover:hover .text-muted,
+    .home-grid .contract-card.contract-hover:hover i:not(.bi-three-dots-vertical):not(.bi-trash):not(.bi-lock-fill):not(.bi-globe-americas):not(.bi-pin-angle):not(.bi-pin-angle-fill),
+    .home-grid .contract-card.contract-hover:hover .file-icon {
+        color: #fff !important;
+    }
+
+    .home-grid .contract-card.contract-hover:hover .badge {
+        background: rgba(255,255,255,0.22) !important;
+        color: #fff !important;
+    }
+
+    .home-grid .contract-card.contract-hover:hover * {
+        opacity: 1 !important;
+        filter: none !important;
+    }
+
+.contract-card.selected-for-comparison {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    background: var(--brand-gold) !important;
+    color: #fff !important;
+}
+
+    .contract-card.selected-for-comparison .contract-title,
+    .contract-card.selected-for-comparison .contract-meta,
+    .contract-card.selected-for-comparison .file-icon {
+        color: #fff !important;
+    }
+
+.visibility-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.25rem 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: 50px;
+    color: #fff;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+    .visibility-badge.public {
+        background: linear-gradient(90deg, #28a745, #34d058);
+    }
+
+    .visibility-badge.private {
+        background: linear-gradient(90deg, #6c757d, #868e96);
+    }
+
+    .visibility-badge:hover {
+        transform: scale(1.05);
+        opacity: 0.95;
+    }
+
+.contract-hover:hover .visibility-badge {
+    opacity: 1;
+}
+
+.comparison-card .card-title {
+    padding-right: 48px;
+    padding-bottom: 8px;
+}
+
+.dropdown-menu {
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,.1) !important;
+    border-radius: 10px !important;
+    z-index: 9999 !important;
+}
+
+.dropdown-item {
+    color: #111827 !important;
+    padding: 0.5rem 1rem !important;
+    background: #ffffff !important;
+}
+
+    .dropdown-item:hover {
+        background: #f3f4f6 !important;
+        color: #111827 !important;
+    }
+
+    .dropdown-item i {
+        color: #111827 !important;
+    }
+
+    .dropdown-item.text-danger {
+        color: #dc2626 !important;
+    }
+
+        .dropdown-item.text-danger:hover {
+            background: #fef2f2 !important;
+            color: #dc2626 !important;
+        }
+
+        .dropdown-item.text-danger i {
+            color: #dc2626 !important;
+        }
+
+.contract-card.contract-hover:has(.dropdown-menu.show),
+.comparison-card.contract-hover:has(.dropdown-menu.show) {
+    transform: none !important;
+    background: #fff !important;
+}
+
+    .contract-card.contract-hover:has(.dropdown-menu.show) .contract-title,
+    .contract-card.contract-hover:has(.dropdown-menu.show) .contract-meta,
+    .contract-card.contract-hover:has(.dropdown-menu.show) .file-icon,
+    .comparison-card.contract-hover:has(.dropdown-menu.show) .card-title,
+    .comparison-card.contract-hover:has(.dropdown-menu.show) small {
+        color: inherit !important;
+    }

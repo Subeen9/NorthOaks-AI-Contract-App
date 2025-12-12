@@ -1,8 +1,6 @@
 ﻿using CMPS4110_NorthOaksProj.Data.Base;
 using CMPS4110_NorthOaksProj.Models.Chat;
-//using CMPS4110_NorthOaksProj.Models.Chat.Dtos;
 using NorthOaks.Shared.Model.Chat;
-using Microsoft.AspNetCore.Mvc;
 
 namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
 {

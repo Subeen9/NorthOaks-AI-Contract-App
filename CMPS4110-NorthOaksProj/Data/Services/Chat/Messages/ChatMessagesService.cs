@@ -1,5 +1,4 @@
 ﻿using CMPS4110_NorthOaksProj.Data.Base;
-using CMPS4110_NorthOaksProj.Data.Services.Chat.Sessions;
 using CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing;
 using CMPS4110_NorthOaksProj.Data.Services.Embeddings;
 using CMPS4110_NorthOaksProj.Data.Services.Generation;
@@ -56,10 +55,15 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
                 @"\bhow\s+do\s+(these|they|the\s+\w+)\s+(differ|compare)",
                 @"\bwhat\s+(distinguishes|sets\s+apart)",
                 @"\bsimilar(ities)?\s+(and|or)\s+difference"
-            };
+    };
 
-            return comparisonPatterns.Any(pattern =>
+            var hasComparisonKeyword = comparisonPatterns.Any(pattern =>
                 Regex.IsMatch(text, pattern, RegexOptions.IgnoreCase));
+
+            var pluralDocPattern = @"\b(documents|contracts|files|these|both|two)\b";
+            var hasPluralDocs = Regex.IsMatch(text, pluralDocPattern, RegexOptions.IgnoreCase);
+
+            return hasComparisonKeyword || hasPluralDocs;
         }
 
         private static string CleanFileName(string fileName)
@@ -133,7 +137,6 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
             return text;
         }
 
-        // ==================== IMPROVED COMPARISON LOGIC ====================
 
         private async Task<(string response, List<ChatMessageSourceDto> sources)> HandleComparisonAsync(
             int sessionId,
@@ -224,30 +227,37 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Chat.Messages
             var systemPrompt = @"
 You are a professional contract analyst comparing documents.
 
-CRITICAL INSTRUCTIONS:
-1. Always refer to documents as 'Document 1', 'Document 2', etc.
-2. For EVERY difference or similarity you mention, include specific searchable details:
+CRITICAL RULES - FOLLOW EXACTLY:
+1. ALWAYS refer to documents as 'Document 1', 'Document 2', etc.
+2. ONLY mention DIFFERENCES unless the user EXPLICITLY asks for similarities
+3. For EVERY difference you mention, include SPECIFIC searchable details:
    - Exact numbers, amounts, dates, percentages
    - Specific terms, phrases, or clause names from the documents
    - Party names, vendor counts, durations, notice periods
-3. Use this format: 'Document X states [specific detail] while Document Y states [specific detail]'
-4. Be precise and factual - include actual values when comparing
-5. DO NOT invent content not present in the excerpts
+4. Use this format: 'Document X states [specific detail] while Document Y states [specific detail]'
+5. Be precise and factual - include actual values when comparing
+6. DO NOT invent content not present in the excerpts
+7. If user asks a general question, focus on DIFFERENCES by default
 
 EXAMPLES OF GOOD OUTPUT:
 - 'Document 1 requires payment within 30 days, while Document 2 requires payment within 60 days.'
 - 'Document 1 mentions 2 approved vendors, whereas Document 2 lists 5 approved vendors.'
 - 'Document 1 specifies a $5,000 liability cap, but Document 2 has a $10,000 cap.'
 
-EXAMPLES OF BAD OUTPUT:
-- 'The payment terms differ between documents.'
-- 'One document has more vendors than the other.'";
+EXAMPLES OF BAD OUTPUT (DO NOT DO THIS):
+- 'Both documents mention payment terms.' ❌ (don't mention similarities unless asked)
+- 'The payment terms differ between documents.' ❌ (not specific enough)
+- 'One document has more vendors than the other.' ❌ (no actual numbers)";
 
             var userPrompt = $@"
 User request: {userMessage}
 
 Below are excerpts from {contractIds.Count} documents.
-Compare them thoroughly and explain differences/similarities with specific, searchable details.
+
+TASK: Identify and explain the KEY DIFFERENCES between these documents.
+- Focus ONLY on what is DIFFERENT unless the user explicitly asks for similarities
+- Provide SPECIFIC, SEARCHABLE DETAILS (numbers, dates, terms, amounts)
+- Clearly state which document contains which information
 
 {contextSb}
 ";
@@ -514,14 +524,29 @@ When answering, provide specific details and quote relevant terms where helpful.
                 else
                 {
                     systemPrompt = @"
-You are a professional contract analyst working with multiple documents.
-Use ONLY the provided text.
+You are a professional contract analyst comparing documents.
 
-CRITICAL RULES:
-1. Refer to documents as 'Document 1', 'Document 2', etc.
-2. NEVER mix up content between documents.
-3. NEVER invent content not present in the text.
-4. If information is in one document but not another, state this clearly.";
+CRITICAL RULES - FOLLOW EXACTLY:
+1. ALWAYS refer to documents as 'Document 1', 'Document 2', etc.
+2. ONLY mention DIFFERENCES unless the user EXPLICITLY asks for similarities
+3. For EVERY difference you mention, include SPECIFIC searchable details:
+   - Exact numbers, amounts, dates, percentages
+   - Specific terms, phrases, or clause names from the documents
+   - Party names, vendor counts, durations, notice periods
+4. Use this format: 'Document X states [specific detail] while Document Y states [specific detail]'
+5. Be precise and factual - include actual values when comparing
+6. DO NOT invent content not present in the excerpts
+7. If user asks a general question, focus on DIFFERENCES by default
+
+EXAMPLES OF GOOD OUTPUT:
+- 'Document 1 requires payment within 30 days, while Document 2 requires payment within 60 days.'
+- 'Document 1 mentions 2 approved vendors, whereas Document 2 lists 5 approved vendors.'
+- 'Document 1 specifies a $5,000 liability cap, but Document 2 has a $10,000 cap.'
+
+EXAMPLES OF BAD OUTPUT (DO NOT DO THIS):
+- 'Both documents mention payment terms.' ❌ (don't mention similarities unless asked)
+- 'The payment terms differ between documents.' ❌ (not specific enough)
+- 'One document has more vendors than the other.' ❌ (no actual numbers)";
 
                     evidenceInstruction = "When citing information, specify which document it came from (e.g., 'Document 1:', 'Document 2:').";
                 }
