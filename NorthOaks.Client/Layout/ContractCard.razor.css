@@ -281,3 +281,17 @@
         .dropdown-item.text-danger i {
             color: #dc2626 !important;
         }
+
+.contract-card.contract-hover:has(.dropdown-menu.show),
+.comparison-card.contract-hover:has(.dropdown-menu.show) {
+    transform: none !important;
+    background: #fff !important;
+}
+
+    .contract-card.contract-hover:has(.dropdown-menu.show) .contract-title,
+    .contract-card.contract-hover:has(.dropdown-menu.show) .contract-meta,
+    .contract-card.contract-hover:has(.dropdown-menu.show) .file-icon,
+    .comparison-card.contract-hover:has(.dropdown-menu.show) .card-title,
+    .comparison-card.contract-hover:has(.dropdown-menu.show) small {
+        color: inherit !important;
+    }

@@ -701,3 +701,26 @@
 .container-fluid {
     overflow-x: hidden !important;
 }
+.list-group .contract-row.comparison-row:has(.dropdown-menu.show) {
+    transform: none !important;
+    background: #fff !important;
+}
+
+    .list-group .contract-row.comparison-row:has(.dropdown-menu.show) .contract-title,
+    .list-group .contract-row.comparison-row:has(.dropdown-menu.show) .contract-meta,
+    .list-group .contract-row.comparison-row:has(.dropdown-menu.show) small,
+    .list-group .contract-row.comparison-row:has(.dropdown-menu.show) .text-muted,
+    .list-group .contract-row.comparison-row:has(.dropdown-menu.show) i:not(.bi-three-dots-vertical) {
+        color: #111827 !important;
+    }
+
+    .list-group .contract-row.comparison-row:has(.dropdown-menu.show) i:not(.bi-three-dots-vertical) {
+        color: var(--brand-blue) !important; 
+    }
+    .list-group .contract-row.comparison-row:has(.dropdown-menu.show) .comparison-row-icon {
+        background: rgba(0, 55, 104, 0.06) !important;
+    }
+
+        .list-group .contract-row.comparison-row:has(.dropdown-menu.show) .comparison-row-icon i {
+            color: var(--brand-blue) !important;
+        }
