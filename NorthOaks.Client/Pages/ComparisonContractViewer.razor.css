@@ -6,7 +6,7 @@
     right: 0;
     bottom: 0;
     overflow: hidden;
-    padding: 30px 0 0 0;
+    padding: 0;
     margin: 0;
     display: flex;
     flex-direction: column;
@@ -146,12 +146,25 @@
             opacity: 1;
         }
 
-/* PDF Viewer */
+/* PDF Area */
+.pdf-area {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    height: 100%;
+    overflow: hidden;
+}
+
+/* PDF Viewer Container */
 .pdf-viewer-container {
     flex: 1;
     display: flex;
     flex-direction: column;
     height: 100%;
+    min-width: 0;
+    overflow: hidden;
 }
 
 .pdf-viewer-header {
@@ -159,6 +172,15 @@
     background: #f8f9fa;
     border-bottom: 1px solid #ddd;
     word-wrap: break-word;
+    flex-shrink: 0;
+}
+
+.pdf-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+    display: block;
+    flex: 1 1 auto;
 }
 
 /* Chat Panel */
