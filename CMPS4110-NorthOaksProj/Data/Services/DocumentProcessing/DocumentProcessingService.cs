@@ -101,7 +101,6 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                     try
                     {
 
-                        //var pointId = await _qdrantService.InsertVectorAsync(vectors[i], contractId, i, chunks[i], -1);
 
                         var pointId = await _qdrantService.InsertVectorAsync(
                             vectors[i],
@@ -115,7 +114,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.DocumentProcessing
                         toInsert.Add(new ContractEmbedding
                         {
                             ContractId = contractId,
-                            ChunkText = chunks[i].ChunkText,  // Normalized text
+                            ChunkText = chunks[i].ChunkText,  
                             OriginalChunkText = chunks[i].OriginalChunkText,  // Original text for highlighting
                             ChunkIndex = chunks[i].ChunkIndex,
                             QdrantPointId = pointId

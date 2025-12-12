@@ -5,10 +5,8 @@
      style="cursor:pointer; border-radius:8px; transition: transform .15s ease, box-shadow .15s ease;"
      @onclick="@(() => Navigation.NavigateTo($"/contract/{Id}"))">
 
-    <!-- Left: File Icon -->
     <i class="bi bi-file-earmark-text-fill file-icon me-3" style="font-size: 1.5rem;"></i>
 
-    <!-- Middle: File Info -->
     <div class="flex-grow-1">
         <strong class="contract-title">@FileName</strong><br />
         <small class="text-muted">
@@ -16,7 +14,6 @@
         </small>
     </div>
 
-    <!-- Right: Options dropdown - ONLY SHOW IF OWNER -->
     @if (IsOwner)
     {
         <div class="dropdown ms-2">

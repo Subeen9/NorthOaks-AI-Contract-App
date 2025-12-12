@@ -34,7 +34,7 @@ namespace NorthOaks.Client.Providers
 
             _currentUserName = userName.Trim().ToLower();
 
-            // === 1️⃣ Load unread notifications from API ===
+            //  Load unread notifications from API 
             try
             {
                 var offline = await _http.GetFromJsonAsync<List<NotificationDto>>($"api/notifications/{_currentUserName}");
@@ -54,7 +54,7 @@ namespace NorthOaks.Client.Providers
                 Console.WriteLine($" Failed to load offline notifications: {ex.Message}");
             }
 
-            // === 2️⃣ Set up SignalR connection ===
+            // SignalR connection 
             _hubConnection = new HubConnectionBuilder()
                 .WithUrl(_navigation.ToAbsoluteUri("/hubs/notification"))
                 .WithAutomaticReconnect()
@@ -76,7 +76,7 @@ namespace NorthOaks.Client.Providers
                 Console.WriteLine($"[DEBUG FRONTEND] payload.UserId = '{payload?.UserId}', currentUser = '{_currentUserName}'");
 
                 if (payload == null) return;
-                if (payload.UserId?.Trim().ToLower() == _currentUserName) return; // skip self
+                if (payload.UserId?.Trim().ToLower() == _currentUserName) return; 
 
                 Console.WriteLine($"📨 Notification received: {payload.Message}");
 
@@ -94,13 +94,12 @@ namespace NorthOaks.Client.Providers
                 OnCountChanged?.Invoke();
             });
 
-            // === 3️⃣ Connect and join SignalR group ===
             try
             {
                 await _hubConnection.StartAsync();
                 await _hubConnection.InvokeAsync("JoinUserGroup", _currentUserName);
                 Console.WriteLine($" Connected and joined group: {_currentUserName}");
-                await Task.Delay(300); // small delay ensures stable join
+                await Task.Delay(300);
                 _isInitialized = true;
             }
             catch (Exception ex)
@@ -110,7 +109,6 @@ namespace NorthOaks.Client.Providers
             }
         }
 
-        // === 4️⃣ Mark all notifications as read ===
         public async Task ClearUnread()
         {
             try
@@ -153,7 +151,7 @@ namespace NorthOaks.Client.Providers
     public class NotificationMessage
     {
         public string Message { get; set; } = string.Empty;
-        public string? UserId { get; set; }   // username/sub
+        public string? UserId { get; set; }  
         public DateTime? CreatedAt { get; set; }
         public bool IsRead { get; set; }
     }

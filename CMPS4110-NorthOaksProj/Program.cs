@@ -17,7 +17,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Microsoft.Identity.Web.UI;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models; // Added for Swagger configuration
+using Microsoft.OpenApi.Models; 
 using NorthOaks.Server.Services;
 using System.Text;
 
@@ -33,14 +33,14 @@ builder.Logging.AddDebug();
 //builder.Services.AddRazorPages()
 //   .AddMicrosoftIdentityUI();
 
-// Add Swagger services with JWT authentication
+// Added Swagger services with JWT authentication
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "CMPS4110-NorthOaksProj", Version = "v1" });
 
-    // Add JWT Bearer authentication to Swagger
+    // Added JWT Bearer authentication to Swagger
     c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
     {
         Description = "JWT Authorization header using the Bearer scheme. Enter 'Bearer' [space] and then your token in the text input below.",
@@ -73,7 +73,6 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddDbContextFactory<DataContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Add Identity
 builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
 {
     // Password requirements configuration
@@ -87,7 +86,7 @@ builder.Services.AddIdentity<User, IdentityRole<int>>(options =>
 .AddDefaultTokenProviders();
 
 // Dependency Injection for services
-builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();         // Background task queue services
+builder.Services.AddSingleton<IBackgroundTaskQueue, BackgroundTaskQueue>();      
 builder.Services.AddHostedService<TaskRunner>();
 builder.Services.AddScoped<IContractsService, ContractsService>();
 builder.Services.AddScoped<NotificationService>();
@@ -123,7 +122,7 @@ builder.Services.AddAuthentication(options =>
             Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
     };
 
-    // 👇 Allow SignalR to send the token via query string for WebSockets
+    //  Allow SignalR to send the token via query string for WebSockets
     options.Events = new JwtBearerEvents
     {
         OnMessageReceived = context =>
@@ -146,7 +145,7 @@ builder.Services.AddScoped<TokenService>();
 builder.Services.AddAuthorization();
 builder.Services.AddConnections();
 
-// === Embeddings (Ollama MiniLM) ===
+//  Embeddings (Ollama MiniLM) 
 builder.Services.Configure<OllamaOptions>(builder.Configuration.GetSection("Ollama"));
 
 builder.Services.AddHttpClient<OllamaEmbeddingClient>((sp, http) =>
@@ -157,7 +156,7 @@ builder.Services.AddHttpClient<OllamaEmbeddingClient>((sp, http) =>
 });
 
 
-// === Response Generation ===
+// Response Generation Ollama
 builder.Services.AddHttpClient<OllamaGenerationClient>((sp, http) =>
 {
     var opts = sp.GetRequiredService<IOptions<OllamaOptions>>().Value;
@@ -167,7 +166,6 @@ builder.Services.AddHttpClient<OllamaGenerationClient>((sp, http) =>
 
 builder.Services.AddScoped<IOllamaGenerationClient>(sp => sp.GetRequiredService<OllamaGenerationClient>());
 
-// expose via interface for DI
 builder.Services.AddScoped<IEmbeddingClient>(sp => sp.GetRequiredService<OllamaEmbeddingClient>());
 builder.Services.AddScoped<MessageEmbeddingService>();
 
@@ -222,9 +220,7 @@ app.MapGet("/debug/embed", async (
     var v = await emb.EmbedAsync(text);
     return Results.Json(new { length = v.Length, first3 = v.Take(3) });
 });
-// === End debug endpoints ===
 
 app.Run();
 
-// declare record *after* app.Run, or in separate file
 public record EmbedBody(string text);

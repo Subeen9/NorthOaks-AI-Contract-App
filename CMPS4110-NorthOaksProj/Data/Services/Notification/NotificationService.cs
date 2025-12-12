@@ -42,7 +42,6 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Notifications
             await _context.SaveChangesAsync();
         }
 
-        // UPDATED: Accepts an int
         public async Task<List<Notification>> GetUnreadAsync(int userId)
         {
             return await _context.Notifications
@@ -51,7 +50,6 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Notifications
                 .ToListAsync();
         }
 
-        // UPDATED: Accepts an int
         public async Task MarkAllAsReadAsync(int userId)
         {
             var items = await _context.Notifications

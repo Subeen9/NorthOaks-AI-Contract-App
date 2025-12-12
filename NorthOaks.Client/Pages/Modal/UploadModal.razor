@@ -22,10 +22,8 @@
 
                 <div class="modal-body p-4">
 
-                    <!-- CARD WRAPPER -->
                     <div class="upload-card shadow-sm">
 
-                        <!-- DRAG AREA -->
                         <div id="dropArea"
                              class="upload-dropzone @(isDragOver ? "drag-over" : "")">
                             <i class="bi bi-file-earmark-arrow-up upload-icon"></i>
@@ -33,12 +31,10 @@
                             <p class="upload-text-muted">or click below to select a file</p>
                         </div>
 
-                        <!-- Hidden InputFile -->
                         <InputFile id="hiddenInputFile" style="display:none"
                                    OnChange="HandleFileSelected"
                                    accept="application/pdf" />
 
-                        <!-- Upload Button -->
                         <button type="button"
                                 class="btn upload-cta w-100"
                                 @onclick="UploadFile"
@@ -46,7 +42,6 @@
                             <i class="bi bi-upload"></i> Upload PDF
                         </button>
 
-                        <!-- Status Message -->
                         @if (!string.IsNullOrEmpty(statusMessage))
                         {
                             <div class="upload-status">
@@ -54,7 +49,6 @@
                             </div>
                         }
 
-                        <!-- Upload Progress -->
                         @if (isUploading && uploadProgress < 100)
                         {
                             <div class="progress upload-progress mt-3">
@@ -66,7 +60,6 @@
                             </div>
                         }
 
-                        <!-- Processing Progress -->
                         @if (isProcessing)
                         {
                             <div class="progress upload-progress mt-3">
@@ -123,7 +116,6 @@
     private string processingMessage = "";
     private HubConnection? hubConnection;
 
-    // Getting the User Info
     protected override async Task OnInitializedAsync()
     {
         var authState = await AuthStateProvider.GetAuthenticationStateAsync();

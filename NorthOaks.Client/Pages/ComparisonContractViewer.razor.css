@@ -512,7 +512,6 @@
     }
 }
 
-/* Responsive */
 @media (max-width:768px) {
     .viewer-wrapper {
         flex-direction: column;

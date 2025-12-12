@@ -98,7 +98,6 @@
                 await JS.InvokeVoidAsync("localStorage.setItem", "authToken", token);
                 (AuthProvider as CustomAuthStateProvider)?.NotifyUserAuthentication(token);
 
-                // Go to home page
                 Navigation.NavigateTo("/home", forceLoad: true);
             }
             else if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)

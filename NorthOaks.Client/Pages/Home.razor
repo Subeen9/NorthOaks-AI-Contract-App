@@ -554,7 +554,7 @@
         contracts = await Http.GetFromJsonAsync<List<ContractReadDto>>("/api/contracts")
                     ?? new();
 
-        currentPage = 1;           // optional: jump back to first page
+        currentPage = 1;          
         StateHasChanged();
     }
 
@@ -565,7 +565,6 @@
     {   
         try
         {
-            // Load contracts and pins first
             contracts = await Http.GetFromJsonAsync<List<ContractReadDto>>("/api/contracts") ?? new();
             await LoadPinsAsync();
             await LoadSessionsAsync();

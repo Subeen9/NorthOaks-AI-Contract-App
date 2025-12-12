@@ -142,7 +142,6 @@ function smartParagraphHighlight(iframeDoc, pageNumber, searchText, viewerId) {
 
         const textSpans = Array.from(textLayer.querySelectorAll('span'));
 
-        // DEBUG: Show all text spans on the page
         console.log(`=== Analyzing ${textSpans.length} spans on page ===`);
         textSpans.slice(0, 15).forEach((span, idx) => {
             console.log(`Span ${idx}: "${span.textContent}" (length: ${span.textContent?.length || 0})`);
@@ -157,7 +156,6 @@ function smartParagraphHighlight(iframeDoc, pageNumber, searchText, viewerId) {
 
         console.log(`Looking for keywords: ${keywords.join(', ')}`);
 
-        // Strategy 1: Look for section headers
         console.log('--- Strategy 1: Looking for section header ---');
         const headerSpan = findSectionHeader(textSpans, searchText);
 
@@ -179,7 +177,7 @@ function smartParagraphHighlight(iframeDoc, pageNumber, searchText, viewerId) {
 
         console.log('No section header found, trying Strategy 2...');
 
-        // Strategy 2: Keyword matching
+        //  Keyword matching
         const matchingSpans = [];
         textSpans.forEach(span => {
             const spanText = (span.textContent || '').toLowerCase();
@@ -222,7 +220,7 @@ function smartParagraphHighlight(iframeDoc, pageNumber, searchText, viewerId) {
 
         console.log('No nearby header found, using tight range');
 
-        // Strategy 3: Highlight tight range
+        // Highlight tight range
         const startIdx = Math.max(0, bestIndex - 2);
         const endIdx = Math.min(textSpans.length, bestIndex + 8);
 
@@ -239,27 +237,20 @@ function smartParagraphHighlight(iframeDoc, pageNumber, searchText, viewerId) {
     }
 }
 
-// Helper: Find section header in text spans
 function findSectionHeader(textSpans, searchText) {
     const searchLower = searchText.toLowerCase();
 
     for (const span of textSpans) {
         const text = (span.textContent || '').trim();
 
-        // Skip empty or very short spans
         if (text.length < 3) continue;
 
-        // Check if this looks like a header
         const isHeader =
-            // Title Case pattern
             /^[A-Z][a-z]+(?:\s+[A-Z][a-z]+)*$/.test(text) ||
-            // All caps (but not single word)
             (/^[A-Z\s]+$/.test(text) && text.split(/\s+/).length > 1) ||
-            // Contains common header words
             /^(article|section|clause|provision|schedule|exhibit|appendix)/i.test(text);
 
         if (isHeader) {
-            // Check if header text is in search text
             const headerWords = text.toLowerCase().split(/\s+/);
             const matchCount = headerWords.filter(word =>
                 word.length > 3 && searchLower.includes(word)
@@ -275,7 +266,7 @@ function findSectionHeader(textSpans, searchText) {
     return null;
 }
 
-// Helper: Find nearby header before the matched span
+//  Find nearby header before the matched span
 function findNearbyHeader(textSpans, matchIndex) {
     // Look backwards up to 10 spans
     const searchStart = Math.max(0, matchIndex - 10);

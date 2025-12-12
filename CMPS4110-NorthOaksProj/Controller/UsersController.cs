@@ -59,7 +59,7 @@ namespace CMPS4110_NorthOaksProj.Controllers
             return Ok(userDto);
         }
 
-        // NEW ENDPOINT - Get current authenticated user
+        // Get current authenticated user
         [HttpGet("me")]
         [Authorize]
         public async Task<ActionResult<UserDto>> GetCurrentUser()

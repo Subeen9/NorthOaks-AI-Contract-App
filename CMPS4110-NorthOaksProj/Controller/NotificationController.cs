@@ -1,8 +1,8 @@
 ﻿using CMPS4110_NorthOaksProj.Data.Services.Notifications;
 using CMPS4110_NorthOaksProj.Models.Notifications;
-using CMPS4110_NorthOaksProj.Models.Users; // <-- Make sure this 'using' matches your User model location
+using CMPS4110_NorthOaksProj.Models.Users; 
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity; // <-- Required for UserManager
+using Microsoft.AspNetCore.Identity; 
 using Microsoft.AspNetCore.Mvc;
 using NorthOaks.Shared.Model.Notifications;
 using System;
@@ -15,27 +15,23 @@ namespace CMPS4110_NorthOaksProj.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize] // <-- This must be enabled
+    [Authorize] 
     public class NotificationsController : ControllerBase
     {
         private readonly NotificationService _service;
         private readonly ILogger<NotificationsController> _logger;
-        private readonly UserManager<User> _userManager; // <-- Inject UserManager
+        private readonly UserManager<User> _userManager; 
 
-        // Updated constructor
         public NotificationsController(NotificationService service,
             ILogger<NotificationsController> logger,
-            UserManager<User> userManager) // <-- Add UserManager
+            UserManager<User> userManager) 
         {
             _service = service;
             _logger = logger;
-            _userManager = userManager; // <-- Set UserManager
+            _userManager = userManager; 
         }
 
-        // ============================
-        // GET UNREAD NOTIFICATIONS
-        // ============================
-        // This route now correctly accepts a string username
+
         [HttpGet("unread")]
         public async Task<ActionResult<IEnumerable<NotificationDto>>> GetUnread()
         {

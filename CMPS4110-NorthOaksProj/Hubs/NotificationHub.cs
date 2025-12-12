@@ -19,8 +19,7 @@ namespace CMPS4110_NorthOaksProj.Hubs
 
         public override async Task OnDisconnectedAsync(Exception? exception)
         {
-            // Optional: remove from group for cleanliness
-            // Note: you’d need to track which userId the connection was associated with
+           
             Console.WriteLine($" Connection {Context.ConnectionId} disconnected from NotificationHub");
             await base.OnDisconnectedAsync(exception);
         }

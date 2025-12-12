@@ -61,7 +61,7 @@ namespace CMPS4110_NorthOaksProj.Data.Services.Generation
                 model = _model,
                 prompt = prompt,
                 system = systemPrompt,
-                stream = true,   // IMPORTANT: streaming enabled
+                stream = true,   
                 options = new GenerateOptions
                 {
                     temperature = 0.6,
