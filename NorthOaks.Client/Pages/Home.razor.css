@@ -397,11 +397,38 @@
     transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease;
 }
 
-    .comparison-row:hover {
+    .comparison-row.contract-hover:hover {
         transform: translateY(-2px);
         box-shadow: var(--shadow-md);
-        background: #fff5e0;
+        background: var(--brand-gold) !important;
+        color: #fff !important;
     }
+
+        .comparison-row.contract-hover:hover .contract-title,
+        .comparison-row.contract-hover:hover .contract-meta,
+        .comparison-row.contract-hover:hover small,
+        .comparison-row.contract-hover:hover .text-muted,
+        .comparison-row.contract-hover:hover i:not(.bi-three-dots-vertical) {
+            color: #fff !important;
+        }
+
+        .comparison-row.contract-hover:hover .comparison-row-icon {
+            background: rgba(255,255,255,0.2) !important;
+        }
+
+            .comparison-row.contract-hover:hover .comparison-row-icon i {
+                color: #fff !important;
+            }
+
+        .comparison-row.contract-hover:hover .card-menu {
+            background: #ffffff !important;
+            border: 1px solid #d1d5db !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,.15) !important;
+        }
+
+            .comparison-row.contract-hover:hover .card-menu i {
+                color: #111827 !important;
+            }
 
 .list-group .contract-row.comparison-row {
     position: relative;

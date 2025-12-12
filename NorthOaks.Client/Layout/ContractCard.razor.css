@@ -1,6 +1,4 @@
-﻿
-
-.contract-card {
+﻿.contract-card {
     border: 1px solid var(--stroke);
     background: var(--card-bg);
     border-radius: var(--radius);
@@ -9,18 +7,15 @@
     min-height: 124px;
 }
 
-    /* uniform padding for cards */
     .contract-card .card-body {
         padding: 16px 18px;
     }
 
-/* meta text */
 .contract-meta {
     color: #6b7280;
     font-size: .9rem;
 }
 
-/* ==================== PIN BUTTON ==================== */
 .pin-btn {
     position: absolute;
     bottom: 14px;
@@ -47,6 +42,11 @@
         transition: color .15s ease-in-out;
     }
 
+    .pin-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: var(--shadow-md);
+    }
+
     .pin-btn:active {
         transform: scale(.96);
         box-shadow: 0 4px 10px rgba(0,0,0,.08);
@@ -61,22 +61,38 @@
         .pin-btn.pinned i {
             transform: rotate(-25deg);
             transition: transform .15s ease;
+            color: #fff !important;
         }
 
-/* Pin button on card hover */
-.contract-card.contract-hover:hover .pin-btn,
-.home-card.contract-hover:hover .pin-btn {
-    background: rgba(255,255,255,.96) !important;
-    border-color: #f0e0b4 !important;
+.contract-card.contract-hover:hover .pin-btn:not(.pinned) {
+    background: #ffffff !important;
+    border-color: #d1d5db !important;
     box-shadow: var(--shadow-md);
 }
 
-    .contract-card.contract-hover:hover .pin-btn i,
-    .home-card.contract-hover:hover .pin-btn i {
-        color: #7a5600 !important;
+    .contract-card.contract-hover:hover .pin-btn:not(.pinned) i {
+        color: #ba8e0b !important;
     }
 
-/* ==================== 3-DOTS MENU BUTTON ==================== */
+.contract-card.contract-hover:hover .pin-btn.pinned {
+    background: var(--brand-gold) !important;
+    border-color: var(--brand-gold) !important;
+}
+
+    .contract-card.contract-hover:hover .pin-btn.pinned i {
+        color: #fff !important;
+    }
+
+.home-card.contract-hover:hover .pin-btn:not(.pinned) {
+    background: #ffffff !important;
+    border-color: #d1d5db !important;
+    box-shadow: var(--shadow-md);
+}
+
+    .home-card.contract-hover:hover .pin-btn:not(.pinned) i {
+        color: #ba8e0b !important;
+    }
+
 .contract-card .card-menu,
 .comparison-card .card-menu {
     position: absolute;
@@ -104,27 +120,30 @@
     .contract-card .card-menu i,
     .comparison-card .card-menu i {
         font-size: 18px;
-        color: #9ca3af !important;
+        color: #111827 !important;
         opacity: 1 !important;
     }
 
-    /* Menu button hover (not on card) */
     .contract-card .card-menu:hover,
     .comparison-card .card-menu:hover {
         background: #ffffff;
         color: #4b5563;
-        border-color: #f0e0b4;
+        border-color: #d1d5db;
         transform: translateY(-1px);
         box-shadow: var(--shadow-md);
     }
 
-/* Menu button on card hover (gold background) */
+        .contract-card .card-menu:hover i,
+        .comparison-card .card-menu:hover i {
+            color: #111827 !important;
+        }
+
 .contract-card.contract-hover:hover .card-menu,
 .comparison-card.contract-hover:hover .card-menu,
 .home-card.contract-hover:hover .card-menu {
     background: #ffffff !important;
-    border: 1px solid #f0e0b4 !important;
-    box-shadow: var(--shadow-md) !important;
+    border: 1px solid #d1d5db !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,.15) !important;
     opacity: 1 !important;
     visibility: visible !important;
 }
@@ -137,7 +156,6 @@
         visibility: visible !important;
     }
 
-/* ==================== CARD HOVER (GOLD) ==================== */
 .contract-card.contract-hover:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
@@ -145,14 +163,12 @@
     color: #fff !important;
 }
 
-    /* Text white on hover */
     .contract-card.contract-hover:hover .contract-title,
     .contract-card.contract-hover:hover .contract-meta,
     .contract-card.contract-hover:hover .file-icon {
         color: #fff !important;
     }
 
-/* HOME GRID specific hover */
 .home-grid .contract-card.contract-hover:hover,
 .home-grid .contract-card.contract-hover:hover > *,
 .home-grid .contract-card.contract-hover:hover .card {
@@ -167,7 +183,7 @@
     .home-grid .contract-card.contract-hover:hover .card-title,
     .home-grid .contract-card.contract-hover:hover small,
     .home-grid .contract-card.contract-hover:hover .text-muted,
-    .home-grid .contract-card.contract-hover:hover i:not(.bi-three-dots-vertical),
+    .home-grid .contract-card.contract-hover:hover i:not(.bi-three-dots-vertical):not(.bi-trash):not(.bi-lock-fill):not(.bi-globe-americas):not(.bi-pin-angle):not(.bi-pin-angle-fill),
     .home-grid .contract-card.contract-hover:hover .file-icon {
         color: #fff !important;
     }
@@ -182,7 +198,6 @@
         filter: none !important;
     }
 
-/* ==================== SELECTED STATE ==================== */
 .contract-card.selected-for-comparison {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
@@ -196,7 +211,6 @@
         color: #fff !important;
     }
 
-/* ==================== VISIBILITY BADGE ==================== */
 .visibility-badge {
     display: inline-flex;
     align-items: center;
@@ -227,8 +241,43 @@
     opacity: 1;
 }
 
-/* ==================== COMPARISON CARD SPECIFIC ==================== */
 .comparison-card .card-title {
     padding-right: 48px;
     padding-bottom: 8px;
 }
+
+.dropdown-menu {
+    background: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: 0 4px 12px rgba(0,0,0,.1) !important;
+    border-radius: 10px !important;
+    z-index: 9999 !important;
+}
+
+.dropdown-item {
+    color: #111827 !important;
+    padding: 0.5rem 1rem !important;
+    background: #ffffff !important;
+}
+
+    .dropdown-item:hover {
+        background: #f3f4f6 !important;
+        color: #111827 !important;
+    }
+
+    .dropdown-item i {
+        color: #111827 !important;
+    }
+
+    .dropdown-item.text-danger {
+        color: #dc2626 !important;
+    }
+
+        .dropdown-item.text-danger:hover {
+            background: #fef2f2 !important;
+            color: #dc2626 !important;
+        }
+
+        .dropdown-item.text-danger i {
+            color: #dc2626 !important;
+        }

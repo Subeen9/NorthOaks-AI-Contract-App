@@ -288,23 +288,22 @@
 
                             @foreach (var session in paginatedSessions)
                             {
-                                <div class="col-xxl-4 col-xl-4 col-lg-6"
-                                     @onclick="@(() => Navigation.NavigateTo($"/compare-chat/{session.Id}"))"
-                                     style="cursor: pointer;">
-
-                                    <ContractCard Id="@session.Id"
-                                                  FileName="@BuildComparisonTitle(session)"
-                                                  UploadDate="@session.CreatedDate"
-                                                  UserId="@session.UserId"
-                                                  UploadedBy="@session.UserId.ToString()"
-                                                  Type="ContractCard.CardType.Comparison"
-                                                  MessageCount="@session.MessageCount"
-                                                  IsPinned="IsComparisonPinned(session.Id)"
-                                                  OnTogglePin="() => ToggleComparisonPin(session.Id)"
-                                                  IsPublic="session.IsPublic"
-                                                  OnToggleVisibility="() => ToggleComparisonVisibility(session.Id)"
-                                                  IsSelected="false"
-                                                  OnDelete="() => OnComparisonMenuClick(session.Id)" />
+                                <div class="col-xxl-4 col-xl-4 col-lg-6" @onclick="@(() => Navigation.NavigateTo($"/compare-chat/{session.Id}"))">
+                                    <div class="contract-card contract-hover position-relative home-card comparison-card">
+                                        <ContractCard Id="@session.Id"
+                                                      FileName="@BuildComparisonTitle(session)"
+                                                      UploadDate="@session.CreatedDate"
+                                                      UserId="@session.UserId"
+                                                      UploadedBy="@session.UserId.ToString()"
+                                                      Type="ContractCard.CardType.Comparison"
+                                                      MessageCount="@session.MessageCount"
+                                                      IsPinned="IsComparisonPinned(session.Id)"
+                                                      OnTogglePin="() => ToggleComparisonPin(session.Id)"
+                                                      IsPublic="session.IsPublic"
+                                                      OnToggleVisibility="() => ToggleComparisonVisibility(session.Id)"
+                                                      IsSelected="false"
+                                                      OnDelete="() => OnComparisonMenuClick(session.Id)" />
+                                    </div>
                                 </div>
                             }
                         }
