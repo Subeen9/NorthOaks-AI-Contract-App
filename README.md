@@ -37,7 +37,7 @@ NorthOaks.Client (Blazor) → Frontend UI
 Visual Studio 2022
 clone the repository
 ```
-git clone https://github.com/Ajyol/CMPS4110-NorthOaksProj.git
+git clone https://github.com/Subeen9/NorthOaks-AI-Contract-App.git
 ```
 
 2. ### 2. Run the Backend (Web API)
